@@ -172,6 +172,14 @@ class ScreenGenerator {
       FieldType.decimal ||
       FieldType.password ||
       FieldType.textarea => true,
+      FieldType.slider ||
+      FieldType.repeater ||
+      FieldType.timeline ||
+      FieldType.section ||
+      FieldType.label ||
+      FieldType.starRating ||
+      FieldType.signature ||
+      FieldType.grid => true,
       FieldType.dropdown => !f.isStaticStringOnly && !f.isAsyncDropdown,
       _ => false,
     };
@@ -207,8 +215,18 @@ class ScreenGenerator {
         _writeFileUpload(buf, f, stateName, blocName, keysClass);
       case FieldType.multiSelect:
         _writeMultiSelect(buf, f, stateName, blocName, keysClass);
+      case FieldType.slider:
+      case FieldType.repeater:
+      case FieldType.timeline:
+      case FieldType.section:
+      case FieldType.label:
+      case FieldType.starRating:
+      case FieldType.signature:
+      case FieldType.grid:
+      case FieldType.autoComplete:
+        _writePlaceholderField(buf, f, stateName, blocName, keysClass);
       default:
-        _writeApiDropdown(buf, f, stateName, blocName, keysClass);
+        _writePlaceholderField(buf, f, stateName, blocName, keysClass);
     }
 
     buf.writeln('  }');
@@ -260,7 +278,7 @@ class ScreenGenerator {
     buf.writeln('          controller: _controller,');
     buf.writeln("          label: '${_escape(f.label)}',");
     if (hintText.isNotEmpty) buf.writeln("          hint: '${_escape(hintText)}',");
-    buf.writeln('          errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('          errorText: field.hasError ? field.error?.message : null,');
     if (f.isReadOnly)         buf.writeln('          readOnly: true,');
     if (f.isDisabled)         buf.writeln('          enabled: false,');
     if (f.obscureText)        buf.writeln('          obscureText: true,');
@@ -288,8 +306,8 @@ class ScreenGenerator {
     buf.writeln('      selector: (state) => state.${f.fieldName},');
     buf.writeln('      builder: (context, field) => AppDropdownField<String>(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: .value.isEmpty ? null : .value,');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        value: field.value.isEmpty ? null : field.value,');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        items: [$options],');
     buf.writeln('        itemLabelBuilder: (item) => item,');
     buf.writeln('        onChanged: (value) {');
@@ -319,12 +337,12 @@ class ScreenGenerator {
     buf.writeln('        return AppAsyncDropdownField<dynamic>(');
     buf.writeln("          label: '${_escape(f.label)}',");
     buf.writeln('          asyncState: async.map(options),');
-    buf.writeln('          value: .value?.toString().isEmpty == true ? null : options.firstWhere(');
-    buf.writeln('            (item) => item.$labelKey.toString() == .value.toString(),');
+    buf.writeln('          value: field.value?.toString().isEmpty == true ? null : options.firstWhere(');
+    buf.writeln('            (item) => item.$labelKey.toString() == field.value.toString(),');
     buf.writeln('            orElse: () => null,');
     buf.writeln('          ),');
     buf.writeln('          itemLabelBuilder: (item) => item.$labelKey.toString(),');
-    buf.writeln('          errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('          errorText: field.hasError ? field.error?.message : null,');
     if (hasAsyncDropdown) {
       buf.writeln('          onRetry: () => context.read<$blocName>().add(const Load${featureName}DataEvent()),');
     } else {
@@ -351,8 +369,8 @@ class ScreenGenerator {
     buf.writeln('      builder: (context, field) => AppRadioGroupField(');
     buf.writeln("        label: '${_escape(f.label)}',");
     buf.writeln('        options: [$options],');
-    buf.writeln('        value: .value.isEmpty ? null : .value,');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        value: field.value.isEmpty ? null : field.value,');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
@@ -369,8 +387,8 @@ class ScreenGenerator {
     buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
     buf.writeln('      builder: (context, field) => AppDatePickerField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: .value,');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        value: field.value,');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
@@ -387,8 +405,8 @@ class ScreenGenerator {
     buf.writeln('      selector: (state) => state.${f.fieldName},');
     buf.writeln('      builder: (context, field) => AppCheckboxField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: .value,');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        value: field.value,');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
     buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value ?? false),');
     buf.writeln('        ),');
@@ -401,8 +419,8 @@ class ScreenGenerator {
     buf.writeln('      selector: (state) => state.${f.fieldName},');
     buf.writeln('      builder: (context, field) => AppFileUploadField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: .value?.toString(),');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        value: field.value?.toString(),');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
@@ -423,10 +441,27 @@ class ScreenGenerator {
     buf.writeln('      builder: (context, field) => AppMultiSelectField(');
     buf.writeln("        label: '${_escape(f.label)}',");
     buf.writeln('        options: [$options],');
-    buf.writeln('        selectedValues: .value,');
-    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        selectedValues: field.value,');
+    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
     buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
     buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln('        ),');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+  }
+
+  void _writePlaceholderField(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    buf.writeln('    return FormFieldWrapper(');
+    buf.writeln("      label: '${_escape(f.label)}',");
+    buf.writeln('      child: Container(');
+    buf.writeln('        padding: const EdgeInsets.all(16),');
+    buf.writeln('        decoration: BoxDecoration(');
+    buf.writeln('          color: const Color(0xFFF1F5F9),');
+    buf.writeln('          borderRadius: BorderRadius.circular(12),');
+    buf.writeln('          border: Border.all(color: const Color(0xFFE2E8F0)),');
+    buf.writeln('        ),');
+    buf.writeln('        child: const Center(');
+    buf.writeln("          child: Text('Component not implemented in generator yet', style: TextStyle(color: Color(0xFF64748B))),");
     buf.writeln('        ),');
     buf.writeln('      ),');
     buf.writeln('    );');

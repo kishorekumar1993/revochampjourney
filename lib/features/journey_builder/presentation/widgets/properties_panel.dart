@@ -26,6 +26,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   bool _showStateFlags = false;
   bool _showValidations = false;
   bool _showDataOptions = false;
+  bool _showDataComponentSettings = true;
+  bool _showLayoutComponentSettings = true;
 
   // Inner API Config tab: 0 = Endpoint, 1 = Payload, 2 = Response Mapping & Test Data
   int _apiTabIndex = 0;
@@ -405,6 +407,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     items: const [
                                       'text',
                                       'textarea',
+                                      'number',
                                       'dropdown',
                                       'api_dropdown',
                                       'radio',
@@ -417,6 +420,14 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       'image',
                                       'otp',
                                       'phone',
+                                      'multi_select',
+                                      'table_grid',
+                                      'repeater',
+                                      'timeline',
+                                      'section',
+                                      'card',
+                                      'tabs',
+                                      'accordion',
                                       'divider'
                                     ],
                                     onChanged: (val) {
@@ -568,6 +579,12 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             ),
                           ],
                         ),
+
+                        if (_isDataComponent(selectedField.type))
+                          _buildDataComponentProperties(selectedField, activeStepId),
+
+                        if (_isLayoutComponent(selectedField.type))
+                          _buildLayoutComponentProperties(selectedField, activeStepId),
 
                         if (!isRadioOrSelectionOrDivider)
                           _buildCollapsibleSection(
@@ -1108,6 +1125,781 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           ],
         ],
       ),
+    );
+  }
+
+  bool _isDataComponent(String type) {
+    return const {'table_grid', 'repeater', 'timeline'}.contains(type);
+  }
+
+  bool _isLayoutComponent(String type) {
+    return const {'section', 'card', 'tabs', 'accordion'}.contains(type);
+  }
+
+  Map<String, dynamic> _componentConfig(JourneyField field) {
+    final config = Map<String, dynamic>.from(field.componentConfig ?? {});
+    switch (field.type) {
+      case 'table_grid':
+        return {
+          'columns': [
+            {'label': '#', 'fieldId': 'rowIndex', 'type': 'number', 'required': false},
+            {'label': 'Registration No.', 'fieldId': 'registrationNo', 'type': 'text', 'required': true},
+            {'label': 'Manufacturer', 'fieldId': 'manufacturer', 'type': 'dropdown', 'required': true},
+          ],
+          'allowAddRow': true,
+          'allowEditRow': true,
+          'allowDeleteRow': true,
+          'allowViewRow': true,
+          'minRows': 0,
+          'maxRows': 10,
+          'pagination': true,
+          'rowsPerPage': 10,
+          ...config,
+        };
+      case 'repeater':
+        return {
+          'itemLabel': 'Item',
+          'addButtonLabel': 'Add Item',
+          'fields': [
+            {'label': 'Name', 'fieldId': 'name', 'type': 'text', 'required': true},
+            {'label': 'Value', 'fieldId': 'value', 'type': 'text', 'required': false},
+          ],
+          'minItems': 0,
+          'maxItems': 5,
+          'allowAdd': true,
+          'allowRemove': true,
+          'allowReorder': true,
+          'showItemIndex': true,
+          'collapsibleItems': true,
+          'layout': 'singleColumn',
+          ...config,
+        };
+      case 'timeline':
+        return {
+          'orientation': 'vertical',
+          'markerStyle': 'numbered',
+          'showTimestamp': true,
+          'showConnector': true,
+          'allowFutureSteps': true,
+          'defaultStatus': 'pending',
+          'itemsSource': 'static',
+          'titleField': 'title',
+          'dateField': 'date',
+          'statusField': 'status',
+          'items': [
+            {'title': 'Started', 'description': 'Journey started', 'status': 'completed'},
+            {'title': 'In Progress', 'description': 'Current step', 'status': 'active'},
+            {'title': 'Completed', 'description': 'Final state', 'status': 'pending'},
+          ],
+          ...config,
+        };
+      case 'section':
+        return {
+          'headingLevel': 'H2',
+          'collapsible': false,
+          'defaultExpanded': true,
+          'showDivider': true,
+          'padding': 'medium',
+          ...config,
+        };
+      case 'card':
+        return {
+          'variant': 'outlined',
+          'showHeader': true,
+          'showFooter': false,
+          'padding': 'medium',
+          ...config,
+        };
+      case 'tabs':
+        return {
+          'variant': 'underline',
+          'alignment': 'start',
+          'persistActiveTab': true,
+          'tabs': ['Tab 1', 'Tab 2'],
+          ...config,
+        };
+      case 'accordion':
+        return {
+          'allowMultipleOpen': false,
+          'defaultExpanded': false,
+          'iconPosition': 'right',
+          'variant': 'bordered',
+          ...config,
+        };
+      default:
+        return config;
+    }
+  }
+
+  void _updateComponentConfig(JourneyField field, String activeStepId, String key, dynamic value) {
+    final updatedConfig = _componentConfig(field)..[key] = value;
+    final updated = field.copy()..componentConfig = updatedConfig;
+    ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
+  }
+
+  int _intConfig(Map<String, dynamic> config, String key, int fallback) {
+    final value = config[key];
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  bool _boolConfig(Map<String, dynamic> config, String key, bool fallback) {
+    final value = config[key];
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true';
+    return fallback;
+  }
+
+  Widget _buildDataComponentProperties(JourneyField field, String activeStepId) {
+    switch (field.type) {
+      case 'table_grid':
+        return _buildTableGridProperties(field, activeStepId);
+      case 'repeater':
+        return _buildRepeaterProperties(field, activeStepId);
+      case 'timeline':
+        return _buildTimelineProperties(field, activeStepId);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildTableGridProperties(JourneyField field, String activeStepId) {
+    final config = _componentConfig(field);
+    final columns = (config['columns'] as List)
+        .map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    return _buildCollapsibleSection(
+      title: "Table / Grid Properties",
+      accentColor: RevoTheme.accent,
+      icon: Icons.table_chart_outlined,
+      isExpanded: _showDataComponentSettings,
+      onToggle: () => setState(() => _showDataComponentSettings = !_showDataComponentSettings),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Columns", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            TextButton.icon(
+              onPressed: () {
+                final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                final next = updatedColumns.length + 1;
+                updatedColumns.add({'label': 'Column $next', 'fieldId': 'column$next', 'type': 'text', 'required': false});
+                _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+              },
+              icon: const Icon(Icons.add_rounded, size: 14),
+              label: Text("Add Column", style: GoogleFonts.inter(fontSize: 10)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...columns.asMap().entries.map((entry) {
+          final index = entry.key;
+          final column = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: RevoTheme.sidebarBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: RevoTheme.cardBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PropertyTextField(
+                        label: "Label",
+                        initialValue: column['label']?.toString() ?? '',
+                        onChanged: (val) {
+                          final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                          updatedColumns[index] = {...column, 'label': val.trim()};
+                          _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PropertyTextField(
+                        label: "Field ID",
+                        initialValue: column['fieldId']?.toString() ?? '',
+                        onChanged: (val) {
+                          final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                          updatedColumns[index] = {...column, 'fieldId': val.trim()};
+                          _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PropertyDropdownField(
+                        label: "Type",
+                        currentValue: column['type']?.toString() ?? 'text',
+                        items: const ['text', 'number', 'dropdown', 'date', 'checkbox'],
+                        onChanged: (val) {
+                          final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                          updatedColumns[index] = {...column, 'type': val};
+                          _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildCompactSwitchTile(
+                        label: "Required",
+                        value: column['required'] == true,
+                        onChanged: (val) {
+                          final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                          updatedColumns[index] = {...column, 'required': val};
+                          _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                      onPressed: columns.length <= 1
+                          ? null
+                          : () {
+                              final updatedColumns = List<Map<String, dynamic>>.from(columns)..removeAt(index);
+                              _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                            },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 6),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.8,
+          children: [
+            _buildCompactSwitchTile(label: "Allow Add", value: _boolConfig(config, 'allowAddRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowAddRow', val)),
+            _buildCompactSwitchTile(label: "Allow Edit", value: _boolConfig(config, 'allowEditRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowEditRow', val)),
+            _buildCompactSwitchTile(label: "Allow Delete", value: _boolConfig(config, 'allowDeleteRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowDeleteRow', val)),
+            _buildCompactSwitchTile(label: "Allow View", value: _boolConfig(config, 'allowViewRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowViewRow', val)),
+            _buildCompactSwitchTile(label: "Pagination", value: _boolConfig(config, 'pagination', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'pagination', val)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _numberConfigField(field, activeStepId, config, 'minRows', 'Min Rows', 0)),
+            const SizedBox(width: 8),
+            Expanded(child: _numberConfigField(field, activeStepId, config, 'maxRows', 'Max Rows', 10)),
+            const SizedBox(width: 8),
+            Expanded(child: _numberConfigField(field, activeStepId, config, 'rowsPerPage', 'Rows/Page', 10)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRepeaterProperties(JourneyField field, String activeStepId) {
+    final config = _componentConfig(field);
+    final fields = (config['fields'] as List)
+        .map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+        .where((item) => item.isNotEmpty)
+        .toList();
+    return _buildCollapsibleSection(
+      title: "Repeater Properties",
+      accentColor: RevoTheme.accent,
+      icon: Icons.view_week_outlined,
+      isExpanded: _showDataComponentSettings,
+      onToggle: () => setState(() => _showDataComponentSettings = !_showDataComponentSettings),
+      children: [
+        Row(
+          children: [
+            Expanded(child: _textConfigField(field, activeStepId, config, 'itemLabel', 'Item Label')),
+            const SizedBox(width: 8),
+            Expanded(child: _textConfigField(field, activeStepId, config, 'addButtonLabel', 'Add Button')),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _numberConfigField(field, activeStepId, config, 'minItems', 'Min Items', 0)),
+            const SizedBox(width: 8),
+            Expanded(child: _numberConfigField(field, activeStepId, config, 'maxItems', 'Max Items', 5)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _PropertyDropdownField(
+          label: "Layout",
+          currentValue: config['layout']?.toString() ?? 'singleColumn',
+          items: const ['singleColumn', 'twoColumn', 'compact', 'cardList'],
+          onChanged: (val) => _updateComponentConfig(field, activeStepId, 'layout', val),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Repeated Fields", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            TextButton.icon(
+              onPressed: () {
+                final updatedFields = List<Map<String, dynamic>>.from(fields);
+                final next = updatedFields.length + 1;
+                updatedFields.add({'label': 'Field $next', 'fieldId': 'field$next', 'type': 'text', 'required': false});
+                _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+              },
+              icon: const Icon(Icons.add_rounded, size: 14),
+              label: Text("Add Field", style: GoogleFonts.inter(fontSize: 10)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...fields.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: RevoTheme.sidebarBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: RevoTheme.cardBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PropertyTextField(
+                        label: "Label",
+                        initialValue: item['label']?.toString() ?? '',
+                        onChanged: (val) {
+                          final updatedFields = List<Map<String, dynamic>>.from(fields);
+                          updatedFields[index] = {...item, 'label': val.trim()};
+                          _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PropertyTextField(
+                        label: "Field ID",
+                        initialValue: item['fieldId']?.toString() ?? '',
+                        onChanged: (val) {
+                          final updatedFields = List<Map<String, dynamic>>.from(fields);
+                          updatedFields[index] = {...item, 'fieldId': val.trim()};
+                          _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PropertyDropdownField(
+                        label: "Type",
+                        currentValue: item['type']?.toString() ?? 'text',
+                        items: const ['text', 'number', 'dropdown', 'date', 'checkbox', 'file'],
+                        onChanged: (val) {
+                          final updatedFields = List<Map<String, dynamic>>.from(fields);
+                          updatedFields[index] = {...item, 'type': val};
+                          _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildCompactSwitchTile(
+                        label: "Required",
+                        value: item['required'] == true,
+                        onChanged: (val) {
+                          final updatedFields = List<Map<String, dynamic>>.from(fields);
+                          updatedFields[index] = {...item, 'required': val};
+                          _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                      onPressed: fields.length <= 1
+                          ? null
+                          : () {
+                              final updatedFields = List<Map<String, dynamic>>.from(fields)..removeAt(index);
+                              _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
+                            },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.8,
+          children: [
+            _buildCompactSwitchTile(label: "Allow Add", value: _boolConfig(config, 'allowAdd', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowAdd', val)),
+            _buildCompactSwitchTile(label: "Allow Remove", value: _boolConfig(config, 'allowRemove', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowRemove', val)),
+            _buildCompactSwitchTile(label: "Allow Reorder", value: _boolConfig(config, 'allowReorder', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowReorder', val)),
+            _buildCompactSwitchTile(label: "Show Index", value: _boolConfig(config, 'showItemIndex', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'showItemIndex', val)),
+            _buildCompactSwitchTile(label: "Collapsible", value: _boolConfig(config, 'collapsibleItems', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'collapsibleItems', val)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineProperties(JourneyField field, String activeStepId) {
+    final config = _componentConfig(field);
+    final items = (config['items'] as List)
+        .map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+        .where((item) => item.isNotEmpty)
+        .toList();
+    return _buildCollapsibleSection(
+      title: "Timeline Properties",
+      accentColor: RevoTheme.accent,
+      icon: Icons.format_list_bulleted_rounded,
+      isExpanded: _showDataComponentSettings,
+      onToggle: () => setState(() => _showDataComponentSettings = !_showDataComponentSettings),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _PropertyDropdownField(
+                label: "Orientation",
+                currentValue: config['orientation']?.toString() ?? 'vertical',
+                items: const ['vertical', 'horizontal'],
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'orientation', val),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PropertyDropdownField(
+                label: "Marker Style",
+                currentValue: config['markerStyle']?.toString() ?? 'numbered',
+                items: const ['numbered', 'dot', 'icon'],
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'markerStyle', val),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _PropertyDropdownField(
+                label: "Default Status",
+                currentValue: config['defaultStatus']?.toString() ?? 'pending',
+                items: const ['pending', 'active', 'completed', 'failed'],
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'defaultStatus', val),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PropertyDropdownField(
+                label: "Items Source",
+                currentValue: config['itemsSource']?.toString() ?? 'static',
+                items: const ['static', 'api', 'journeySteps'],
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'itemsSource', val),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _textConfigField(field, activeStepId, config, 'titleField', 'Title Key')),
+            const SizedBox(width: 8),
+            Expanded(child: _textConfigField(field, activeStepId, config, 'dateField', 'Date Key')),
+            const SizedBox(width: 8),
+            Expanded(child: _textConfigField(field, activeStepId, config, 'statusField', 'Status Key')),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Static Timeline Items", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            TextButton.icon(
+              onPressed: () {
+                final updatedItems = List<Map<String, dynamic>>.from(items);
+                final next = updatedItems.length + 1;
+                updatedItems.add({'title': 'Step $next', 'description': 'Timeline item', 'status': 'pending'});
+                _updateComponentConfig(field, activeStepId, 'items', updatedItems);
+              },
+              icon: const Icon(Icons.add_rounded, size: 14),
+              label: Text("Add Item", style: GoogleFonts.inter(fontSize: 10)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...items.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: RevoTheme.sidebarBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: RevoTheme.cardBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PropertyTextField(
+                        label: "Title",
+                        initialValue: item['title']?.toString() ?? '',
+                        onChanged: (val) {
+                          final updatedItems = List<Map<String, dynamic>>.from(items);
+                          updatedItems[index] = {...item, 'title': val.trim()};
+                          _updateComponentConfig(field, activeStepId, 'items', updatedItems);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PropertyDropdownField(
+                        label: "Status",
+                        currentValue: item['status']?.toString() ?? 'pending',
+                        items: const ['pending', 'active', 'completed', 'failed'],
+                        onChanged: (val) {
+                          final updatedItems = List<Map<String, dynamic>>.from(items);
+                          updatedItems[index] = {...item, 'status': val};
+                          _updateComponentConfig(field, activeStepId, 'items', updatedItems);
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                      onPressed: items.length <= 1
+                          ? null
+                          : () {
+                              final updatedItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
+                              _updateComponentConfig(field, activeStepId, 'items', updatedItems);
+                            },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _PropertyTextField(
+                  label: "Description",
+                  initialValue: item['description']?.toString() ?? '',
+                  onChanged: (val) {
+                    final updatedItems = List<Map<String, dynamic>>.from(items);
+                    updatedItems[index] = {...item, 'description': val.trim()};
+                    _updateComponentConfig(field, activeStepId, 'items', updatedItems);
+                  },
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.8,
+          children: [
+            _buildCompactSwitchTile(label: "Timestamp", value: _boolConfig(config, 'showTimestamp', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'showTimestamp', val)),
+            _buildCompactSwitchTile(label: "Connector", value: _boolConfig(config, 'showConnector', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'showConnector', val)),
+            _buildCompactSwitchTile(label: "Future Steps", value: _boolConfig(config, 'allowFutureSteps', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowFutureSteps', val)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLayoutComponentProperties(JourneyField field, String activeStepId) {
+    final config = _componentConfig(field);
+    return _buildCollapsibleSection(
+      title: "Layout Properties",
+      accentColor: RevoTheme.primaryLight,
+      icon: Icons.dashboard_customize_outlined,
+      isExpanded: _showLayoutComponentSettings,
+      onToggle: () => setState(() => _showLayoutComponentSettings = !_showLayoutComponentSettings),
+      children: [
+        if (field.type == 'section') ...[
+          Row(
+            children: [
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Heading Level",
+                  currentValue: config['headingLevel']?.toString() ?? 'H2',
+                  items: const ['H1', 'H2', 'H3', 'H4'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'headingLevel', val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: _paddingConfigField(field, activeStepId, config)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _layoutSwitches(field, activeStepId, config, const ['collapsible', 'defaultExpanded', 'showDivider']),
+        ] else if (field.type == 'card') ...[
+          Row(
+            children: [
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Variant",
+                  currentValue: config['variant']?.toString() ?? 'outlined',
+                  items: const ['outlined', 'filled', 'elevated'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'variant', val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: _paddingConfigField(field, activeStepId, config)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _layoutSwitches(field, activeStepId, config, const ['showHeader', 'showFooter']),
+        ] else if (field.type == 'tabs') ...[
+          Row(
+            children: [
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Variant",
+                  currentValue: config['variant']?.toString() ?? 'underline',
+                  items: const ['underline', 'boxed', 'pills'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'variant', val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Alignment",
+                  currentValue: config['alignment']?.toString() ?? 'start',
+                  items: const ['start', 'center', 'end'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'alignment', val),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _textConfigField(field, activeStepId, config, 'tabsCsv', 'Tabs CSV', fallback: (config['tabs'] as List?)?.join(', ') ?? 'Tab 1, Tab 2'),
+          const SizedBox(height: 10),
+          _layoutSwitches(field, activeStepId, config, const ['persistActiveTab']),
+        ] else if (field.type == 'accordion') ...[
+          Row(
+            children: [
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Variant",
+                  currentValue: config['variant']?.toString() ?? 'bordered',
+                  items: const ['bordered', 'filled', 'plain'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'variant', val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Icon Position",
+                  currentValue: config['iconPosition']?.toString() ?? 'right',
+                  items: const ['left', 'right'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'iconPosition', val),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _layoutSwitches(field, activeStepId, config, const ['allowMultipleOpen', 'defaultExpanded']),
+        ],
+      ],
+    );
+  }
+
+  Widget _textConfigField(
+    JourneyField field,
+    String activeStepId,
+    Map<String, dynamic> config,
+    String key,
+    String label, {
+    String? fallback,
+  }) {
+    return _PropertyTextField(
+      label: label,
+      initialValue: config[key]?.toString() ?? fallback ?? '',
+      onChanged: (val) {
+        if (key == 'tabsCsv') {
+          final tabs = val.split(',').map((item) => item.trim()).where((item) => item.isNotEmpty).toList();
+          _updateComponentConfig(field, activeStepId, 'tabs', tabs);
+        } else {
+          _updateComponentConfig(field, activeStepId, key, val.trim());
+        }
+      },
+    );
+  }
+
+  Widget _numberConfigField(JourneyField field, String activeStepId, Map<String, dynamic> config, String key, String label, int fallback) {
+    return _PropertyTextField(
+      label: label,
+      initialValue: _intConfig(config, key, fallback).toString(),
+      onChanged: (val) => _updateComponentConfig(field, activeStepId, key, int.tryParse(val.trim()) ?? fallback),
+    );
+  }
+
+  Widget _paddingConfigField(JourneyField field, String activeStepId, Map<String, dynamic> config) {
+    return _PropertyDropdownField(
+      label: "Padding",
+      currentValue: config['padding']?.toString() ?? 'medium',
+      items: const ['none', 'small', 'medium', 'large'],
+      onChanged: (val) => _updateComponentConfig(field, activeStepId, 'padding', val),
+    );
+  }
+
+  Widget _layoutSwitches(JourneyField field, String activeStepId, Map<String, dynamic> config, List<String> keys) {
+    String labelFor(String key) {
+      switch (key) {
+        case 'defaultExpanded':
+          return 'Expanded';
+        case 'showDivider':
+          return 'Divider';
+        case 'showHeader':
+          return 'Header';
+        case 'showFooter':
+          return 'Footer';
+        case 'persistActiveTab':
+          return 'Persist Tab';
+        case 'allowMultipleOpen':
+          return 'Multi Open';
+        default:
+          return key.replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m.group(1)}').trim();
+      }
+    }
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 8,
+      childAspectRatio: 2.8,
+      children: keys
+          .map(
+            (key) => _buildCompactSwitchTile(
+              label: labelFor(key),
+              value: _boolConfig(config, key, false),
+              onChanged: (val) => _updateComponentConfig(field, activeStepId, key, val),
+            ),
+          )
+          .toList(),
     );
   }
 

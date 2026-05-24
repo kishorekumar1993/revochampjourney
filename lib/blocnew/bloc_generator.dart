@@ -17,7 +17,7 @@ import 'field_schema.dart';
 class BlocGenerator {
   BlocGenerator({
     required this.featureName,
-    required this.fields,
+    required this.fields, required bool generateAsyncValueSeparately,
   });
 
   final String featureName;

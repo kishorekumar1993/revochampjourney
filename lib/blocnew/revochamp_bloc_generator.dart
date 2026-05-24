@@ -82,6 +82,7 @@ void generateAndSaveAllFiles({
 
   final List<Map<String, String>> allFiles = [];
   bool coreFilesAdded = false;
+  blocFeaturesInfo.clear();
 
   for (final step in journeyConfig.steps) {
     if (step.fields.isEmpty) {
@@ -89,11 +90,11 @@ void generateAndSaveAllFiles({
       continue;
     }
 
-    // ── JSON round-trip: JSArray → plain Dart ─────────────────────────────
     final fieldsJson  = jsonEncode(step.fields.map((f) => f.toJson()).toList());
     final rawFields   = (jsonDecode(fieldsJson) as List<dynamic>)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
+    final fieldsForDi = rawFields.map(FieldSchema.fromJson).toList();
 
     final cleanName  = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     final screenName = cleanName.isNotEmpty
@@ -111,6 +112,12 @@ void generateAndSaveAllFiles({
         addCoreFiles:     !coreFilesAdded,
       );
       allFiles.addAll(blocFiles);
+      
+      blocFeaturesInfo.add(FeatureInfo(
+        featureName: '${screenName}Form',
+        baseName: screenName.toLowerCase(),
+        fields: fieldsForDi,
+      ));
     }
 
     // ── 2. GetX ───────────────────────────────────────────────────────────
@@ -136,6 +143,20 @@ void generateAndSaveAllFiles({
     coreFilesAdded = true;
   }
 
+  if (architectures.contains(Architecture.bloc) && blocFeaturesInfo.isNotEmpty) {
+    final globalDi = GlobalDiGenerator(blocFeaturesInfo, journeyNamespace);
+    allFiles.add({
+      'folderPath': 'lib/bloc',
+      'fileName': 'injection.dart',
+      'textContent': globalDi.generateInjection(),
+    });
+    allFiles.add({
+      'folderPath': 'lib/bloc',
+      'fileName': 'main.dart',
+      'textContent': globalDi.generateMain(),
+    });
+  }
+
   if (allFiles.isEmpty) {
     debugPrint('❌ No files generated');
     return;
@@ -144,6 +165,8 @@ void generateAndSaveAllFiles({
   debugPrint('📦 Total files: ${allFiles.length}');
   js.context.callMethod('saveMultipleFilesToFolders', [jsonEncode(allFiles)]);
 }
+
+final List<FeatureInfo> blocFeaturesInfo = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. BLoC Generator
@@ -414,16 +437,14 @@ class RevochampBlocGenerator {
     files['$featBase/presentation/bloc/${snakeName}_bloc.dart'] =
         BlocGenerator(
           featureName: featureName,
-          fields: fields,
+          fields: fields, generateAsyncValueSeparately: false,
           // hasAsyncDropdown: fields.any((f) => f.isAsyncDropdown
           // ),
         ).generate();
     files['$featBase/presentation/screens/${snakeName}_screen.dart'] =
         ScreenGenerator(featureName: featureName, fields: fields).generate();
 
-    final diGen = DiGenerator(featureName: featureName, fields: fields, baseName: baseName);
-    files['lib/bloc/injection.dart'] = diGen.generateInjection();
-    files['lib/bloc/main.dart']      = diGen.generateMain();
+    // Removed single injection.dart and main.dart to use GlobalDiGenerator
 
     if (generateBarrels) {
       final barrelGen = BarrelGenerator(featureName: featureName, fields: fields, baseName: baseName);

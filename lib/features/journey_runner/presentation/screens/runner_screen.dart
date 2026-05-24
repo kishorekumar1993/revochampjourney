@@ -473,17 +473,29 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         );
 
       case 'date':
+      case 'time':
+      case 'datetime':
         final currentVal = values[field.id] ?? '';
         return TextField(
           controller: TextEditingController(text: currentVal),
           readOnly: true,
           decoration: InputDecoration(
             labelText: field.label,
-            hintText: field.placeholder ?? 'Select Date',
+            hintText: field.placeholder ?? (field.type == 'time' ? 'Select Time' : 'Select Date'),
             suffixIcon: Icon(Icons.calendar_today_rounded, color: RevoTheme.textSecondary),
             errorText: hasError ? errorMsg : null,
           ),
           onTap: () async {
+            if (field.type == 'time') {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (picked != null) {
+                ref.read(formValuesProvider.notifier).updateValue(field.id, picked.format(context));
+              }
+              return;
+            }
             final picked = await showDatePicker(
               context: context,
               initialDate: DateTime.now(),
@@ -496,6 +508,43 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
             }
           },
         );
+
+      case 'number':
+        return TextField(
+          keyboardType: TextInputType.number,
+          onChanged: (val) {
+            ref.read(formValuesProvider.notifier).updateValue(field.id, val);
+          },
+          decoration: InputDecoration(
+            labelText: field.label,
+            hintText: field.placeholder,
+            errorText: hasError ? errorMsg : null,
+          ),
+        );
+
+      case 'image':
+        return _buildUploadLikeField(field, values, hasError, errorMsg, isImage: true);
+
+      case 'table_grid':
+        return _buildTableGridRunner(field);
+
+      case 'repeater':
+        return _buildRepeaterRunner(field);
+
+      case 'timeline':
+        return _buildTimelineRunner(field);
+
+      case 'section':
+        return _buildStructuredComponent(field, Icons.view_agenda_outlined, 'Section');
+
+      case 'card':
+        return _buildStructuredComponent(field, Icons.crop_square_rounded, 'Card');
+
+      case 'tabs':
+        return _buildStructuredComponent(field, Icons.tab_rounded, 'Tabs');
+
+      case 'accordion':
+        return _buildStructuredComponent(field, Icons.unfold_more_rounded, 'Accordion');
 
       case 'phone':
         return Row(
@@ -537,42 +586,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         );
 
       case 'file':
-        final currentVal = values[field.id] ?? '';
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: RevoTheme.cardBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: RevoTheme.cardBorder),
-          ),
-          child: Column(
-            children: [
-              Icon(Icons.cloud_upload_outlined, size: 28, color: RevoTheme.primaryLight),
-              const SizedBox(height: 8),
-              Text(
-                currentVal.isNotEmpty ? currentVal : "Drag & Drop or Click to Upload file",
-                style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  ref.read(formValuesProvider.notifier).updateValue(field.id, "document_uploaded.pdf");
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  side: BorderSide(color: RevoTheme.primary),
-                ),
-                child: const Text("Select File", style: TextStyle(fontSize: 11)),
-              ),
-              if (hasError) ...[
-                const SizedBox(height: 8),
-                Text(errorMsg!, style: const TextStyle(color: Colors.red, fontSize: 10)),
-              ]
-            ],
-          ),
-        );
+        return _buildUploadLikeField(field, values, hasError, errorMsg);
 
       case 'textarea':
         return TextField(
@@ -641,6 +655,314 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
           ),
         );
     }
+  }
+
+  Widget _buildUploadLikeField(
+    JourneyField field,
+    Map<String, String> values,
+    bool hasError,
+    String? errorMsg, {
+    bool isImage = false,
+  }) {
+    final currentVal = values[field.id] ?? '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Icon(isImage ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 28, color: RevoTheme.primaryLight),
+          const SizedBox(height: 8),
+          Text(
+            currentVal.isNotEmpty ? currentVal : (isImage ? "Click to upload image" : "Drag & Drop or Click to Upload file"),
+            style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () {
+              ref.read(formValuesProvider.notifier).updateValue(field.id, isImage ? "image_uploaded.png" : "document_uploaded.pdf");
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              side: BorderSide(color: RevoTheme.primary),
+            ),
+            child: Text(isImage ? "Select Image" : "Select File", style: const TextStyle(fontSize: 11)),
+          ),
+          if (hasError) ...[
+            const SizedBox(height: 8),
+            Text(errorMsg!, style: const TextStyle(color: Colors.red, fontSize: 10)),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _componentConfig(JourneyField field) {
+    return Map<String, dynamic>.from(field.componentConfig ?? {});
+  }
+
+  List<Map<String, dynamic>> _configList(JourneyField field, String key, List<Map<String, dynamic>> fallback) {
+    final value = _componentConfig(field)[key];
+    if (value is List) {
+      final parsed = value
+          .map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+          .where((item) => item.isNotEmpty)
+          .toList();
+      if (parsed.isNotEmpty) return parsed;
+    }
+    return fallback;
+  }
+
+  Widget _buildTableGridRunner(JourneyField field) {
+    final config = _componentConfig(field);
+    final columns = _configList(field, 'columns', [
+      {'label': '#'},
+      {'label': 'Column A'},
+      {'label': 'Action'},
+    ]).take(5).toList();
+    final allowAdd = config['allowAddRow'] != false;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary))),
+              if (allowAdd)
+                OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.add_rounded, size: 14),
+                  label: const Text("Add Row", style: TextStyle(fontSize: 11)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Table(
+              border: TableBorder.all(color: RevoTheme.cardBorder),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(color: RevoTheme.background),
+                  children: columns.map((column) => _tableCell(column['label']?.toString() ?? 'Column', isHeader: true)).toList(),
+                ),
+                ...List.generate(2, (index) {
+                  return TableRow(
+                    children: columns.map((column) {
+                      final label = column['label']?.toString().toLowerCase() ?? '';
+                      final text = label == '#' || label.contains('index') ? '${index + 1}' : (label.contains('action') ? 'Edit' : 'Value');
+                      return _tableCell(text);
+                    }).toList(),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tableCell(String text, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: isHeader ? FontWeight.w700 : FontWeight.w400,
+          color: isHeader ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _buildRepeaterRunner(JourneyField field) {
+    final config = _componentConfig(field);
+    final fields = _configList(field, 'fields', [
+      {'label': 'Name'},
+      {'label': 'Value'},
+    ]).take(4).toList();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(field.label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary)),
+          const SizedBox(height: 10),
+          ...List.generate(2, (index) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: RevoTheme.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: RevoTheme.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text("${config['itemLabel'] ?? 'Item'} ${index + 1}", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700))),
+                      if (config['allowRemove'] != false) Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: fields.map((item) {
+                      return SizedBox(
+                        width: 150,
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: item['label']?.toString() ?? 'Field',
+                            isDense: true,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (config['allowAdd'] != false)
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.add_rounded, size: 14),
+              label: Text(config['addButtonLabel']?.toString() ?? 'Add Item', style: const TextStyle(fontSize: 11)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineRunner(JourneyField field) {
+    final items = _configList(field, 'items', [
+      {'title': 'Started', 'description': 'Journey started', 'status': 'completed'},
+      {'title': 'Current', 'description': 'Current step', 'status': 'active'},
+      {'title': 'Completed', 'description': 'Final state', 'status': 'pending'},
+    ]);
+
+    Color statusColor(String? status) {
+      switch (status) {
+        case 'completed':
+          return RevoTheme.secondary;
+        case 'active':
+          return RevoTheme.primaryLight;
+        case 'failed':
+          return Colors.redAccent;
+        default:
+          return RevoTheme.textSecondary;
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(field.label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary)),
+          const SizedBox(height: 12),
+          ...items.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final color = statusColor(item['status']?.toString());
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                    if (index < items.length - 1) Container(width: 2, height: 38, color: RevoTheme.cardBorder),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item['title']?.toString() ?? 'Timeline item', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary)),
+                        const SizedBox(height: 3),
+                        Text(item['description']?.toString() ?? '', style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStructuredComponent(JourneyField field, IconData icon, String fallbackLabel) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: RevoTheme.primaryLight),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  field.label.isNotEmpty ? field.label : fallbackLabel,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary),
+                ),
+                if ((field.placeholder ?? field.hintText ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    field.placeholder ?? field.hintText!,
+                    style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

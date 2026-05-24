@@ -138,7 +138,7 @@ class JourneyStep {
 class JourneyField {
   String id;
   String label;
-  String type; // text, textarea, dropdown, api_dropdown, radio, checkbox, switch, date, time, datetime, file, image, otp, phone, slider, stepper, rating, signature, rich_text, multi_select, repeater, address, divider
+  String type; // text, textarea, number, dropdown, api_dropdown, radio, checkbox, switch, date, time, datetime, file, image, otp, phone, table_grid, repeater, timeline, section, card, tabs, accordion, divider
   bool required;
   bool visible;
   bool readOnly;
@@ -176,6 +176,7 @@ class JourneyField {
   String? textInputAction;
   String? textCapitalization;
   String? dropdownListKey;
+  Map<String, dynamic>? componentConfig;
 
   JourneyField({
     required this.id,
@@ -216,6 +217,7 @@ class JourneyField {
     this.textInputAction,
     this.textCapitalization,
     this.dropdownListKey,
+    this.componentConfig,
   });
 
   factory JourneyField.fromJson(Map<String, dynamic> json) {
@@ -280,6 +282,7 @@ dropdowndata: json['dropdowndata'] is List
       textInputAction: json['textInputAction']?.toString(),
       textCapitalization: json['textCapitalization']?.toString(),
       dropdownListKey: json['dropdownListKey']?.toString() ?? json['dropdownApiResponseKey']?.toString() ?? json['responseListKey']?.toString(),
+      componentConfig: json['componentConfig'] != null ? Map<String, dynamic>.from(json['componentConfig']) : null,
     );
   }
 
@@ -324,6 +327,7 @@ dropdowndata: json['dropdowndata'] is List
       if (textInputAction != null) 'textInputAction': textInputAction,
       if (textCapitalization != null) 'textCapitalization': textCapitalization,
       if (dropdownListKey != null) 'dropdownListKey': dropdownListKey,
+      if (componentConfig != null) 'componentConfig': componentConfig,
     };
   }
 
@@ -368,6 +372,7 @@ dropdowndata: json['dropdowndata'] is List
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
       dropdownListKey: dropdownListKey,
+      componentConfig: componentConfig != null ? Map<String, dynamic>.from(componentConfig!) : null,
     );
   }
 

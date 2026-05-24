@@ -23,30 +23,90 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   String? _stepApiTestResult;
   bool _stepApiTestSuccess = false;
 
-  final List<Map<String, dynamic>> _toolbox = [
-    {'type': 'text', 'label': 'TextField', 'icon': Icons.text_fields_rounded},
-    {'type': 'dropdown', 'label': 'Dropdown', 'icon': Icons.arrow_drop_down_circle_outlined},
-    {'type': 'radio', 'label': 'Radio', 'icon': Icons.radio_button_checked_rounded},
-    {'type': 'checkbox', 'label': 'Checkbox', 'icon': Icons.check_box_outlined},
-    {'type': 'date', 'label': 'Date Picker', 'icon': Icons.calendar_today_rounded},
-    {'type': 'file', 'label': 'File Upload', 'icon': Icons.cloud_upload_outlined},
-    {'type': 'textarea', 'label': 'Textarea', 'icon': Icons.notes_rounded},
-    {'type': 'api_dropdown', 'label': 'API Select', 'icon': Icons.cloud_sync_outlined},
-    {'type': 'divider', 'label': 'Divider', 'icon': Icons.horizontal_rule_rounded},
-    {'type': 'phone', 'label': 'Phone Input', 'icon': Icons.phone_android_rounded},
-    {'type': 'otp', 'label': 'OTP Field', 'icon': Icons.pin_rounded},
+  final List<Map<String, dynamic>> _componentGroups = [
+    {
+      'title': 'FORM COMPONENTS',
+      'items': [
+        {'type': 'text', 'label': 'Text Field', 'icon': Icons.text_fields_rounded},
+        {'type': 'dropdown', 'label': 'Dropdown', 'icon': Icons.arrow_drop_down_circle_outlined},
+        {'type': 'radio', 'label': 'Radio', 'icon': Icons.radio_button_checked_rounded},
+        {'type': 'checkbox', 'label': 'Checkbox', 'icon': Icons.check_box_outlined},
+        {'type': 'date', 'label': 'Date Picker', 'icon': Icons.calendar_today_rounded},
+        {'type': 'file', 'label': 'File Upload', 'icon': Icons.cloud_upload_outlined},
+        {'type': 'textarea', 'label': 'Text Area', 'icon': Icons.notes_rounded},
+        {'type': 'number', 'label': 'Number', 'icon': Icons.pin_outlined},
+        {'type': 'switch', 'label': 'Switch', 'icon': Icons.toggle_on_outlined},
+      ],
+    },
+    {
+      'title': 'DATA COMPONENTS',
+      'items': [
+        {'type': 'table_grid', 'label': 'Table / Grid', 'icon': Icons.table_chart_outlined},
+        {'type': 'repeater', 'label': 'Repeater', 'icon': Icons.view_week_outlined},
+        {'type': 'timeline', 'label': 'Timeline', 'icon': Icons.format_list_bulleted_rounded},
+      ],
+    },
+    {
+      'title': 'LAYOUT COMPONENTS',
+      'items': [
+        {'type': 'section', 'label': 'Section', 'icon': Icons.view_agenda_outlined},
+        {'type': 'card', 'label': 'Card', 'icon': Icons.crop_square_rounded},
+        {'type': 'tabs', 'label': 'Tabs', 'icon': Icons.tab_rounded},
+        {'type': 'accordion', 'label': 'Accordion', 'icon': Icons.unfold_more_rounded},
+      ],
+    },
   ];
+
+  Map<String, dynamic> _componentDefaults(String fieldType) {
+    switch (fieldType) {
+      case 'dropdown':
+        return {'label': 'Dropdown', 'placeholder': 'Select an option', 'options': ['Option 1', 'Option 2']};
+      case 'radio':
+        return {'label': 'Radio Group', 'options': ['Option 1', 'Option 2']};
+      case 'checkbox':
+        return {'label': 'Checkbox', 'defaultValue': 'false'};
+      case 'date':
+        return {'label': 'Date Picker', 'placeholder': 'DD/MM/YYYY'};
+      case 'file':
+        return {'label': 'File Upload', 'placeholder': 'Upload file'};
+      case 'textarea':
+        return {'label': 'Text Area', 'placeholder': 'Enter details'};
+      case 'number':
+        return {'label': 'Number', 'placeholder': 'Enter number', 'keyboardType': 'number'};
+      case 'switch':
+        return {'label': 'Switch', 'defaultValue': 'false'};
+      case 'table_grid':
+        return {'label': 'Table / Grid', 'placeholder': 'Manage tabular data'};
+      case 'repeater':
+        return {'label': 'Repeater', 'placeholder': 'Repeat a field group'};
+      case 'timeline':
+        return {'label': 'Timeline', 'placeholder': 'Show journey milestones'};
+      case 'section':
+        return {'label': 'Section', 'placeholder': 'Group related components'};
+      case 'card':
+        return {'label': 'Card', 'placeholder': 'Card content container'};
+      case 'tabs':
+        return {'label': 'Tabs', 'placeholder': 'Organize content into tabs'};
+      case 'accordion':
+        return {'label': 'Accordion', 'placeholder': 'Expandable content'};
+      default:
+        return {'label': 'Text Field', 'placeholder': 'Enter details'};
+    }
+  }
 
   void _addField(String fieldType) {
     final activeStepId = ref.read(activeStepIdProvider);
     final fieldId = "field_${DateTime.now().millisecondsSinceEpoch}";
+    final defaults = _componentDefaults(fieldType);
     final newField = JourneyField(
       id: fieldId,
-      label: "New $fieldType Field",
+      label: defaults['label'] as String,
       type: fieldType,
       required: false,
-      placeholder: "Enter details",
-      options: (fieldType == 'dropdown' || fieldType == 'radio') ? ["Option 1", "Option 2"] : null,
+      placeholder: defaults['placeholder'] as String?,
+      options: defaults['options'] as List<String>?,
+      defaultValue: defaults['defaultValue'] as String?,
+      keyboardType: defaults['keyboardType'] as String?,
     );
     ref.read(journeyConfigProvider.notifier).addFieldToStep(activeStepId, newField);
     ref.read(selectedFieldIdProvider.notifier).state = fieldId;
@@ -317,72 +377,92 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
 
   Widget _buildToolbox() {
     return Container(
-      width: 130,
+      width: 132,
       decoration: BoxDecoration(
         border: Border(
           right: BorderSide(color: RevoTheme.cardBorder, width: 1),
         ),
       ),
-      child: ListView.builder(
+      child: ListView(
         padding: const EdgeInsets.all(12),
-        itemCount: _toolbox.length,
-        itemBuilder: (context, index) {
-          final item = _toolbox[index];
-          final type = item['type'] as String;
-          return Draggable<String>(
-            data: type,
-            feedback: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 100,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: RevoTheme.primary.withValues(alpha:0.8),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: RevoTheme.primaryLight),
+        children: _componentGroups.expand<Widget>((group) {
+          final items = group['items'] as List<Map<String, dynamic>>;
+          return [
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                group['title'] as String,
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: RevoTheme.textSecondary,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item['icon'] as IconData, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        item['label'] as String,
-                        style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
-                        overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            ...items.map((item) {
+              final type = item['type'] as String;
+              return Draggable<String>(
+                data: type,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 112,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: RevoTheme.primary.withValues(alpha:0.8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: RevoTheme.primaryLight),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(item['icon'] as IconData, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            item['label'] as String,
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: RevoTheme.cardBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: RevoTheme.cardBorder),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _addField(type),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(item['icon'] as IconData, size: 16, color: RevoTheme.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item['label'] as String,
+                              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              decoration: BoxDecoration(
-                color: RevoTheme.cardBg,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: RevoTheme.cardBorder),
-              ),
-              child: InkWell(
-                onTap: () => _addField(type),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item['icon'] as IconData, size: 18, color: RevoTheme.textSecondary),
-                    const SizedBox(height: 6),
-                    Text(
-                      item['label'] as String,
-                      style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+              );
+            }),
+            const SizedBox(height: 8),
+          ];
+        }).toList(),
       ),
     );
   }
@@ -523,6 +603,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                           ),
                                         ],
                                       ),
+                                      const SizedBox(height: 12),
+                                      _buildCanvasComponentPreview(field),
                                       if (isSelected) ...[
                                         const SizedBox(height: 12),
                                         Divider(color: RevoTheme.cardBorder, height: 1),
@@ -581,6 +663,323 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCanvasComponentPreview(JourneyField field) {
+    switch (field.type.toLowerCase()) {
+      case 'dropdown':
+      case 'api_dropdown':
+        return _buildPreviewBox(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  field.placeholder ?? 'Select an option',
+                  style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                field.type == 'api_dropdown' ? Icons.cloud_sync_outlined : Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: RevoTheme.textSecondary,
+              ),
+            ],
+          ),
+        );
+      case 'radio':
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: (field.getResolvedOptions().isEmpty ? ['Option 1', 'Option 2'] : field.getResolvedOptions())
+              .map((option) => Chip(
+                    label: Text(option, style: GoogleFonts.inter(fontSize: 11)),
+                    avatar: Icon(Icons.radio_button_unchecked_rounded, size: 14, color: RevoTheme.primaryLight),
+                    backgroundColor: RevoTheme.background,
+                    side: BorderSide(color: RevoTheme.cardBorder),
+                  ))
+              .toList(),
+        );
+      case 'checkbox':
+        return Row(
+          children: [
+            Icon(Icons.check_box_outline_blank_rounded, size: 18, color: RevoTheme.textSecondary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
+          ],
+        );
+      case 'switch':
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
+            Switch(value: field.defaultValue == 'true', onChanged: null),
+          ],
+        );
+      case 'date':
+      case 'time':
+      case 'datetime':
+        return _buildPreviewBox(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  field.placeholder ?? (field.type == 'time' ? 'HH:MM' : 'DD/MM/YYYY'),
+                  style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
+                ),
+              ),
+              Icon(Icons.calendar_today_rounded, size: 16, color: RevoTheme.textSecondary),
+            ],
+          ),
+        );
+      case 'file':
+      case 'image':
+        return _buildPreviewBox(
+          height: 68,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 20, color: RevoTheme.primaryLight),
+              const SizedBox(height: 4),
+              Text(field.placeholder ?? 'Upload file', style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary)),
+            ],
+          ),
+        );
+      case 'textarea':
+        return _buildPreviewBox(height: 72, child: Align(alignment: Alignment.topLeft, child: Text(field.placeholder ?? 'Enter details', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))));
+      case 'number':
+        return _buildPreviewBox(child: Text(field.placeholder ?? 'Enter number', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
+      case 'table_grid':
+        return _buildTableGridPreview(field);
+      case 'repeater':
+        return _buildRepeaterPreview(field);
+      case 'timeline':
+        return _buildTimelinePreview(field);
+      case 'section':
+        return _buildLayoutPreview(Icons.view_agenda_outlined, 'Section container');
+      case 'card':
+        return _buildLayoutPreview(Icons.crop_square_rounded, 'Card container');
+      case 'tabs':
+        return _buildTabsPreview();
+      case 'accordion':
+        return _buildLayoutPreview(Icons.unfold_more_rounded, 'Expandable accordion item');
+      case 'divider':
+        return Divider(color: RevoTheme.cardBorder);
+      default:
+        return _buildPreviewBox(child: Text(field.placeholder ?? 'Enter value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
+    }
+  }
+
+  Widget _buildPreviewBox({required Widget child, double height = 42}) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildLayoutPreview(IconData icon, String text) {
+    return _buildPreviewBox(
+      height: 56,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: RevoTheme.primaryLight),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabsPreview() {
+    return Row(
+      children: ['Tab 1', 'Tab 2', 'Tab 3'].map((label) {
+        final selected = label == 'Tab 1';
+        return Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? RevoTheme.primary.withValues(alpha: 0.15) : RevoTheme.background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: selected ? RevoTheme.primaryLight : RevoTheme.cardBorder),
+          ),
+          child: Text(label, style: GoogleFonts.inter(fontSize: 11, color: selected ? RevoTheme.primaryLight : RevoTheme.textSecondary)),
+        );
+      }).toList(),
+    );
+  }
+
+  Map<String, dynamic> _componentConfig(JourneyField field) {
+    return Map<String, dynamic>.from(field.componentConfig ?? {});
+  }
+
+  List<Map<String, dynamic>> _configList(JourneyField field, String key, List<Map<String, dynamic>> fallback) {
+    final value = _componentConfig(field)[key];
+    if (value is List) {
+      final parsed = value
+          .map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+          .where((item) => item.isNotEmpty)
+          .toList();
+      if (parsed.isNotEmpty) return parsed;
+    }
+    return fallback;
+  }
+
+  Widget _buildTableGridPreview(JourneyField field) {
+    final columns = _configList(field, 'columns', [
+      {'label': '#'},
+      {'label': 'Column A'},
+      {'label': 'Action'},
+    ]).take(4).toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: List.generate(3, (row) {
+          return Row(
+            children: List.generate(columns.length, (col) {
+              return Expanded(
+                child: Container(
+                  height: 30,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: col < 2 ? BorderSide(color: RevoTheme.cardBorder) : BorderSide.none,
+                      bottom: row < 2 ? BorderSide(color: RevoTheme.cardBorder) : BorderSide.none,
+                    ),
+                  ),
+                  child: Text(
+                    row == 0 ? (columns[col]['label']?.toString() ?? 'Column') : (col == columns.length - 1 ? 'Edit' : 'Value'),
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: row == 0 ? FontWeight.w700 : FontWeight.w400,
+                      color: row == 0 ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              );
+            }),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildRepeaterPreview(JourneyField field) {
+    final config = _componentConfig(field);
+    final fields = _configList(field, 'fields', [
+      {'label': 'Name'},
+      {'label': 'Value'},
+    ]).take(3).toList();
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.view_week_outlined, size: 16, color: RevoTheme.primaryLight),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "${config['itemLabel'] ?? 'Item'} 1",
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary),
+                ),
+              ),
+              if (config['allowRemove'] != false) Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: fields
+                .map(
+                  (item) => Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: RevoTheme.cardBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: RevoTheme.cardBorder),
+                      ),
+                      child: Text(item['label']?.toString() ?? 'Field', style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary), overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          if (config['allowAdd'] != false) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text("+ ${config['addButtonLabel'] ?? 'Add Item'}", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.primaryLight, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelinePreview(JourneyField field) {
+    final items = _configList(field, 'items', [
+      {'title': 'Started', 'status': 'completed'},
+      {'title': 'In Progress', 'status': 'active'},
+      {'title': 'Completed', 'status': 'pending'},
+    ]).take(4).toList();
+    Color statusColor(String? status) {
+      switch (status) {
+        case 'completed':
+          return RevoTheme.secondary;
+        case 'active':
+          return RevoTheme.primaryLight;
+        case 'failed':
+          return Colors.redAccent;
+        default:
+          return RevoTheme.textSecondary;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: items.map((item) {
+          final color = statusColor(item['status']?.toString());
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.circle, size: 10, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(item['title']?.toString() ?? 'Timeline item', style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary), overflow: TextOverflow.ellipsis),
+                ),
+                Text(item['status']?.toString() ?? 'pending', style: GoogleFonts.inter(fontSize: 9, color: color)),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -2089,8 +2488,20 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
         );
 
       case 'date':
+      case 'time':
+      case 'datetime':
         return InkWell(
           onTap: () async {
+            if (field.type == 'time') {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (picked != null) {
+                ref.read(formValuesProvider.notifier).updateValue(field.id, picked.format(context));
+              }
+              return;
+            }
             final picked = await showDatePicker(
               context: context,
               initialDate: DateTime.now(),
@@ -2114,7 +2525,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  value.isNotEmpty ? value : (field.placeholder ?? "DD/MM/YYYY"),
+                  value.isNotEmpty ? value : (field.placeholder ?? (field.type == 'time' ? "HH:MM" : "DD/MM/YYYY")),
                   style: TextStyle(fontSize: 10, color: value.isNotEmpty ? RevoTheme.textPrimary : RevoTheme.textSecondary.withValues(alpha:0.5)),
                 ),
                 Icon(Icons.calendar_today_rounded, size: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
@@ -2122,6 +2533,77 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             ),
           ),
         );
+
+      case 'file':
+      case 'image':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: RevoTheme.background,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: RevoTheme.cardBorder),
+          ),
+          child: Column(
+            children: [
+              Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 18, color: RevoTheme.primaryLight),
+              const SizedBox(height: 4),
+              Text(field.placeholder ?? 'Upload file', style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)),
+            ],
+          ),
+        );
+
+      case 'otp':
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (_) {
+            return Container(
+              width: 28,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: RevoTheme.background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: RevoTheme.cardBorder),
+              ),
+              child: Text("-", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha: 0.6))),
+            );
+          }),
+        );
+
+      case 'table_grid':
+        return _buildCompactTablePreview(field);
+
+      case 'repeater':
+        return _buildCompactRepeaterPreview(field);
+
+      case 'timeline':
+        return _buildCompactTimelinePreview(field);
+
+      case 'section':
+        return _buildCompactComponentShell(Icons.view_agenda_outlined, "Section container");
+
+      case 'card':
+        return _buildCompactComponentShell(Icons.crop_square_rounded, "Card container");
+
+      case 'tabs':
+        return Wrap(
+          spacing: 4,
+          children: ['Tab 1', 'Tab 2'].map((tab) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: tab == 'Tab 1' ? RevoTheme.primary.withValues(alpha: 0.18) : RevoTheme.background,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: tab == 'Tab 1' ? RevoTheme.primaryLight : RevoTheme.cardBorder),
+              ),
+              child: Text(tab, style: TextStyle(fontSize: 8, color: tab == 'Tab 1' ? RevoTheme.primaryLight : RevoTheme.textSecondary)),
+            );
+          }).toList(),
+        );
+
+      case 'accordion':
+        return _buildCompactComponentShell(Icons.unfold_more_rounded, "Accordion item");
 
       case 'phone':
         return Row(
@@ -2193,6 +2675,147 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
           ),
         );
     }
+  }
+
+  Widget _buildCompactComponentShell(IconData icon, String label) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: RevoTheme.primaryLight),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactTablePreview(JourneyField field) {
+    final columns = _configList(field, 'columns', [
+      {'label': '#'},
+      {'label': 'Label'},
+      {'label': 'Act'},
+    ]).take(3).toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: List.generate(3, (row) {
+          return Row(
+            children: List.generate(columns.length, (col) {
+              return Expanded(
+                child: Container(
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: col < 2 ? BorderSide(color: RevoTheme.cardBorder) : BorderSide.none,
+                      bottom: row < 2 ? BorderSide(color: RevoTheme.cardBorder) : BorderSide.none,
+                    ),
+                  ),
+                  child: Text(
+                    row == 0 ? (columns[col]['label']?.toString() ?? 'Col') : (col == 0 ? '1' : 'Value'),
+                    style: TextStyle(fontSize: 8, color: row == 0 ? RevoTheme.textPrimary : RevoTheme.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              );
+            }),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildCompactRepeaterPreview(JourneyField field) {
+    final config = _componentConfig(field);
+    final fields = _configList(field, 'fields', [
+      {'label': 'Name'},
+      {'label': 'Value'},
+    ]).take(2).toList();
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.view_week_outlined, size: 14, color: RevoTheme.primaryLight),
+              const SizedBox(width: 6),
+              Expanded(child: Text("${config['itemLabel'] ?? 'Item'} 1", style: TextStyle(fontSize: 9, color: RevoTheme.textPrimary))),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: fields
+                .map((item) => Expanded(
+                      child: Container(
+                        height: 24,
+                        margin: const EdgeInsets.only(right: 4),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: RevoTheme.cardBg,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(color: RevoTheme.cardBorder),
+                        ),
+                        child: Text(item['label']?.toString() ?? 'Field', style: TextStyle(fontSize: 8, color: RevoTheme.textSecondary), overflow: TextOverflow.ellipsis),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactTimelinePreview(JourneyField field) {
+    final items = _configList(field, 'items', [
+      {'title': 'Started', 'status': 'completed'},
+      {'title': 'Current', 'status': 'active'},
+      {'title': 'Done', 'status': 'pending'},
+    ]).take(3).toList();
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        children: items
+            .map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Row(
+                    children: [
+                      Icon(Icons.circle, size: 8, color: item['status'] == 'completed' ? RevoTheme.secondary : RevoTheme.primaryLight),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(item['title']?.toString() ?? 'Step', style: TextStyle(fontSize: 8, color: RevoTheme.textSecondary), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                ))
+            .toList(),
+      ),
+    );
   }
 
   Widget _buildBottomStats(JourneyStep step) {

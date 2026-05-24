@@ -23,8 +23,9 @@ String generatecontrollerClass(
     "import '../repository/${fileName.toLowerCase()}_repository.dart';",
   );
   if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
-  if (hasDropdown)
+  if (hasDropdown) {
     buffer.writeln("import '/widget/common_dropdown_search.dart';");
+  }
 
   // ─── Dynamic dropdown model imports ──────────────────────────
   final dropdownModels = <String>{};
@@ -53,6 +54,8 @@ String generatecontrollerClass(
 
   final dropdownInitCallsvariable = <String>[];
   final dropdownInitCalls = <String>[];
+  // Extra method bodies (file pickers, grid ops, etc.) collected here
+  final extraMethods = <String>[];
 
   // ─── Field declarations ───────────────────────────────────────
   for (final item in flatFields) {
@@ -75,54 +78,61 @@ String generatecontrollerClass(
       }
     }
 
-    // Support both 'options' (JSON) and 'staticOptions' (legacy)
     final staticOpts = (item['options'] as List<dynamic>?) ??
         (item['staticOptions'] as List<dynamic>?);
 
     switch (type) {
-      // ── Text / Phone / TextArea / OTP → TextEditingController ──
+      // ══════════════════════════════════════════════
+      //  Text / Phone / TextArea / OTP / Email / Password / Number / Decimal
+      // ══════════════════════════════════════════════
       case 'text':
       case 'textfield':
       case 'phone':
       case 'textarea':
       case 'otp':
-        buffer.writeln("  /// Controller for '$rawLabel' field");
+      case 'email':
+      case 'password':
+      case 'number':
+      case 'integer':
+      case 'int':
+      case 'decimal':
+      case 'double':
+      case 'float':
         buffer.writeln(
             "  final ${name}Controller = TextEditingController();");
         break;
 
-      // ── Date / DateTime ─────────────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Date / DateTime / Time
+      // ══════════════════════════════════════════════
       case 'date':
       case 'datetime':
       case 'date time':
-        buffer.writeln("  /// Controller for '$rawLabel' date field");
+      case 'time':
         buffer.writeln(
             "  final ${name}Controller = TextEditingController();");
         break;
 
-      // ── Dropdown ─────────────────────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Dropdown
+      // ══════════════════════════════════════════════
       case 'dropdown':
-        buffer.writeln("  /// Dropdown selection for '$rawLabel' field");
         if (staticOpts != null && staticOpts.isNotEmpty) {
-          // ✅ FIXED: both key and value required by DropdownItem
           final literals = staticOpts.map((o) {
             final val = o.toString().replaceAll("'", "\\'");
             return "DropdownItem(key: '$val', value: '$val')";
           }).join(', ');
-
           buffer.writeln(
               "  var selected$capitalLabel = Rxn<DropdownItem>();");
           buffer.writeln(
               "  final ${name}Options = <DropdownItem>[$literals].obs;");
         } else {
-          // API-backed dropdown
           buffer.writeln(
               "  var selected$capitalLabel = Rxn<$dropdownmodel>();");
           buffer.writeln(
               "  var ${name}Options = <$dropdownmodel>[].obs;");
           dropdownInitCallsvariable.add("      load$capitalLabel(),");
           dropdownInitCalls.addAll([
-            "  // ── API loader for $capitalLabel ──────────────────────",
             "  Future<void> load$capitalLabel() async {",
             "    try {",
             "      final data = await repository.get$capitalLabel();",
@@ -138,70 +148,230 @@ String generatecontrollerClass(
         }
         break;
 
-      // ── Radio ─────────────────────────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Radio
+      // ══════════════════════════════════════════════
       case 'radio':
       case 'radio buttons':
-        buffer.writeln("  /// Radio selection for '$rawLabel' field");
         if (staticOpts != null && staticOpts.isNotEmpty) {
           final formattedOptions = staticOpts.map((o) {
             final val = o.toString().replaceAll("'", "\\'");
             return "RadioOption<String>(value: '$val', label: '$val')";
           }).join(', ');
-          buffer.writeln(
-              "  var selected$capitalLabel = ''.obs;");
+          buffer.writeln("  var selected$capitalLabel = ''.obs;");
           buffer.writeln(
               "  final ${name}Options = <RadioOption<String>>[$formattedOptions];");
         } else {
-          buffer.writeln(
-              "  var selected$capitalLabel = ''.obs;");
+          buffer.writeln("  var selected$capitalLabel = ''.obs;");
           buffer.writeln(
               "  final ${name}Options = <RadioOption<String>>[];");
         }
         break;
 
-      // ── Switch ────────────────────────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Switch
+      // ══════════════════════════════════════════════
       case 'switch':
-        buffer.writeln("  /// Switch state for '$rawLabel' field");
-        final defaultVal =
+        final defaultSwitchVal =
             (item['defaultValue'] ?? 'false').toString().toLowerCase() ==
                 'true';
-        buffer.writeln("  var ${name}Value = $defaultVal.obs;");
+        buffer.writeln("  var ${name}Value = $defaultSwitchVal.obs;");
         break;
 
-      // ── File ──────────────────────────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Checkbox
+      // ══════════════════════════════════════════════
+      case 'checkbox':
+        final defaultCheckVal =
+            (item['defaultValue'] ?? 'false').toString().toLowerCase() ==
+                'true';
+        buffer.writeln("  var ${name}Value = $defaultCheckVal.obs;");
+        break;
+
+      // ══════════════════════════════════════════════
+      //  File
+      // ══════════════════════════════════════════════
       case 'file':
-        buffer.writeln("  /// File upload state for '$rawLabel' field");
+      case 'fileupload':
+      case 'file upload':
         buffer.writeln("  var ${name}FileName = ''.obs;");
         buffer.writeln("  var ${name}FilePath = ''.obs;");
-        buffer.writeln(
-            "  Future<void> pick${capitalLabel}File() async {");
-        buffer.writeln("    // TODO: integrate file_picker package");
-        buffer.writeln(
-            "    // final result = await FilePicker.platform.pickFiles();");
-        buffer.writeln("    // if (result != null) {");
-        buffer.writeln(
-            "    //   ${name}FileName.value = result.files.single.name;");
-        buffer.writeln(
-            "    //   ${name}FilePath.value = result.files.single.path ?? '';");
-        buffer.writeln("    // }");
-        buffer.writeln("  }");
-        buffer.writeln();
+        extraMethods.addAll([
+          "  Future<void> pick${capitalLabel}File() async {",
+          "    // TODO: integrate file_picker package",
+          "    // final result = await FilePicker.platform.pickFiles();",
+          "    // if (result != null) {",
+          "    //   ${name}FileName.value = result.files.single.name;",
+          "    //   ${name}FilePath.value = result.files.single.path ?? '';",
+          "    // }",
+          "  }",
+          "",
+        ]);
         break;
 
-      // ── Checkbox ──────────────────────────────────────────────────
-      case 'checkbox':
-        buffer.writeln("  /// Checkbox state for '$rawLabel' field");
-        buffer.writeln(
-            "  var is${capitalLabel}Checked = false.obs;");
+      // ══════════════════════════════════════════════
+      //  Image
+      // ══════════════════════════════════════════════
+      case 'image':
+        buffer.writeln("  var ${name}FileName = ''.obs;");
+        buffer.writeln("  var ${name}FilePath = ''.obs;");
+        extraMethods.addAll([
+          "  Future<void> pick${capitalLabel}Image() async {",
+          "    // TODO: integrate image_picker package",
+          "    // final picked = await ImagePicker().pickImage(source: ImageSource.gallery);",
+          "    // if (picked != null) {",
+          "    //   ${name}FileName.value = picked.name;",
+          "    //   ${name}FilePath.value = picked.path;",
+          "    // }",
+          "  }",
+          "",
+        ]);
         break;
 
-      // ── Divider — no state needed ─────────────────────────────────
+      // ══════════════════════════════════════════════
+      //  Multiselect
+      // ══════════════════════════════════════════════
+      case 'multiselect':
+      case 'multi select':
+        buffer.writeln("  final ${name}Selected = <String>[].obs;");
+        if (staticOpts != null && staticOpts.isNotEmpty) {
+          final optLiterals =
+              staticOpts.map((o) => "'${o.toString().replaceAll("'", "\\'")}'").join(', ');
+          buffer.writeln(
+              "  final ${name}Options = <String>[$optLiterals];");
+        } else {
+          buffer.writeln("  final ${name}Options = <String>[];");
+        }
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Slider
+      // ══════════════════════════════════════════════
+      case 'slider':
+      case 'range slider':
+        final sliderDefault =
+            (item['defaultValue'] as num?)?.toDouble() ??
+            (item['minValue'] as num?)?.toDouble() ??
+            0.0;
+        buffer.writeln(
+            "  var ${name}Value = $sliderDefault.obs;");
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Star Rating
+      // ══════════════════════════════════════════════
+      case 'starrating':
+      case 'rating':
+      case 'star rating':
+        buffer.writeln("  var ${name}Value = 0.0.obs;");
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Grid / Table
+      // ══════════════════════════════════════════════
+      case 'grid':
+      case 'table':
+      case 'table/grid':
+      case 'table grid':
+        buffer.writeln(
+            "  final ${name}Rows = <Map<String, dynamic>>[].obs;");
+        extraMethods.addAll([
+          "  void add${capitalLabel}Row() {",
+          "    ${name}Rows.add({});",
+          "    // TODO: show dialog to fill row fields",
+          "  }",
+          "",
+          "  void edit${capitalLabel}Row(int index) {",
+          "    // TODO: show dialog pre-filled with ${name}Rows[index]",
+          "  }",
+          "",
+          "  void delete${capitalLabel}Row(int index) {",
+          "    if (index >= 0 && index < ${name}Rows.length) {",
+          "      ${name}Rows.removeAt(index);",
+          "    }",
+          "  }",
+          "",
+        ]);
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Repeater
+      // ══════════════════════════════════════════════
+      case 'repeater':
+        buffer.writeln("  final ${name}Items = <dynamic>[].obs;");
+        extraMethods.addAll([
+          "  void add${capitalLabel}Item() {",
+          "    ${name}Items.add({});",
+          "    // TODO: populate item with repeater sub-fields",
+          "  }",
+          "",
+          "  void remove${capitalLabel}Item(int index) {",
+          "    if (index >= 0 && index < ${name}Items.length) {",
+          "      ${name}Items.removeAt(index);",
+          "    }",
+          "  }",
+          "",
+        ]);
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Timeline
+      // ══════════════════════════════════════════════
+      case 'timeline':
+        final timelineOpts = staticOpts ?? [];
+        final timelineSteps = timelineOpts.isNotEmpty
+            ? timelineOpts
+                .map((o) => "'${o.toString().replaceAll("'", "\\'")}'")
+                .join(', ')
+            : "'Step 1', 'Step 2', 'Step 3'";
+        buffer.writeln(
+            "  final ${name}Steps = <dynamic>[$timelineSteps].obs;");
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Autocomplete
+      // ══════════════════════════════════════════════
+      case 'autocomplete':
+        buffer.writeln("  var selected${capitalLabel}Text = ''.obs;");
+        if (staticOpts != null && staticOpts.isNotEmpty) {
+          final optLiterals =
+              staticOpts.map((o) => "'${o.toString().replaceAll("'", "\\'")}'").join(', ');
+          buffer.writeln(
+              "  final ${name}Options = <String>[$optLiterals];");
+        } else {
+          buffer.writeln("  final ${name}Options = <String>[];");
+        }
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Signature
+      // ══════════════════════════════════════════════
+      case 'signature':
+        buffer.writeln("  var ${name}Signed = false.obs;");
+        buffer.writeln("  var ${name}Data = ''.obs;");
+        extraMethods.addAll([
+          "  Future<void> capture${capitalLabel}Signature() async {",
+          "    // TODO: open signature pad and capture result",
+          "    // ${name}Data.value = signatureBytes;",
+          "    // ${name}Signed.value = true;",
+          "  }",
+          "",
+        ]);
+        break;
+
+      // ══════════════════════════════════════════════
+      //  Layout / Static — no state needed
+      // ══════════════════════════════════════════════
+      case 'label':
       case 'divider':
+      case 'section':
+      case 'card':
+      case 'tabs':
+      case 'accordion':
+      case 'hidden':
         break;
 
       default:
-        buffer.writeln(
-            "  // TODO: unsupported field type '$type' for '$rawLabel'");
         buffer.writeln("  var $name = ''.obs;");
     }
   }
@@ -219,7 +389,6 @@ String generatecontrollerClass(
 
   // ─── loadDropdowns ────────────────────────────────────────────
   if (dropdownInitCallsvariable.isNotEmpty) {
-    buffer.writeln("  /// Loads all API-backed dropdowns in parallel");
     buffer.writeln("  Future<void> loadDropdowns() async {");
     buffer.writeln("    isLoading.value = true;");
     buffer.writeln("    try {");
@@ -236,10 +405,14 @@ String generatecontrollerClass(
     buffer.writeln("    }");
     buffer.writeln("  }");
     buffer.writeln();
-
     for (final line in dropdownInitCalls) {
       buffer.writeln("  $line");
     }
+  }
+
+  // ─── Extra methods (file pickers, grid ops, etc.) ─────────────
+  for (final line in extraMethods) {
+    buffer.writeln("  $line");
   }
 
   // ─── onClose ─────────────────────────────────────────────────
@@ -257,9 +430,18 @@ String generatecontrollerClass(
       case 'phone':
       case 'textarea':
       case 'otp':
+      case 'email':
+      case 'password':
+      case 'number':
+      case 'integer':
+      case 'int':
+      case 'decimal':
+      case 'double':
+      case 'float':
       case 'date':
       case 'datetime':
       case 'date time':
+      case 'time':
         buffer.writeln("    ${name}Controller.dispose();");
         break;
       case 'dropdown':
@@ -270,16 +452,43 @@ String generatecontrollerClass(
         buffer.writeln("    selected$capitalLabel.value = '';");
         break;
       case 'switch':
+      case 'checkbox':
         buffer.writeln("    ${name}Value.value = false;");
         break;
-      case 'checkbox':
-        buffer.writeln("    is${capitalLabel}Checked.value = false;");
+      case 'slider':
+      case 'range slider':
+      case 'starrating':
+      case 'rating':
+      case 'star rating':
+        buffer.writeln("    ${name}Value.value = 0.0;");
         break;
       case 'file':
+      case 'fileupload':
+      case 'file upload':
+      case 'image':
         buffer.writeln("    ${name}FileName.value = '';");
         buffer.writeln("    ${name}FilePath.value = '';");
         break;
-      // divider → nothing
+      case 'multiselect':
+      case 'multi select':
+        buffer.writeln("    ${name}Selected.clear();");
+        break;
+      case 'grid':
+      case 'table':
+      case 'table/grid':
+      case 'table grid':
+        buffer.writeln("    ${name}Rows.clear();");
+        break;
+      case 'repeater':
+        buffer.writeln("    ${name}Items.clear();");
+        break;
+      case 'autocomplete':
+        buffer.writeln("    selected${capitalLabel}Text.value = '';");
+        break;
+      case 'signature':
+        buffer.writeln("    ${name}Signed.value = false;");
+        buffer.writeln("    ${name}Data.value = '';");
+        break;
     }
   }
   buffer.writeln("    super.onClose();");
@@ -300,9 +509,18 @@ String generatecontrollerClass(
       case 'phone':
       case 'textarea':
       case 'otp':
+      case 'email':
+      case 'password':
+      case 'number':
+      case 'integer':
+      case 'int':
+      case 'decimal':
+      case 'double':
+      case 'float':
       case 'date':
       case 'datetime':
       case 'date time':
+      case 'time':
         buffer.writeln("    ${name}Controller.clear();");
         break;
       case 'dropdown':
@@ -313,16 +531,46 @@ String generatecontrollerClass(
         buffer.writeln("    selected$capitalLabel.value = '';");
         break;
       case 'switch':
+      case 'checkbox':
         buffer.writeln("    ${name}Value.value = false;");
         break;
-      case 'checkbox':
-        buffer.writeln("    is${capitalLabel}Checked.value = false;");
+      case 'slider':
+      case 'range slider':
+        final minVal = (item['minValue'] as num?)?.toDouble() ?? 0.0;
+        buffer.writeln("    ${name}Value.value = $minVal;");
+        break;
+      case 'starrating':
+      case 'rating':
+      case 'star rating':
+        buffer.writeln("    ${name}Value.value = 0.0;");
         break;
       case 'file':
+      case 'fileupload':
+      case 'file upload':
+      case 'image':
         buffer.writeln("    ${name}FileName.value = '';");
         buffer.writeln("    ${name}FilePath.value = '';");
         break;
-      // divider → nothing
+      case 'multiselect':
+      case 'multi select':
+        buffer.writeln("    ${name}Selected.clear();");
+        break;
+      case 'grid':
+      case 'table':
+      case 'table/grid':
+      case 'table grid':
+        buffer.writeln("    ${name}Rows.clear();");
+        break;
+      case 'repeater':
+        buffer.writeln("    ${name}Items.clear();");
+        break;
+      case 'autocomplete':
+        buffer.writeln("    selected${capitalLabel}Text.value = '';");
+        break;
+      case 'signature':
+        buffer.writeln("    ${name}Signed.value = false;");
+        buffer.writeln("    ${name}Data.value = '';");
+        break;
     }
   }
   buffer.writeln("  }");

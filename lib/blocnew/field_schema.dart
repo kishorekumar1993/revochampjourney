@@ -60,6 +60,15 @@ enum FieldType {
   fileUpload,
   hidden,
   textField,
+  slider,
+  repeater,
+  timeline,
+  section,
+  label,
+  starRating,
+  autoComplete,
+  signature,
+  grid,
 }
 
 FieldType parseFieldType(String raw) {
@@ -113,6 +122,27 @@ FieldType parseFieldType(String raw) {
       return FieldType.image;
     case 'hidden':
       return FieldType.hidden;
+    case 'slider':
+    case 'rangeslider':
+      return FieldType.slider;
+    case 'repeater':
+      return FieldType.repeater;
+    case 'timeline':
+      return FieldType.timeline;
+    case 'section':
+      return FieldType.section;
+    case 'label':
+      return FieldType.label;
+    case 'starrating':
+    case 'rating':
+      return FieldType.starRating;
+    case 'autocomplete':
+      return FieldType.autoComplete;
+    case 'signature':
+      return FieldType.signature;
+    case 'grid':
+    case 'table':
+      return FieldType.grid;
     default:
       return FieldType.text;
   }
