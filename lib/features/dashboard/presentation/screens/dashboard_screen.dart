@@ -302,8 +302,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
   }
 */
 
-void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
-    // ── Validate ───────────────────────────────────────────────────────────
+  void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
     if (journeyConfig.steps == null || journeyConfig.steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -314,36 +313,137 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
       return;
     }
 
-    try {
-      // ✅ Single call — generates BLoC + GetX + Riverpod for ALL steps
-      // All JSArray → Dart conversion, journey namespace, core dedup,
-      // and JS file save happen inside generateAndSaveAllFiles()
-      generateAndSaveAllFiles(
-        journeyConfig: journeyConfig,
-        architectures: const {
-          Architecture.bloc,
-          Architecture.getx,
-          Architecture.riverpod,
-        },
-      );
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        bool blocSelected = true;
+        bool getxSelected = true;
+        bool riverpodSelected = true;
 
-      // ✅ Show success snackbar after JS call is dispatched
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("✅ Code generation started — select your project folder!"),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 4),
-        ),
-      );
-    } catch (e, stack) {
-      debugPrint("Generation error: $e\n$stack");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Generation error: $e"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final textStyle = GoogleFonts.inter(color: RevoTheme.textPrimary);
+            final hasSelection = blocSelected || getxSelected || riverpodSelected;
+
+            return AlertDialog(
+              backgroundColor: RevoTheme.cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: RevoTheme.cardBorder),
+              ),
+              title: Text(
+                "Generate Flutter Code",
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+              ),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Select target architectures to generate for your multi-step journey:",
+                      style: GoogleFonts.inter(fontSize: 13, color: RevoTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    Theme(
+                      data: ThemeData(
+                        unselectedWidgetColor: RevoTheme.textSecondary,
+                      ),
+                      child: Column(
+                        children: [
+                          CheckboxListTile(
+                            title: Text("BLoC Architecture", style: textStyle.copyWith(fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: Text("Clean Code, Repositories, Use Cases, Events, States & Screens", style: textStyle.copyWith(fontSize: 11, color: RevoTheme.textSecondary)),
+                            value: blocSelected,
+                            activeColor: RevoTheme.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                blocSelected = val ?? false;
+                              });
+                            },
+                          ),
+                          CheckboxListTile(
+                            title: Text("GetX Architecture", style: textStyle.copyWith(fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: Text("Bindings, Controllers, Repositories & View Screens", style: textStyle.copyWith(fontSize: 11, color: RevoTheme.textSecondary)),
+                            value: getxSelected,
+                            activeColor: RevoTheme.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                getxSelected = val ?? false;
+                              });
+                            },
+                          ),
+                          CheckboxListTile(
+                            title: Text("Riverpod Architecture", style: textStyle.copyWith(fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: Text("Notifier, Providers, Entities, Data Sources & Screens", style: textStyle.copyWith(fontSize: 11, color: RevoTheme.textSecondary)),
+                            value: riverpodSelected,
+                            activeColor: RevoTheme.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                riverpodSelected = val ?? false;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text("Cancel", style: TextStyle(color: RevoTheme.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: !hasSelection
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                          final architectures = <Architecture>{
+                            if (blocSelected) Architecture.bloc,
+                            if (getxSelected) Architecture.getx,
+                            if (riverpodSelected) Architecture.riverpod,
+                          };
+
+                          try {
+                            generateAndSaveAllFiles(
+                              journeyConfig: journeyConfig,
+                              architectures: architectures,
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("✅ Code generation started — select your project folder!"),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 4),
+                              ),
+                            );
+                          } catch (e, stack) {
+                            debugPrint("Generation error: $e\n$stack");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Generation error: $e"),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RevoTheme.primary,
+                  ),
+                  child: const Text("Generate"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
 
@@ -389,7 +489,41 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                       : _activeMenu == 'runs'
                           ? RevoRunsScreen()
                           : _activeMenu == 'dashboard'
-                              ? RevoDashboardOverviewScreen()
+                              ? RevoDashboardOverviewScreen(
+                                  onCreateNew: () {
+                                    final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
+                                    ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = true;
+                                      _isSidebarCollapsed = true;
+                                    });
+                                  },
+                                  onEditJourney: (journey) {
+                                    ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = true;
+                                      _isSidebarCollapsed = true;
+                                    });
+                                  },
+                                  onViewCatalog: () {
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = false;
+                                    });
+                                  },
+                                  onViewTemplates: () {
+                                    setState(() {
+                                      _activeMenu = 'templates';
+                                    });
+                                  },
+                                  onViewRuns: () {
+                                    setState(() {
+                                      _activeMenu = 'runs';
+                                    });
+                                  },
+                                )
                               : _activeMenu == 'analytics'
                                   ? RevoAnalyticsScreen()
                                   : _activeMenu == 'approvals'
@@ -652,7 +786,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     ),
                     const SizedBox(width: 8),
                     Tooltip(
-                      message: "Generate BLoC Code",
+                      message: "Generate Code",
                       child: OutlinedButton(
                         onPressed: () => _generateBlocCode(context, journeyConfig),
                         style: OutlinedButton.styleFrom(
@@ -699,7 +833,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     OutlinedButton.icon(
                       onPressed: () => _generateBlocCode(context, journeyConfig),
                       icon: const Icon(Icons.code_rounded, size: 16),
-                      label: const Text("Generate BLoC"),
+                      label: const Text("Generate Code"),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),

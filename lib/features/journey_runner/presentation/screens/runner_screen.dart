@@ -85,6 +85,24 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         ref.read(formValuesProvider.notifier).resetWithDefaults(allSteps[nextStepIndex].fields);
       }
     } else {
+      // Record the run simulation log dynamically
+      final config = ref.read(journeyConfigProvider);
+      final currentRuns = ref.read(journeyRunsProvider);
+      final nextRunNumber = 1050 + currentRuns.length;
+      final userEmail = values['email'] ?? values['mobile'] ?? 'anonymous@revo.com';
+
+      ref.read(journeyRunsProvider.notifier).addRun({
+        'id': 'RUN-$nextRunNumber',
+        'journeyName': config.journeyName,
+        'user': userEmail,
+        'status': 'Completed',
+        'currentStep': step.title,
+        'progress': 1.0,
+        'stepsCount': '${config.steps.length}/${config.steps.length}',
+        'started': 'Just now',
+        'data': Map<String, String>.from(values),
+      });
+
       // Completed last step, show success banner
       showDialog(
         context: context,

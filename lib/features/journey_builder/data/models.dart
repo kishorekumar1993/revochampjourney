@@ -175,6 +175,7 @@ class JourneyField {
   String? keyboardType;
   String? textInputAction;
   String? textCapitalization;
+  String? dropdownListKey;
 
   JourneyField({
     required this.id,
@@ -214,6 +215,7 @@ class JourneyField {
     this.keyboardType,
     this.textInputAction,
     this.textCapitalization,
+    this.dropdownListKey,
   });
 
   factory JourneyField.fromJson(Map<String, dynamic> json) {
@@ -277,6 +279,7 @@ dropdowndata: json['dropdowndata'] is List
       keyboardType: json['keyboardType']?.toString(),
       textInputAction: json['textInputAction']?.toString(),
       textCapitalization: json['textCapitalization']?.toString(),
+      dropdownListKey: json['dropdownListKey']?.toString() ?? json['dropdownApiResponseKey']?.toString() ?? json['responseListKey']?.toString(),
     );
   }
 
@@ -320,6 +323,7 @@ dropdowndata: json['dropdowndata'] is List
       if (keyboardType != null) 'keyboardType': keyboardType,
       if (textInputAction != null) 'textInputAction': textInputAction,
       if (textCapitalization != null) 'textCapitalization': textCapitalization,
+      if (dropdownListKey != null) 'dropdownListKey': dropdownListKey,
     };
   }
 
@@ -363,6 +367,7 @@ dropdowndata: json['dropdowndata'] is List
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
+      dropdownListKey: dropdownListKey,
     );
   }
 
@@ -378,8 +383,24 @@ dropdowndata: json['dropdowndata'] is List
       if (dropdowndata is List) {
         listToParse = dropdowndata;
       } else if (dropdowndata is Map) {
-        final responseKey = dropdownApiResponseKey;
-        if (responseKey != null && responseKey.isNotEmpty && dropdowndata[responseKey] is List) {
+        final responseKey = dropdownListKey ?? dropdownApiResponseKey;
+        dynamic candidate;
+        if (responseKey != null && responseKey.isNotEmpty) {
+          final parts = responseKey.split('.');
+          dynamic cursor = dropdowndata;
+          for (final part in parts) {
+            if (cursor is Map) {
+              cursor = cursor[part];
+            } else {
+              cursor = null;
+              break;
+            }
+          }
+          candidate = cursor;
+        }
+        if (candidate is List) {
+          listToParse = candidate;
+        } else if (responseKey != null && responseKey.isNotEmpty && dropdowndata[responseKey] is List) {
           listToParse = dropdowndata[responseKey];
         } else {
           // Fallback to standard nested keys

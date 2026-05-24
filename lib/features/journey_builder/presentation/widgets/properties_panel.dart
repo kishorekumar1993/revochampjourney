@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/theme.dart';
 import '../../data/models.dart';
 import '../providers/journey_provider.dart';
@@ -832,6 +833,17 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   const SizedBox(height: 10),
                                   _PropertyTextField(
+                                    label: "List Key (optional)",
+                                    initialValue: selectedField.dropdownListKey ?? '',
+                                    hint: "e.g. data.items, result",
+                                    onChanged: (val) {
+                                      final updated = selectedField!.copy()..dropdownListKey = val.trim().isEmpty ? null : val.trim();
+                                      ref.read(journeyConfigProvider.notifier)
+                                          .updateFieldInStep(activeStepId, selectedField.id, updated);
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _PropertyTextField(
                                     label: "Response JSON Data (Test/Preloaded)",
                                     initialValue: selectedField.dropdowndata != null ? json.encode(selectedField.dropdowndata) : '',
                                     hint: '[{"id": 1, "title": "Option One"}, {"id": 2, "title": "Option Two"}]',
@@ -889,7 +901,6 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                             _testingApi = true;
                                             _apiTestResult = null;
                                           });
-                                          await Future.delayed(const Duration(milliseconds: 1200));
                                           
                                           final hasUrl = selectedField!.dropdownApiUrl != null && selectedField.dropdownApiUrl!.isNotEmpty;
                                           if (!hasUrl) {
@@ -902,17 +913,66 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           }
                                           
                                           try {
-                                            final options = selectedField.getResolvedOptions();
-                                            setState(() {
-                                              _testingApi = false;
-                                              _apiTestSuccess = true;
-                                              _apiTestResult = "Connection successful!\nStatus: 200 OK\nParsed ${options.length} option(s) successfully.";
-                                            });
+                                            final url = Uri.parse(selectedField.dropdownApiUrl!);
+                                            final method = (selectedField.dropdownApiMethod ?? 'GET').toUpperCase();
+                                            
+                                            final Map<String, String> headers = {};
+                                            if (selectedField.dropdownApiHeaders != null) {
+                                              selectedField.dropdownApiHeaders!.forEach((k, v) {
+                                                headers[k] = v.toString();
+                                              });
+                                            }
+                                            if (!headers.containsKey('Content-Type') && method != 'GET') {
+                                              headers['Content-Type'] = 'application/json';
+                                            }
+
+                                            final body = selectedField.dropdownApiBody;
+
+                                            http.Response response;
+                                            if (method == 'POST') {
+                                              response = await http.post(url, headers: headers, body: body);
+                                            } else if (method == 'PUT') {
+                                              response = await http.put(url, headers: headers, body: body);
+                                            } else if (method == 'DELETE') {
+                                              response = await http.delete(url, headers: headers, body: body);
+                                            } else {
+                                              response = await http.get(url, headers: headers);
+                                            }
+
+                                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                                              final decoded = json.decode(response.body);
+                                              
+                                              dynamic normalizedData;
+                                              if (decoded is List) {
+                                                normalizedData = decoded.map((e) => e is Map ? Map<String, dynamic>.from(e) : e).toList();
+                                              } else if (decoded is Map) {
+                                                normalizedData = Map<String, dynamic>.from(decoded);
+                                              } else {
+                                                normalizedData = decoded;
+                                              }
+
+                                              final updated = selectedField.copy()..dropdowndata = normalizedData;
+                                              ref.read(journeyConfigProvider.notifier)
+                                                  .updateFieldInStep(activeStepId, selectedField.id, updated);
+                                              
+                                              final options = updated.getResolvedOptions();
+                                              setState(() {
+                                                _testingApi = false;
+                                                _apiTestSuccess = true;
+                                                _apiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${options.length} option(s) successfully and saved to state.";
+                                              });
+                                            } else {
+                                              setState(() {
+                                                _testingApi = false;
+                                                _apiTestSuccess = false;
+                                                _apiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
+                                              });
+                                            }
                                           } catch (e) {
                                             setState(() {
                                               _testingApi = false;
                                               _apiTestSuccess = false;
-                                              _apiTestResult = "Parsing error: ${e.toString()}";
+                                              _apiTestResult = "API Test failed: ${e.toString()}";
                                             });
                                           }
                                         },
