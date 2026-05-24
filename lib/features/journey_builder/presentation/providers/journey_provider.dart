@@ -1,0 +1,580 @@
+import 'dart:convert';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/models.dart';
+
+// Initial state creator to populate "Motor Insurance" as seen in the mockup
+JourneyConfig getInitialJourney() {
+  return JourneyConfig(
+    journeyName: "Motor Insurance Journey",
+    version: "1.0.0",
+    steps: [
+      JourneyStep(
+        id: "personal",
+        title: "Personal Details",
+        description: "Please provide your basic information",
+        nextStep: "vehicle",
+        fields: [
+          JourneyField(
+            id: "fullName",
+            label: "Full Name",
+            type: "text",
+            required: true,
+            placeholder: "Enter full name",
+          ),
+          JourneyField(
+            id: "dob",
+            label: "Date of Birth",
+            type: "date",
+            required: true,
+            placeholder: "DD/MM/YYYY",
+          ),
+          JourneyField(
+            id: "mobile",
+            label: "Mobile Number",
+            type: "phone",
+            required: true,
+            placeholder: "Enter mobile number",
+          ),
+          JourneyField(
+            id: "email",
+            label: "Email Address",
+            type: "text",
+            required: false,
+            placeholder: "Enter email address",
+          ),
+          JourneyField(
+            id: "gender",
+            label: "Gender",
+            type: "radio",
+            required: true,
+            options: ["Male", "Female", "Other"],
+            defaultValue: "Male",
+          ),
+          JourneyField(
+            id: "maritalStatus",
+            label: "Marital Status",
+            type: "dropdown",
+            required: false,
+            placeholder: "Select marital status",
+            options: ["Single", "Married", "Divorced", "Widowed"],
+          ),
+          JourneyField(
+            id: "address",
+            label: "Address",
+            type: "textarea",
+            required: false,
+            placeholder: "Enter your current address",
+          ),
+        ],
+        validations: [
+          StepValidation(type: "required", field: "fullName", message: "Full Name is required"),
+          StepValidation(type: "required", field: "mobile", message: "Mobile number is required"),
+          StepValidation(type: "required", field: "dob", message: "Date of Birth is required"),
+        ],
+        conditions: [
+          StepCondition(type: "visibleIf", field: "gender", operator: "equals", value: "Female"),
+          StepCondition(type: "enableIf", field: "email", operator: "contains", value: "@"),
+        ],
+        apiCalls: [
+          StepAPI(method: "POST", url: "/api/v1/personal-info", description: "Save personal details info"),
+        ],
+        actions: [
+          StepAction(trigger: "onSubmit", actionType: "apiCall", details: "Submit personal details"),
+        ],
+      ),
+      JourneyStep(
+        id: "vehicle",
+        title: "Vehicle Details",
+        description: "Please provide vehicle information",
+        nextStep: "nominee",
+        fields: [
+          JourneyField(
+            id: "vehicleNum",
+            label: "Vehicle Number",
+            type: "text",
+            required: true,
+            placeholder: "e.g. MH-12-AB-1234",
+          ),
+          JourneyField(
+            id: "vehicleMake",
+            label: "Make",
+            type: "dropdown",
+            required: true,
+            placeholder: "Select manufacturer",
+            options: ["Toyota", "Honda", "Hyundai", "Suzuki", "Tata"],
+          ),
+          JourneyField(
+            id: "vehicleModel",
+            label: "Model",
+            type: "text",
+            required: true,
+            placeholder: "Enter vehicle model",
+          ),
+          JourneyField(
+            id: "regYear",
+            label: "Registration Year",
+            type: "dropdown",
+            required: true,
+            placeholder: "Select registration year",
+            options: ["2026", "2025", "2024", "2023", "2022", "2021", "2020"],
+          ),
+        ],
+      ),
+      JourneyStep(
+        id: "nominee",
+        title: "Nominee Details",
+        description: "Provide nominee description for coverage",
+        nextStep: "documents",
+        fields: [
+          JourneyField(
+            id: "nomineeName",
+            label: "Nominee Full Name",
+            type: "text",
+            required: true,
+            placeholder: "Enter nominee name",
+          ),
+          JourneyField(
+            id: "nomineeRelation",
+            label: "Relationship",
+            type: "dropdown",
+            required: true,
+            placeholder: "Select relationship",
+            options: ["Spouse", "Father", "Mother", "Son", "Daughter"],
+          ),
+        ],
+      ),
+      JourneyStep(
+        id: "documents",
+        title: "Upload Documents",
+        description: "Upload necessary documents",
+        nextStep: "review",
+        fields: [
+          JourneyField(
+            id: "panDoc",
+            label: "PAN Card",
+            type: "file",
+            required: true,
+          ),
+          JourneyField(
+            id: "drivingLicense",
+            label: "Driving License",
+            type: "file",
+            required: true,
+          ),
+        ],
+      ),
+      JourneyStep(
+        id: "review",
+        title: "Review & Confirm",
+        description: "Review your submitted data",
+        nextStep: "payment",
+        fields: [
+          JourneyField(
+            id: "termsAccepted",
+            label: "I accept the policy terms and declarations",
+            type: "switch",
+            required: true,
+            defaultValue: "false",
+          ),
+        ],
+      ),
+      JourneyStep(
+        id: "payment",
+        title: "Payment",
+        description: "Enter premium payment details",
+        nextStep: "success",
+        fields: [
+          JourneyField(
+            id: "paymentMethod",
+            label: "Select Payment Mode",
+            type: "radio",
+            required: true,
+            options: ["Credit Card", "Debit Card", "UPI", "Net Banking"],
+            defaultValue: "Credit Card",
+          ),
+          JourneyField(
+            id: "otpVerify",
+            label: "Verification Code",
+            type: "otp",
+            required: true,
+            placeholder: "Enter 6-digit OTP",
+          ),
+        ],
+      ),
+      JourneyStep(
+        id: "success",
+        title: "Success",
+        description: "Your policy generated successfully!",
+        fields: [
+          JourneyField(
+            id: "successDiv",
+            label: "Congratulations! Policy PDF has been sent to your email.",
+            type: "divider",
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+// Active step ID
+final activeStepIdProvider = StateProvider<String>((ref) => "personal");
+
+// Selected Field ID (the one selected in the design canvas)
+final selectedFieldIdProvider = StateProvider<String?>((ref) => null);
+
+// History State for Undo/Redo operations
+class HistoryState {
+  final List<JourneyConfig> past;
+  final JourneyConfig present;
+  final List<JourneyConfig> future;
+
+  HistoryState({
+    required this.past,
+    required this.present,
+    required this.future,
+  });
+}
+
+class HistoryNotifier extends StateNotifier<HistoryState> {
+  HistoryNotifier(JourneyConfig initial)
+      : super(HistoryState(past: [], present: initial, future: []));
+
+  void push(JourneyConfig nextConfig) {
+    state = HistoryState(
+      past: [...state.past, state.present.copyWith()],
+      present: nextConfig,
+      future: [],
+    );
+  }
+
+  void undo() {
+    if (state.past.isEmpty) return;
+    final previous = state.past.last;
+    final newPast = state.past.sublist(0, state.past.length - 1);
+    state = HistoryState(
+      past: newPast,
+      present: previous,
+      future: [state.present.copyWith(), ...state.future],
+    );
+  }
+
+  void redo() {
+    if (state.future.isEmpty) return;
+    final next = state.future.first;
+    final newFuture = state.future.sublist(1);
+    state = HistoryState(
+      past: [...state.past, state.present.copyWith()],
+      present: next,
+      future: newFuture,
+    );
+  }
+
+  void reset(JourneyConfig config) {
+    state = HistoryState(past: [], present: config, future: []);
+  }
+
+  void rollbackTo(int pastIndex) {
+    if (pastIndex < 0 || pastIndex >= state.past.length) return;
+    final target = state.past[pastIndex];
+    final newPast = state.past.sublist(0, pastIndex);
+    final newFuture = [
+      ...state.past.sublist(pastIndex + 1),
+      state.present.copyWith(),
+      ...state.future
+    ];
+    state = HistoryState(
+      past: newPast,
+      present: target,
+      future: newFuture,
+    );
+  }
+}
+
+final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
+  return HistoryNotifier(getInitialJourney());
+});
+
+// Journey Config Provider
+class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
+  final Ref _ref;
+
+  JourneyConfigNotifier(this._ref, JourneyConfig initial) : super(initial);
+
+  // Set configuration from parsed JSON string
+  bool updateFromJson(String jsonStr) {
+    try {
+      final decoded = json.decode(jsonStr);
+      final newConfig = JourneyConfig.fromJson(decoded);
+      state = newConfig;
+      
+      // Update history
+      _ref.read(historyProvider.notifier).push(newConfig);
+
+      // Verify active step exists, if not set to first step
+      final activeStepId = _ref.read(activeStepIdProvider);
+      if (!newConfig.steps.any((s) => s.id == activeStepId) && newConfig.steps.isNotEmpty) {
+        _ref.read(activeStepIdProvider.notifier).state = newConfig.steps.first.id;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void updateJourneyName(String name) {
+    final updated = state.copyWith(journeyName: name);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateJourneyVersion(String ver) {
+    final updated = state.copyWith(version: ver);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateJourneyDescription(String desc) {
+    final updated = state.copyWith(description: desc);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateJourneyCategory(String cat) {
+    final updated = state.copyWith(category: cat);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateJourneyLocale(String loc) {
+    final updated = state.copyWith(locale: loc);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateJourneyPlatform(String plat) {
+    final updated = state.copyWith(platform: plat);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  // Steps operations
+  void addStep(JourneyStep step) {
+    final updatedSteps = [...state.steps, step];
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void removeStep(String stepId) {
+    final updatedSteps = state.steps.where((s) => s.id != stepId).toList();
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void updateStep(String stepId, JourneyStep updatedStep) {
+    final updatedSteps = state.steps.map((s) => s.id == stepId ? updatedStep : s).toList();
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void reorderSteps(int oldIndex, int newIndex) {
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final step = updatedSteps.removeAt(oldIndex);
+    updatedSteps.insert(newIndex, step);
+    
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  // Fields operations (mutating specific step fields)
+  void addFieldToStep(String stepId, JourneyField field, {int? index}) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = List<JourneyField>.from(step.fields);
+    if (index != null && index >= 0 && index <= updatedFields.length) {
+      updatedFields.insert(index, field);
+    } else {
+      updatedFields.add(field);
+    }
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void removeFieldFromStep(String stepId, String fieldId) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = step.fields.where((f) => f.id != fieldId).toList();
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+
+    if (_ref.read(selectedFieldIdProvider) == fieldId) {
+      _ref.read(selectedFieldIdProvider.notifier).state = null;
+    }
+  }
+
+  void updateFieldInStep(String stepId, String fieldId, JourneyField updatedField) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = step.fields.map((f) => f.id == fieldId ? updatedField : f).toList();
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void reorderFieldsInStep(String stepId, int oldIndex, int newIndex) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = List<JourneyField>.from(step.fields);
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final field = updatedFields.removeAt(oldIndex);
+    updatedFields.insert(newIndex, field);
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  void syncWithHistory(JourneyConfig config) {
+    state = config;
+  }
+}
+
+final journeyConfigProvider = StateNotifierProvider<JourneyConfigNotifier, JourneyConfig>((ref) {
+  // Sync wrapper to watch history notifier
+  final notifier = JourneyConfigNotifier(ref, getInitialJourney());
+  ref.listen<HistoryState>(historyProvider, (prev, next) {
+    notifier.syncWithHistory(next.present);
+  });
+  return notifier;
+});
+
+// Centralized dynamic form state mapping provider (Step Values)
+class FormValuesNotifier extends StateNotifier<Map<String, String>> {
+  FormValuesNotifier() : super({});
+
+  void updateValue(String fieldId, String value) {
+    state = {...state, fieldId: value};
+  }
+
+  void clear() {
+    state = {};
+  }
+
+  void resetWithDefaults(List<JourneyField> fields) {
+    final defaults = <String, String>{};
+    for (var f in fields) {
+      if (f.defaultValue != null) {
+        defaults[f.id] = f.defaultValue!;
+      }
+    }
+    state = defaults;
+  }
+}
+
+final formValuesProvider = StateNotifierProvider<FormValuesNotifier, Map<String, String>>((ref) {
+  return FormValuesNotifier();
+});
+
+// Validation and condition evaluation functions
+class EngineHelper {
+  static bool evaluateCondition(StepCondition cond, Map<String, String> values) {
+    final val = values[cond.field];
+    if (val == null) return false;
+    switch (cond.operator) {
+      case 'equals':
+        return val.toLowerCase() == cond.value.toLowerCase();
+      case 'notEquals':
+        return val.toLowerCase() != cond.value.toLowerCase();
+      case 'contains':
+        return val.toLowerCase().contains(cond.value.toLowerCase());
+      default:
+        return false;
+    }
+  }
+
+  // Field visible condition evaluation helper
+  static bool isFieldVisible(JourneyField field, Map<String, String> values) {
+    if (!field.visible) return false;
+    if (field.visibleIf == null) return true;
+
+    final targetField = field.visibleIf!['field'];
+    final equalsVal = field.visibleIf!['equals'];
+    if (targetField == null || equalsVal == null) return true;
+
+    final currentVal = values[targetField];
+    return currentVal?.toLowerCase() == equalsVal.toString().toLowerCase();
+  }
+}
+
+class JourneysListNotifier extends StateNotifier<List<JourneyConfig>> {
+  JourneysListNotifier(super.initial);
+
+  void addJourney(JourneyConfig config) {
+    if (!state.any((j) => j.journeyName == config.journeyName)) {
+      state = [...state, config];
+    }
+  }
+
+  void removeJourney(String name) {
+    state = state.where((j) => j.journeyName != name).toList();
+  }
+
+  void saveJourney(JourneyConfig config) {
+    final index = state.indexWhere((j) => j.journeyName == config.journeyName);
+    if (index != -1) {
+      final updatedList = List<JourneyConfig>.from(state);
+      updatedList[index] = config;
+      state = updatedList;
+    } else {
+      state = [...state, config];
+    }
+  }
+}
+
+final journeysListProvider = StateNotifierProvider<JourneysListNotifier, List<JourneyConfig>>((ref) {
+  final notifier = JourneysListNotifier([
+    getInitialJourney(),
+  ]);
+  ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
+    notifier.saveJourney(next);
+  });
+  return notifier;
+});
