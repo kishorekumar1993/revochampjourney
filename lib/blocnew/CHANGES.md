@@ -1,4 +1,4 @@
-# Revochamp Generator v3 — Complete Fix & Enhancement Notes
+# revojourneytryone Generator v3 — Complete Fix & Enhancement Notes
 
 ## Root Cause Fixes
 

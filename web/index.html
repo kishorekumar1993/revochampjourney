@@ -2,58 +2,133 @@
 <html>
 
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="revojourneytryone">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
-
   <title>revojourneytryone</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    #loader-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    #loader-overlay img {
+      width: 120px;
+      margin-bottom: 24px;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    #loader-overlay .pulse-ring {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+    }
+
+    #loader-overlay .pulse-ring::after,
+    #loader-overlay .pulse-ring::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 4px solid #007ACC;
+      border-radius: 50%;
+      opacity: 0.6;
+      animation: pulse 1.8s infinite ease-out;
+    }
+
+    #loader-overlay .pulse-ring::before {
+      animation-delay: 0.9s;
+      opacity: 0.3;
+    }
+
+    #loader-overlay .loader-text {
+      color: #ffffff;
+      font-size: 18px;
+      text-align: center;
+      max-width: 240px;
+      line-height: 1.4;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.6);
+        opacity: 0.6;
+      }
+
+      50% {
+        transform: scale(1);
+        opacity: 0.3;
+      }
+
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="loader-overlay">
+    <img src="icons/revojourneytryone-logo.png" alt="revojourneytryone" />
+    <div class="pulse-ring"></div>
+    <div class="loader-text">
+      Preparing your files…<br>
+      Hang tight, we're almost there!
+    </div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-
-  <!-- IndexedDB + file-system helpers — defined synchronously so Dart can call
-       saveMultipleFilesToFolders the instant Flutter finishes booting. -->
   <script>
-    // ── IndexedDB helpers ──────────────────────────────────────────────────────
+    // ─── IndexedDB helpers ────────────────────────────────────────────────────
     function openHandlesDB() {
       return new Promise((res, rej) => {
         const rq = indexedDB.open('file-handles-db', 1);
         rq.onupgradeneeded = () => rq.result.createObjectStore('handles');
         rq.onsuccess = () => res(rq.result);
-        rq.onerror  = () => rej(rq.error);
+        rq.onerror = () => rej(rq.error);
       });
     }
 
@@ -72,7 +147,7 @@
       tx.objectStore('handles').clear();
       return new Promise((res, rej) => {
         tx.oncomplete = () => res();
-        tx.onerror    = () => rej(tx.error);
+        tx.onerror = () => rej(tx.error);
       });
     }
     window.clearHandlesStore = clearHandlesStore;
@@ -83,7 +158,7 @@
       tx.objectStore('handles').put(handle, name);
       return new Promise((res, rej) => {
         tx.oncomplete = () => res();
-        tx.onerror    = () => rej(tx.error);
+        tx.onerror = () => rej(tx.error);
       });
     }
 
@@ -93,10 +168,11 @@
         const tx = db.transaction('handles', 'readonly');
         const rq = tx.objectStore('handles').get(name);
         rq.onsuccess = () => res(rq.result);
-        rq.onerror   = () => rej(rq.error);
+        rq.onerror = () => rej(rq.error);
       });
     }
 
+    // ─── Directory picker with memoization ───────────────────────────────────
     async function getProjectDirectory() {
       let dirHandle = await getSavedHandle('project-root');
       if (dirHandle) {
@@ -107,54 +183,70 @@
           if (perm === 'granted') return dirHandle;
         }
       }
+      // ✅ showDirectoryPicker called at TOP LEVEL — preserves user-gesture context
       dirHandle = await window.showDirectoryPicker();
       await saveHandle('project-root', dirHandle);
       return dirHandle;
     }
 
-    // ── Main entry-point called by Dart (available SYNCHRONOUSLY) ─────────────
-    window.saveMultipleFilesToFolders = async function saveMultipleFilesToFolders(jsonString) {
+    // ─── MAIN: defined at top-level, available IMMEDIATELY (no async IIFE delay)
+    window.saveMultipleFilesToFolders = async function (jsonString) {
       showLoader();
       try {
-        console.log("Received JSON:", jsonString);
+        console.log("🔄 saveMultipleFilesToFolders called, parsing JSON...");
         const files = JSON.parse(jsonString);
+        console.log("📦 Total files to write:", files.length);
+
         const rootHandle = await getProjectDirectory();
 
         for (const { folderPath, fileName, textContent } of files) {
-          const parts = folderPath.replace(/\\/g, '/').split('/');
+          const parts = folderPath.replace(/\\/g, '/').split('/').filter(Boolean);
           let curr = rootHandle;
           for (const p of parts) {
             curr = await curr.getDirectoryHandle(p, { create: true });
           }
           const fh = await curr.getFileHandle(fileName, { create: true });
-          const w  = await fh.createWritable();
+          const w = await fh.createWritable();
           await w.write(textContent);
           await w.close();
-          console.log(`Saved ${folderPath}/${fileName}`);
+          console.log(`✅ Saved: ${folderPath}/${fileName}`);
         }
 
-        alert("All files saved successfully!");
+        alert(`✅ ${files.length} files saved successfully!`);
       } catch (err) {
-        console.error("Save error:", err);
-        alert(`Error: ${err.name} — ${err.message}`);
+        console.error("❌ Save error:", err);
+        // User cancelled directory picker — don't show error alert
+        if (err.name !== 'AbortError') {
+          alert(`Error saving files:\n${err.name}: ${err.message}`);
+        }
       } finally {
         hideLoader();
       }
     };
 
-    // ── One-time async initialization (runs in background, never blocks Dart) ──
+    // ─── On first-ever load, clear stale handles ──────────────────────────────
     (async () => {
       if (!localStorage.getItem('didInitHandles')) {
-        console.log('Clearing old directory-handle history');
+        console.log('🗑️ Clearing old directory-handle history');
         await clearHandlesStore();
         localStorage.setItem('didInitHandles', 'true');
       }
     })();
+
+    // ─── Optional folder picker helper ───────────────────────────────────────
+    window.pickFolderName = async function () {
+      if ('showDirectoryPicker' in window) {
+        const dirHandle = await window.showDirectoryPicker();
+        return dirHandle.name;
+      } else {
+        throw "showDirectoryPicker not supported";
+      }
+    };
   </script>
 
-  <!-- If you have additional JS functions, include them here -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="js_functions.js"></script>
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="flutter_bootstrap.js?v=1.0.02" async></script>
 </body>
 
 </html>

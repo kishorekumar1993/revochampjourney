@@ -1617,7 +1617,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                     Icon(Icons.lock_outline_rounded, size: 10, color: RevoTheme.success),
                                     const SizedBox(width: 4),
                                     Text(
-                                      "revochamp.com/run/journey",
+                                      "revojourneytryone.com/run/journey",
                                       style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withOpacity(0.7)),
                                     ),
                                   ],

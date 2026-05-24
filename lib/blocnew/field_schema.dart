@@ -486,7 +486,7 @@ bool isIso8601(String s) {
 
 // // lib/bloc/generators/field_schema.dart
 // //
-// // Unified + enhanced FieldSchema parser for Revochamp.
+// // Unified + enhanced FieldSchema parser for revojourneytryone.
 // // Combines features from both implementations.
 // //
 // // Features:
@@ -1187,7 +1187,7 @@ bool isIso8601(String s) {
 // }
 // // // lib/bloc/generators/field_schema.dart
 // // //
-// // // Parses the raw field JSON array (from Revochamp UI) into strongly-typed
+// // // Parses the raw field JSON array (from revojourneytryone UI) into strongly-typed
 // // // FieldSchema objects consumed by every generator.
 // // // v2: Added staticString type, fileUpload dartType, apiHeaders support,
 // // //     multi-API support, staticStringValues for radio/dropdown without data.

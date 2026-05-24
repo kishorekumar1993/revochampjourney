@@ -444,7 +444,7 @@ class RevoUsersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final users = [
-      {'name': 'Admin User', 'email': 'admin@revochamp.com', 'role': 'Super Admin', 'status': 'Active'},
+      {'name': 'Admin User', 'email': 'admin@revojourneytryone.com', 'role': 'Super Admin', 'status': 'Active'},
       {'name': 'Sarah Kerigan', 'email': 'sarah.k@revo.com', 'role': 'Journey Editor', 'status': 'Active'},
       {'name': 'Alice Smith', 'email': 'alice.s@revo.com', 'role': 'Designer', 'status': 'Invited'},
     ];
@@ -598,7 +598,7 @@ class _RevoSettingsScreenState extends State<RevoSettingsScreen> {
               children: [
                 Text("General Settings", style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _buildTextField("Workspace Domain Name", "revochamp-admin-prod"),
+                _buildTextField("Workspace Domain Name", "revojourneytryone-admin-prod"),
                 const SizedBox(height: 16),
                 _buildSwitchRow("Automatic Step Auto-Save", _autosave, (val) => setState(() => _autosave = val)),
                 const SizedBox(height: 8),
@@ -674,7 +674,7 @@ class RevoApiHubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connectors = [
-      {'name': 'Get Vehicle Manufacturers', 'method': 'GET', 'url': 'https://api.revochamp.com/v1/vehicles', 'status': 'Connected'},
+      {'name': 'Get Vehicle Manufacturers', 'method': 'GET', 'url': 'https://api.revojourneytryone.com/v1/vehicles', 'status': 'Connected'},
       {'name': 'Verify PAN Card Number', 'method': 'POST', 'url': 'https://api.kycprovider.org/v1/pan-verify', 'status': 'Connected'},
       {'name': 'Calculate Policy Premium', 'method': 'POST', 'url': 'https://api.insuranceengine.net/premium', 'status': 'Testing'},
       {'name': 'Payment Processing Webhook', 'method': 'POST', 'url': 'https://api.stripe.com/v3/charges', 'status': 'Disconnected'},
@@ -814,9 +814,9 @@ class RevoAuditLogsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final logs = [
-      {'user': 'admin@revochamp.com', 'action': 'Published Motor Insurance v1.0.0', 'ip': '192.168.1.12', 'time': '10 mins ago'},
+      {'user': 'admin@revojourneytryone.com', 'action': 'Published Motor Insurance v1.0.0', 'ip': '192.168.1.12', 'time': '10 mins ago'},
       {'user': 'sarah.k@revo.com', 'action': 'Created step: Nominee Details', 'ip': '192.168.1.48', 'time': '2 hours ago'},
-      {'user': 'admin@revochamp.com', 'action': 'Imported template ' 'User KYC Onboarding', 'ip': '192.168.1.12', 'time': '1 day ago'},
+      {'user': 'admin@revojourneytryone.com', 'action': 'Imported template ' 'User KYC Onboarding', 'ip': '192.168.1.12', 'time': '1 day ago'},
     ];
 
     return Scaffold(

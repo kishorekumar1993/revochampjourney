@@ -8,7 +8,7 @@
 PRODUCT_NAME = revojourneytryone
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.revochamp.revojourneytryone
+PRODUCT_BUNDLE_IDENTIFIER = com.revojourneytryone.revojourneytryone
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.revochamp. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.revojourneytryone. All rights reserved.

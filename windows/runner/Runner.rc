@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.revochamp" "\0"
+            VALUE "CompanyName", "com.revojourneytryone" "\0"
             VALUE "FileDescription", "revojourneytryone" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "revojourneytryone" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.revochamp. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.revojourneytryone. All rights reserved." "\0"
             VALUE "OriginalFilename", "revojourneytryone.exe" "\0"
             VALUE "ProductName", "revojourneytryone" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

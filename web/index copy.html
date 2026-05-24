@@ -1,0 +1,160 @@
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="revojourneytryone">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>revojourneytryone</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+
+<body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+
+  <!-- IndexedDB + file-system helpers — defined synchronously so Dart can call
+       saveMultipleFilesToFolders the instant Flutter finishes booting. -->
+  <script>
+    // ── IndexedDB helpers ──────────────────────────────────────────────────────
+    function openHandlesDB() {
+      return new Promise((res, rej) => {
+        const rq = indexedDB.open('file-handles-db', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('handles');
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror  = () => rej(rq.error);
+      });
+    }
+
+    function showLoader() {
+      const ov = document.getElementById('loader-overlay');
+      if (ov) ov.style.display = 'flex';
+    }
+    function hideLoader() {
+      const ov = document.getElementById('loader-overlay');
+      if (ov) ov.style.display = 'none';
+    }
+
+    async function clearHandlesStore() {
+      const db = await openHandlesDB();
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').clear();
+      return new Promise((res, rej) => {
+        tx.oncomplete = () => res();
+        tx.onerror    = () => rej(tx.error);
+      });
+    }
+    window.clearHandlesStore = clearHandlesStore;
+
+    async function saveHandle(name, handle) {
+      const db = await openHandlesDB();
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, name);
+      return new Promise((res, rej) => {
+        tx.oncomplete = () => res();
+        tx.onerror    = () => rej(tx.error);
+      });
+    }
+
+    async function getSavedHandle(name) {
+      const db = await openHandlesDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('handles', 'readonly');
+        const rq = tx.objectStore('handles').get(name);
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror   = () => rej(rq.error);
+      });
+    }
+
+    async function getProjectDirectory() {
+      let dirHandle = await getSavedHandle('project-root');
+      if (dirHandle) {
+        let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') return dirHandle;
+        if (perm === 'prompt') {
+          perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+          if (perm === 'granted') return dirHandle;
+        }
+      }
+      dirHandle = await window.showDirectoryPicker();
+      await saveHandle('project-root', dirHandle);
+      return dirHandle;
+    }
+
+    // ── Main entry-point called by Dart (available SYNCHRONOUSLY) ─────────────
+    window.saveMultipleFilesToFolders = async function saveMultipleFilesToFolders(jsonString) {
+      showLoader();
+      try {
+        console.log("Received JSON:", jsonString);
+        const files = JSON.parse(jsonString);
+        const rootHandle = await getProjectDirectory();
+
+        for (const { folderPath, fileName, textContent } of files) {
+          const parts = folderPath.replace(/\\/g, '/').split('/');
+          let curr = rootHandle;
+          for (const p of parts) {
+            curr = await curr.getDirectoryHandle(p, { create: true });
+          }
+          const fh = await curr.getFileHandle(fileName, { create: true });
+          const w  = await fh.createWritable();
+          await w.write(textContent);
+          await w.close();
+          console.log(`Saved ${folderPath}/${fileName}`);
+        }
+
+        alert("All files saved successfully!");
+      } catch (err) {
+        console.error("Save error:", err);
+        alert(`Error: ${err.name} — ${err.message}`);
+      } finally {
+        hideLoader();
+      }
+    };
+
+    // ── One-time async initialization (runs in background, never blocks Dart) ──
+    (async () => {
+      if (!localStorage.getItem('didInitHandles')) {
+        console.log('Clearing old directory-handle history');
+        await clearHandlesStore();
+        localStorage.setItem('didInitHandles', 'true');
+      }
+    })();
+  </script>
+
+  <!-- If you have additional JS functions, include them here -->
+  <script src="js_functions.js"></script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html> -->

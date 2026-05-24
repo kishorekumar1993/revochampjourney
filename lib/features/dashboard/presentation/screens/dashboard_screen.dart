@@ -120,26 +120,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
-    final activeStepId = ref.read(activeStepIdProvider);
-    final activeStepIndex =
-        journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
 
-    if (activeStepIndex == -1) {
+// void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
+//     final activeStepId = ref.read(activeStepIdProvider);
+//     final activeStepIndex =
+//         journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
+
+//     if (activeStepIndex == -1) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text("Please select a step to generate BLoC code!"),
+//           backgroundColor: Colors.redAccent,
+//         ),
+//       );
+//       return;
+//     }
+
+//     final step = journeyConfig.steps[activeStepIndex];
+//     if (step.fields.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text("The current step has no fields to generate code for!"),
+//           backgroundColor: Colors.redAccent,
+//         ),
+//       );
+//       return;
+//     }
+
+//     try {
+//       // ✅ JSON round-trip: converts all JSArray/JSObject → plain Dart List/Map
+//       // This is the ONLY safe way to sanitize Flutter Web interop types
+//       final fieldsJson = jsonEncode(
+//         step.fields.map((f) => f.toJson()).toList(),
+//       );
+
+//       final rawFields = (jsonDecode(fieldsJson) as List<dynamic>)
+//           .map((e) => Map<String, dynamic>.from(e as Map))
+//           .toList();
+
+//       final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+//       final screenName = cleanName.isNotEmpty
+//           ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
+//           : 'Step';
+
+//       final fileDataArray = generateFileDataArray(
+//         screenName: screenName,
+//         modelName: 'Form',
+//         fieldJsonRaw: rawFields,
+//       );
+
+//       // ✅ FIXED: No hasProperty check — function is always defined at page load
+//       // ✅ jsonEncode converts fileDataArray to a plain JSON string for JS interop
+//       final jsonString = jsonEncode(fileDataArray);
+//       js.context.callMethod('saveMultipleFilesToFolders', [jsonString]);
+
+//     } catch (e, stack) {
+//       debugPrint("BLoC generation error: $e\n$stack");
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text("Generation error: $e"),
+//           backgroundColor: Colors.redAccent,
+//         ),
+//       );
+//     }
+//   }
+/*
+void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
+    if (journeyConfig.steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please select a step to generate BLoC code!"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    final step = journeyConfig.steps[activeStepIndex];
-    if (step.fields.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("The current step has no fields to generate code for!"),
+          content: Text("No steps found in this journey!"),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -147,29 +197,101 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     try {
-      // Deep JSON round-trip converts all JSArray/JSObject (Flutter Web interop
-      // types) into plain Dart List/Map so downstream generators never see a
-      // 'List<dynamic> is not a subtype of List<Map<String,dynamic>>' crash.
-      final fieldsJson = jsonEncode(
-        step.fields.map((f) => f.toJson()).toList(),
-      );
-      final rawFields = (jsonDecode(fieldsJson) as List<dynamic>)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      // ✅ Journey-level namespace from journeyName
+      // "Motor Insurance Journey" → "motorInsurance"
+      final rawJourneyName = (journeyConfig.journeyName as String? ?? 'journey');
+      final journeyNamespace = _toJourneyNamespace(rawJourneyName);
 
-      final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-      final screenName = cleanName.isNotEmpty
-          ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
-          : 'Step';
+      debugPrint("🚀 Generating BLoC for journey: $journeyNamespace");
 
-      final fileDataArray = generateFileDataArray(
-        screenName: screenName,
-        modelName: 'Form',
-        fieldJsonRaw: rawFields,
-      );
+      final List<Map<String, String>> allFiles = [];
 
-      downloadGeneratedFiles(fileDataArray, context);
-    } catch (e) {
+      // ✅ Shared core files — generate from FIRST valid step only (avoid duplicates)
+      bool coreFilesAdded = false;
+
+      for (final step in journeyConfig.steps) {
+        if (step.fields.isEmpty) {
+          debugPrint("⚠️ Skipping step '${step.id}' — no fields");
+          continue;
+        }
+
+        // JSON round-trip: JSArray → plain Dart List/Map
+        final fieldsJson = jsonEncode(
+          step.fields.map((f) => f.toJson()).toList(),
+        );
+        final rawFields = (jsonDecode(fieldsJson) as List<dynamic>)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+
+        final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+        final screenName = cleanName.isNotEmpty
+            ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
+            : 'Step';
+
+        debugPrint("  ✅ Step: $screenName (${rawFields.length} fields)");
+
+        final fileDataArray = generateFileDataArray(
+          screenName: screenName,
+          modelName: 'Form',
+          fieldJsonRaw: rawFields,
+        );
+
+        for (final file in fileDataArray) {
+          final originalFolder = file['folderPath'] ?? '';
+          final fileName       = file['fileName']   ?? '';
+          final textContent    = file['textContent'] ?? '';
+
+          // ── Core shared files (runtime, network, widgets, DI, main)
+          // Keep their path as-is — shared across all journeys
+          final isSharedFile = originalFolder.startsWith('lib/bloc/core') ||
+              originalFolder == 'lib/bloc' ||
+              originalFolder.startsWith('test/');
+
+          if (isSharedFile) {
+            // Only add core files once (from first step)
+            if (!coreFilesAdded) {
+              allFiles.add({
+                'folderPath':  originalFolder,
+                'fileName':    fileName,
+                'textContent': textContent,
+              });
+            }
+          } else {
+            // ── Feature files: inject journey namespace
+            // Original: lib/bloc/features/personal/domain/...
+            // Fixed:    lib/bloc/features/motorInsurance/personal/domain/...
+            final newFolder = originalFolder.replaceFirst(
+              'lib/bloc/features/',
+              'lib/bloc/features/$journeyNamespace/',
+            );
+            allFiles.add({
+              'folderPath':  newFolder,
+              'fileName':    fileName,
+              'textContent': textContent,
+            });
+          }
+        }
+
+        coreFilesAdded = true; // after first step, skip core duplicates
+      }
+
+      if (allFiles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No fields found in any step!"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      debugPrint("📦 Total files: ${allFiles.length} → saving to lib/bloc/features/$journeyNamespace/");
+
+      // Write files directly via File System Access API (no JS bridge needed)
+      downloadGeneratedFiles(allFiles, context);
+
+    } catch (e, stack) {
+      debugPrint("BLoC generation error: $e\n$stack");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Generation error: $e"),
@@ -177,6 +299,78 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       );
     }
+  }
+*/
+
+void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
+    // ── Validate ───────────────────────────────────────────────────────────
+    if (journeyConfig.steps == null || journeyConfig.steps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No steps found in this journey!"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // ✅ Single call — generates BLoC + GetX + Riverpod for ALL steps
+      // All JSArray → Dart conversion, journey namespace, core dedup,
+      // and JS file save happen inside generateAndSaveAllFiles()
+      generateAndSaveAllFiles(
+        journeyConfig: journeyConfig,
+        architectures: const {
+          Architecture.bloc,
+          Architecture.getx,
+          Architecture.riverpod,
+        },
+      );
+
+      // ✅ Show success snackbar after JS call is dispatched
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("✅ Code generation started — select your project folder!"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint("Generation error: $e\n$stack");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Generation error: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+  /// "Motor Insurance Journey" → "motorInsurance"
+  /// "Health Insurance"       → "healthInsurance"
+  /// "my_journey"             → "myJourney"
+  String _toJourneyNamespace(String name) {
+    // Remove common suffixes
+    final cleaned = name
+        .replaceAll(RegExp(r'\bjourney\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\s_\-]'), '')
+        .trim();
+
+    if (cleaned.isEmpty) return 'journey';
+
+    // Split on spaces, underscores, hyphens
+    final parts = cleaned
+        .split(RegExp(r'[\s_\-]+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) return 'journey';
+
+    // camelCase: first word lowercase, rest capitalized
+    return parts.first.toLowerCase() +
+        parts
+            .skip(1)
+            .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
+            .join();
   }
 
   @override
