@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:js' as js;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:revojourneytryone/blocnew/download.dart';
@@ -120,6 +118,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ],
       ),
     );
+  }
+
+  void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
+    final activeStepId = ref.read(activeStepIdProvider);
+    final activeStepIndex =
+        journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
+
+    if (activeStepIndex == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a step to generate BLoC code!"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final step = journeyConfig.steps[activeStepIndex];
+    if (step.fields.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("The current step has no fields to generate code for!"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Deep JSON round-trip converts all JSArray/JSObject (Flutter Web interop
+      // types) into plain Dart List/Map so downstream generators never see a
+      // 'List<dynamic> is not a subtype of List<Map<String,dynamic>>' crash.
+      final fieldsJson = jsonEncode(
+        step.fields.map((f) => f.toJson()).toList(),
+      );
+      final rawFields = (jsonDecode(fieldsJson) as List<dynamic>)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+
+      final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      final screenName = cleanName.isNotEmpty
+          ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
+          : 'Step';
+
+      final fileDataArray = generateFileDataArray(
+        screenName: screenName,
+        modelName: 'Form',
+        fieldJsonRaw: rawFields,
+      );
+
+      downloadGeneratedFiles(fileDataArray, context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Generation error: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -425,50 +482,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Tooltip(
                       message: "Generate BLoC Code",
                       child: OutlinedButton(
-                        onPressed: () {
-                          print("K7");
-                          // final activeStepId = ref.read(activeStepIdProvider);
-                          // final activeStepIndex = journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
-                          // if (activeStepIndex == -1) {
-                          //   ScaffoldMessenger.of(context).showSnackBar(
-                          //     const SnackBar(content: Text("Please select a step to generate BLoC code!"), backgroundColor: Colors.redAccent),
-                          //   );
-                          //   return;
-                          // }
-                          // final step = journeyConfig.steps[activeStepIndex];
-                          // if (step.fields.isEmpty) {
-                          //   ScaffoldMessenger.of(context).showSnackBar(
-                          //     const SnackBar(content: Text("The current step has no fields to generate code for!"), backgroundColor: Colors.redAccent),
-                          //   );
-                          //   return;
-                          // }
-                          // try {
-                          //   final rawFields = step.fields.map((f) => f.toJson()).toList();
-                          //   final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-                          //   final screenName = cleanName.isNotEmpty 
-                          //       ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
-                          //       : 'Step';
-
-                          //   final fileDataArray = generateFileDataArray(
-                          //     screenName: screenName,
-                          //     modelName: 'Form',
-                          //     fieldJsonRaw: rawFields,
-                          //   );
-
-                          //   final jsonPayload = jsonEncode(fileDataArray);
-                          //   if (kIsWeb) {
-                          //     js.context.callMethod('saveMultipleFilesToFolders', [jsonPayload]);
-                          //   } else {
-                          //     ScaffoldMessenger.of(context).showSnackBar(
-                          //       const SnackBar(content: Text("BLoC Code generated! (Only Web platform supports direct download)")),
-                          //     );
-                          //   }
-                          // } catch (e) {
-                          //   ScaffoldMessenger.of(context).showSnackBar(
-                          //     SnackBar(content: Text("Generation error: $e"), backgroundColor: Colors.redAccent),
-                          //   );
-                          // }
-                        },
+                        onPressed: () => _generateBlocCode(context, journeyConfig),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(12),
                           minimumSize: Size.zero,
@@ -511,130 +525,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-  onPressed: () {
-    final activeStepId = ref.read(activeStepIdProvider);
-    final activeStepIndex = journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
-    if (activeStepIndex == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a step to generate BLoC code!"), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-    final step = journeyConfig.steps[activeStepIndex];
-    if (step.fields.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("The current step has no fields to generate code for!"), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-    try {
-      // ✅ Fix: cast each map to ensure List<Map<String, dynamic>>
-      final rawFields = step.fields
-          .map((f) => Map<String, dynamic>.from(f.toJson()))
-          .toList();
-      final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-      final screenName = cleanName.isNotEmpty
-          ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
-          : 'Step';
-
-      final fileDataArray = generateFileDataArray(
-        screenName: screenName,
-        modelName: 'Form',
-        fieldJsonRaw: rawFields,
-      );
-      downloadGeneratedFiles(fileDataArray,context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Generation error: $e"), backgroundColor: Colors.redAccent),
-      );
-    }
-  },
-  icon: const Icon(Icons.code_rounded, size: 16),
-  label: const Text("Generate BLoC ss"),
-  style: OutlinedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-  ),
-),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                     print("kISHORE");
-                        final activeStepId = ref.read(activeStepIdProvider);
-                        final activeStepIndex = journeyConfig.steps.indexWhere((s) => s.id == activeStepId);
-                        if (activeStepIndex == -1) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Please select a step to generate BLoC code!"), backgroundColor: Colors.redAccent),
-                          );
-                          return;
-                        }
-                        final step = journeyConfig.steps[activeStepIndex];
-                        if (step.fields.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("The current step has no fields to generate code for!"), backgroundColor: Colors.redAccent),
-                          );
-                          return;
-                        }
-                        print("activeStepId");
-                        print(activeStepId);
-                        print(activeStepIndex);
-                        print("activeStepId");
-
-  print("kISHORE");
-                   
-                        try {
- final rawFields = step.fields
-    .map((f) => Map<String, dynamic>.from(f.toJson()))
-    .toList();
-                             final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-                          final screenName = cleanName.isNotEmpty 
-                              ? '${cleanName[0].toUpperCase()}${cleanName.substring(1)}'
-                              : 'Step';
-
-                        print("activeStepId");
-                        print(rawFields);
-                        print(cleanName);
-                        print(screenName);
-                        print("activeStepId");
-
-  print("kISHORE");
-                   
-
-                          final fileDataArray = generateFileDataArray(
-                            screenName: screenName,
-                            modelName: 'Form',
-                            fieldJsonRaw: rawFields,
-                          );
-
-                          final jsonPayload = jsonEncode(fileDataArray);
-                          if (kIsWeb) {
-                            js.context.callMethod('saveMultipleFilesToFolders', [jsonPayload]);
-                          } else {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: RevoTheme.cardBg,
-                                title: Text("Generated BLoC ($screenName)"),
-                                content: SizedBox(
-                                  width: 500,
-                                  height: 100,
-                                  child: Center(
-                                    child: Text("Generated ${fileDataArray.length} files successfully! Only web platform supports direct directory save."),
-                                  ),
-                                ),
-                                actions: [
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text("Close"),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Generation error: $e"), backgroundColor: Colors.redAccent),
-                          );
-                        }
-                      },
+                      onPressed: () => _generateBlocCode(context, journeyConfig),
                       icon: const Icon(Icons.code_rounded, size: 16),
                       label: const Text("Generate BLoC"),
                       style: OutlinedButton.styleFrom(

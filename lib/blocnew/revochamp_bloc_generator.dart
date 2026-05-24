@@ -13,6 +13,8 @@
 // ║  7. AppException hierarchy (ServerException, NetworkException, etc.)    ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
+import 'dart:convert';
+
 import 'package:revojourneytryone/blocnew/api_client_generator.dart';
 import 'package:revojourneytryone/blocnew/barrel_generator.dart';
 import 'package:revojourneytryone/blocnew/bloc_generator.dart';
@@ -286,15 +288,18 @@ List<Map<String, String>> generateFileDataArray({
   bool generateTests   = true,
   bool generateBarrels = true,
 }) {
-  // ✅ ADD THIS LINE
-  final safeFields = fieldJsonRaw
-      .map((e) => Map<String, dynamic>.from(e))
+  // Deep-clone via JSON round-trip so any JSArray/JSObject remnants from
+  // Flutter Web interop are converted to plain Dart List/Map before the
+  // generators run.
+  final roundTripped = jsonDecode(jsonEncode(fieldJsonRaw)) as List<dynamic>;
+  final safeFields = roundTripped
+      .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();
 
   final files = RevochampBlocGenerator(
     screenName:      screenName,
     modelName:       modelName,
-    fieldJsonRaw:    safeFields,  // ✅ CHANGED from fieldJsonRaw to safeFields
+    fieldJsonRaw:    safeFields,
     generateTests:   generateTests,
     generateBarrels: generateBarrels,
   ).generate();
