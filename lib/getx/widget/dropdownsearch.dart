@@ -413,7 +413,7 @@ buffer.writeln("	                            ),	");
 buffer.writeln("	                            tileColor: isSelected	");
 buffer.writeln("	                                ? Theme.of(context)	");
 buffer.writeln("	                                    .primaryColor	");
-buffer.writeln("	                                    .withOpacity(0.1)	");
+buffer.writeln("	                                    .withValues(alpha:0.1)	");
 buffer.writeln("	                                : null,	");
 buffer.writeln("	                            onTap: () => Navigator.pop(context, item),	");
 buffer.writeln("	                          ),	");

@@ -104,7 +104,7 @@ class RevoJourneysScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: RevoTheme.primary.withOpacity(0.12),
+                                  color: RevoTheme.primary.withValues(alpha:0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -168,13 +168,13 @@ class RevoJourneysScreen extends ConsumerWidget {
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: isDefault 
-                                          ? RevoTheme.success.withOpacity(0.15) 
-                                          : RevoTheme.primaryLight.withOpacity(0.15),
+                                          ? RevoTheme.success.withValues(alpha: 0.15) 
+                                          : RevoTheme.primaryLight.withValues(alpha:0.15),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: isDefault 
-                                            ? RevoTheme.success.withOpacity(0.4) 
-                                            : RevoTheme.primaryLight.withOpacity(0.4),
+                                            ? RevoTheme.success.withValues(alpha:0.4) 
+                                            : RevoTheme.primaryLight.withValues(alpha:0.4),
                                       ),
                                     ),
                                     child: Text(
@@ -260,7 +260,7 @@ class RevoJourneysScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha:0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(s['icon'] as IconData, color: color, size: 20),

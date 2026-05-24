@@ -105,7 +105,7 @@ class AppTextField extends StatelessWidget {
           focusedErrorBorder: _border(focused: true, error: true),
           filled:      true,
           fillColor: readOnly
-              ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(.4)
+              ? Theme.of(context).colorScheme.surfaceVariant.withValues(alpha:.4)
               : Theme.of(context).colorScheme.surface,
         ),
       ),

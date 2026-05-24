@@ -338,9 +338,7 @@ dropdowndata: json['dropdowndata'] is List
       apiUrl: apiUrl,
       
       useStaticOptions: useStaticOptions,
-      staticOptions: staticOptions != null
-          ? staticOptions!.map((item) => Map<String, String>.from(item)).toList()
-          : null,
+      staticOptions: staticOptions?.map((item) => Map<String, String>.from(item)).toList(),
       fieldtype: fieldtype,
       hintText: hintText,
       maxLength: maxLength,

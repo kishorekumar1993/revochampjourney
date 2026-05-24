@@ -123,9 +123,9 @@ class RevoTemplatesScreen extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
+                                color: color.withValues(alpha:0.15),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: color.withOpacity(0.4)),
+                                border: Border.all(color: color.withValues(alpha:0.4)),
                               ),
                               child: Icon(
                                 t['icon'] as IconData,
@@ -136,9 +136,9 @@ class RevoTemplatesScreen extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
+                                color: color.withValues(alpha:0.15),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: color.withOpacity(0.4)),
+                                border: Border.all(color: color.withValues(alpha:0.4)),
                               ),
                               child: Text(
                                 t['badge'] as String,

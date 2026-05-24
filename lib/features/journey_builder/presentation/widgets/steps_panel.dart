@@ -380,10 +380,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                   key: ValueKey(step.id),
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isSelected ? RevoTheme.primary.withOpacity(0.15) : Colors.transparent,
+                    color: isSelected ? RevoTheme.primary.withValues(alpha:0.15) : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? RevoTheme.primary.withOpacity(0.4) : Colors.transparent,
+                      color: isSelected ? RevoTheme.primary.withValues(alpha:0.4) : Colors.transparent,
                       width: 1,
                     ),
                   ),
@@ -700,7 +700,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.terminal_rounded, size: 36, color: RevoTheme.textSecondary.withOpacity(0.3)),
+                            Icon(Icons.terminal_rounded, size: 36, color: RevoTheme.textSecondary.withValues(alpha:0.3)),
                             const SizedBox(height: 12),
                             Text(
                               "Click button above to compile and run build checks.",
@@ -718,10 +718,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: buildErrors.isEmpty ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                color: buildErrors.isEmpty ? Colors.green.withValues(alpha:0.1) : Colors.red.withValues(alpha:0.1),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: buildErrors.isEmpty ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                                  color: buildErrors.isEmpty ? Colors.green.withValues(alpha:0.3) : Colors.red.withValues(alpha:0.3),
                                 ),
                               ),
                               child: Row(
@@ -772,7 +772,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
 
                             if (buildErrors.isEmpty && buildWarnings.isEmpty) ...[
                               const SizedBox(height: 40),
-                              Icon(Icons.done_all_rounded, size: 48, color: RevoTheme.success.withOpacity(0.5)),
+                              Icon(Icons.done_all_rounded, size: 48, color: RevoTheme.success.withValues(alpha:0.5)),
                               const SizedBox(height: 12),
                               Text(
                                 "Excellent! All structural logic is verified and compiled cleanly.",
@@ -794,9 +794,9 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha:0.06),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha:0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1064,7 +1064,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.history_toggle_off_rounded, size: 36, color: RevoTheme.textSecondary.withOpacity(0.3)),
+                        Icon(Icons.history_toggle_off_rounded, size: 36, color: RevoTheme.textSecondary.withValues(alpha:0.3)),
                         const SizedBox(height: 12),
                         Text(
                           "No past edits recorded yet.\nMake changes to log history checkpoints.",
@@ -1095,7 +1095,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isCurrent ? RevoTheme.primary.withOpacity(0.1) : RevoTheme.cardBg,
+                            color: isCurrent ? RevoTheme.primary.withValues(alpha:0.1) : RevoTheme.cardBg,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isCurrent ? RevoTheme.primary : RevoTheme.cardBorder,
@@ -1119,7 +1119,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                                        color: isCurrent ? RevoTheme.textPrimary : RevoTheme.textPrimary.withOpacity(0.8),
+                                        color: isCurrent ? RevoTheme.textPrimary : RevoTheme.textPrimary.withValues(alpha:0.8),
                                       ),
                                     ),
                                     const SizedBox(height: 2),

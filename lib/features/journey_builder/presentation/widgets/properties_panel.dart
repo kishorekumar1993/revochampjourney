@@ -195,7 +195,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                           color: RevoTheme.background,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: _isValidJson ? RevoTheme.cardBorder : Colors.redAccent.withOpacity(0.5),
+                            color: _isValidJson ? RevoTheme.cardBorder : Colors.redAccent.withValues(alpha:0.5),
                           ),
                         ),
                         padding: const EdgeInsets.all(12),
@@ -254,8 +254,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: _isValidJson 
-                                        ? RevoTheme.secondary.withOpacity(0.15) 
-                                        : Colors.redAccent.withOpacity(0.15),
+                                        ? RevoTheme.secondary.withValues(alpha:0.15) 
+                                        : Colors.redAccent.withValues(alpha:0.15),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -312,7 +312,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.edit_note_rounded, size: 36, color: RevoTheme.textSecondary.withOpacity(0.5)),
+                          Icon(Icons.edit_note_rounded, size: 36, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
                           const SizedBox(height: 12),
                           Text(
                             "Select a component from the canvas grid to start customizing its properties.",
@@ -360,9 +360,9 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: RevoTheme.primary.withOpacity(0.2),
+                                  color: RevoTheme.primary.withValues(alpha:0.2),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: RevoTheme.primaryLight.withOpacity(0.4)),
+                                  border: Border.all(color: RevoTheme.primaryLight.withValues(alpha:0.4)),
                                 ),
                                 child: Text(
                                   selectedField.type.toUpperCase(),
@@ -880,7 +880,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: RevoTheme.cardBg,
                                           foregroundColor: RevoTheme.textPrimary,
-                                          side: BorderSide(color: RevoTheme.primaryLight.withOpacity(0.5)),
+                                          side: BorderSide(color: RevoTheme.primaryLight.withValues(alpha:0.5)),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                           padding: const EdgeInsets.symmetric(vertical: 12),
                                         ),
@@ -952,13 +952,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       color: _apiTestSuccess 
-                                          ? Colors.greenAccent.withOpacity(0.08) 
-                                          : Colors.redAccent.withOpacity(0.08),
+                                          ? Colors.greenAccent.withValues(alpha:0.08) 
+                                          : Colors.redAccent.withValues(alpha:0.08),
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
                                         color: _apiTestSuccess 
-                                            ? Colors.greenAccent.withOpacity(0.3) 
-                                            : Colors.redAccent.withOpacity(0.3),
+                                            ? Colors.greenAccent.withValues(alpha:0.3) 
+                                            : Colors.redAccent.withValues(alpha:0.3),
                                       ),
                                     ),
                                     child: Text(
@@ -998,7 +998,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         color: RevoTheme.cardBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isExpanded ? accentColor.withOpacity(0.2) : RevoTheme.cardBorder,
+          color: isExpanded ? accentColor.withValues(alpha:0.2) : RevoTheme.cardBorder,
           width: 1,
         ),
       ),
@@ -1103,7 +1103,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             child: FittedBox(
               child: Switch(
                 value: value,
-                activeTrackColor: RevoTheme.primaryLight.withOpacity(0.5),
+                activeTrackColor: RevoTheme.primaryLight.withValues(alpha:0.5),
                 activeColor: RevoTheme.primaryLight,
                 onChanged: onChanged,
               ),
@@ -1137,10 +1137,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: useStatic ? RevoTheme.primary.withOpacity(0.2) : Colors.transparent,
+                  color: useStatic ? RevoTheme.primary.withValues(alpha:0.2) : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: useStatic ? RevoTheme.primaryLight.withOpacity(0.5) : Colors.transparent,
+                    color: useStatic ? RevoTheme.primaryLight.withValues(alpha:0.5) : Colors.transparent,
                   ),
                 ),
                 child: Center(
@@ -1167,10 +1167,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: !useStatic ? RevoTheme.primary.withOpacity(0.2) : Colors.transparent,
+                  color: !useStatic ? RevoTheme.primary.withValues(alpha:0.2) : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: !useStatic ? RevoTheme.primaryLight.withOpacity(0.5) : Colors.transparent,
+                    color: !useStatic ? RevoTheme.primaryLight.withValues(alpha:0.5) : Colors.transparent,
                   ),
                 ),
                 child: Center(
@@ -1312,10 +1312,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? RevoTheme.primary.withOpacity(0.15) : Colors.transparent,
+            color: isSelected ? RevoTheme.primary.withValues(alpha:0.15) : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isSelected ? RevoTheme.primaryLight.withOpacity(0.3) : Colors.transparent,
+              color: isSelected ? RevoTheme.primaryLight.withValues(alpha:0.3) : Colors.transparent,
             ),
           ),
           child: Center(
@@ -1358,7 +1358,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      color: isSelected ? RevoTheme.primary.withOpacity(0.15) : RevoTheme.background,
+                      color: isSelected ? RevoTheme.primary.withValues(alpha:0.15) : RevoTheme.background,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: isSelected ? RevoTheme.primaryLight : RevoTheme.cardBorder,
@@ -1433,9 +1433,9 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           width: double.infinity,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.orangeAccent.withOpacity(0.08),
+            color: Colors.orangeAccent.withValues(alpha:0.08),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.orangeAccent.withOpacity(0.25)),
+            border: Border.all(color: Colors.orangeAccent.withValues(alpha:0.25)),
           ),
           child: Text(
             "Parsed 0 options. Double-check if the Display Key '$displayKey' matches properties in your JSON.",
@@ -1448,9 +1448,9 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         width: double.infinity,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.greenAccent.withOpacity(0.05),
+          color: Colors.greenAccent.withValues(alpha:0.05),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.greenAccent.withOpacity(0.2)),
+          border: Border.all(color: Colors.greenAccent.withValues(alpha:0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1492,9 +1492,9 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         width: double.infinity,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.redAccent.withOpacity(0.08),
+          color: Colors.redAccent.withValues(alpha:0.08),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.redAccent.withOpacity(0.25)),
+          border: Border.all(color: Colors.redAccent.withValues(alpha:0.25)),
         ),
         child: Text(
           "Parsing error: ${e.toString()}",
@@ -1569,7 +1569,7 @@ class _PropertyTextFieldState extends State<_PropertyTextField> {
           maxLines: widget.maxLines,
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary.withOpacity(0.5)),
+            hintStyle: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             filled: true,
             fillColor: RevoTheme.background,

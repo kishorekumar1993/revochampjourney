@@ -365,7 +365,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         final displayOptions = options.isEmpty ? ["Select"] : options;
         final currentVal = values[field.id];
         return DropdownButtonFormField<String>(
-          value: displayOptions.contains(currentVal) ? currentVal : null,
+          initialValue: displayOptions.contains(currentVal) ? currentVal : null,
           decoration: InputDecoration(
             labelText: field.label,
             hintText: field.placeholder ?? field.hintText,

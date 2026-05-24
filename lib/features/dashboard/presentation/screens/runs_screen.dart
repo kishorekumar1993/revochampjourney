@@ -330,7 +330,7 @@ class _RevoRunsScreenState extends State<RevoRunsScreen> {
                                     decoration: BoxDecoration(
                                       color: _getStatusBgColor(run['status']),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: _getStatusTextColor(run['status']).withOpacity(0.4)),
+                                      border: Border.all(color: _getStatusTextColor(run['status']).withValues(alpha:0.4)),
                                     ),
                                     child: Text(
                                       run['status'],
@@ -390,7 +390,7 @@ class _RevoRunsScreenState extends State<RevoRunsScreen> {
 
   Color _getStatusBgColor(String status) {
     final color = _getStatusTextColor(status);
-    return color.withOpacity(0.15);
+    return color.withValues(alpha:0.15);
   }
 
   Color _getStatusTextColor(String status) {
@@ -428,9 +428,9 @@ class _RevoRunsScreenState extends State<RevoRunsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getStatusTextColor(run['status']).withOpacity(0.15),
+                color: _getStatusTextColor(run['status']).withValues(alpha:0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _getStatusTextColor(run['status']).withOpacity(0.4)),
+                border: Border.all(color: _getStatusTextColor(run['status']).withValues(alpha:0.4)),
               ),
               child: Text(
                 run['status'],

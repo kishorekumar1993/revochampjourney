@@ -1,6 +1,5 @@
 import 'dart:convert';
 // import 'package:revojourneytryone/colors.dart';
-import 'package:revojourneytryone/blocnew/revojourneytryone_bloc_generator.dart';
 import 'package:revojourneytryone/getx/binding.dart';
 import 'package:revojourneytryone/getx/controller.dart';
 import 'package:revojourneytryone/getx/getx_temp.dart';

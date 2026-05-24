@@ -362,7 +362,7 @@ buffer.writeln("	              const EdgeInsets.symmetric(horizontal: 16,
 buffer.writeln("	          decoration: BoxDecoration(	");
 buffer.writeln("	            color:	");
 buffer.writeln("	                widget.readOnly	");
-buffer.writeln("	                    ? Theme.of(context).disabledColor.withOpacity(0.1)	");
+buffer.writeln("	                    ? Theme.of(context).disabledColor.withValues(alpha:0.1)	");
 buffer.writeln("	                    : Theme.of(context).colorScheme.surface,	");
 buffer.writeln("	            border: Border.all(	");
 buffer.writeln("	              color:	");
@@ -378,7 +378,7 @@ buffer.writeln("	                    ? [	");
 buffer.writeln("	                      BoxShadow(	");
 buffer.writeln("	                        color: Theme.of(	");
 buffer.writeln("	                          context,	");
-buffer.writeln("	                        ).colorScheme.primary.withOpacity(0.1),	");
+buffer.writeln("	                        ).colorScheme.primary.withValues(alpha:0.1),	");
 buffer.writeln("	                        blurRadius: 4,	");
 buffer.writeln("	                        spreadRadius: 1,	");
 buffer.writeln("	                        offset: const Offset(0, 2),	");

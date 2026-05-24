@@ -607,9 +607,9 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: _showStepsPanel ? RevoTheme.primary.withOpacity(0.5) : RevoTheme.cardBorder,
+                            color: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: _showStepsPanel ? RevoTheme.primary.withOpacity(0.08) : Colors.transparent,
+                          backgroundColor: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -635,9 +635,9 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: _showPropertiesPanel ? RevoTheme.primary.withOpacity(0.5) : RevoTheme.cardBorder,
+                            color: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: _showPropertiesPanel ? RevoTheme.primary.withOpacity(0.08) : Colors.transparent,
+                          backgroundColor: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                     ],

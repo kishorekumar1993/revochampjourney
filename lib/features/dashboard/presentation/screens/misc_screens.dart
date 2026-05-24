@@ -394,9 +394,9 @@ class RevoApprovalsScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isPending ? RevoTheme.warning.withOpacity(0.15) : RevoTheme.success.withOpacity(0.15),
+                                color: isPending ? RevoTheme.warning.withValues(alpha:0.15) : RevoTheme.success.withValues(alpha:0.15),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: isPending ? RevoTheme.warning.withOpacity(0.4) : RevoTheme.success.withOpacity(0.4)),
+                                border: Border.all(color: isPending ? RevoTheme.warning.withValues(alpha:0.4) : RevoTheme.success.withValues(alpha:0.4)),
                               ),
                               child: Text(
                                 app['status']!,
@@ -504,7 +504,7 @@ class RevoUsersScreen extends StatelessWidget {
                     child: Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: RevoTheme.primary.withOpacity(0.12),
+                          backgroundColor: RevoTheme.primary.withValues(alpha:0.12),
                           child: Text(u['name']!.substring(0, 2).toUpperCase(), style: TextStyle(color: RevoTheme.primaryLight)),
                         ),
                         const SizedBox(width: 16),
@@ -526,9 +526,9 @@ class RevoUsersScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isActive ? RevoTheme.success.withOpacity(0.15) : RevoTheme.warning.withOpacity(0.15),
+                            color: isActive ? RevoTheme.success.withValues(alpha:0.15) : RevoTheme.warning.withValues(alpha:0.15),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isActive ? RevoTheme.success.withOpacity(0.4) : RevoTheme.warning.withOpacity(0.4)),
+                            border: Border.all(color: isActive ? RevoTheme.success.withValues(alpha:0.4) : RevoTheme.warning.withValues(alpha:0.4)),
                           ),
                           child: Text(
                             u['status']!,
@@ -739,7 +739,7 @@ class RevoApiHubScreen extends StatelessWidget {
                           width: 54,
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           decoration: BoxDecoration(
-                            color: isGET ? RevoTheme.secondary.withOpacity(0.15) : RevoTheme.accent.withOpacity(0.15),
+                            color: isGET ? RevoTheme.secondary.withValues(alpha:0.15) : RevoTheme.accent.withValues(alpha:0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           alignment: Alignment.center,
@@ -771,9 +771,9 @@ class RevoApiHubScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getConnStatusColor(conn['status']!).withOpacity(0.15),
+                            color: _getConnStatusColor(conn['status']!).withValues(alpha:0.15),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _getConnStatusColor(conn['status']!).withOpacity(0.4)),
+                            border: Border.all(color: _getConnStatusColor(conn['status']!).withValues(alpha:0.4)),
                           ),
                           child: Text(
                             conn['status']!,

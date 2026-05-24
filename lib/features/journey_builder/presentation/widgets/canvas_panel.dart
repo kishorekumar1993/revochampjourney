@@ -141,9 +141,9 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: RevoTheme.secondary.withOpacity(0.1),
+                    color: RevoTheme.secondary.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: RevoTheme.secondary.withOpacity(0.4)),
+                    border: Border.all(color: RevoTheme.secondary.withValues(alpha:0.4)),
                   ),
                   child: Text(
                     "Enabled",
@@ -337,7 +337,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                 width: 100,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: RevoTheme.primary.withOpacity(0.8),
+                  color: RevoTheme.primary.withValues(alpha:0.8),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: RevoTheme.primaryLight),
                 ),
@@ -410,7 +410,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
           final isOver = candidateData.isNotEmpty;
 
           return Container(
-            color: isOver ? RevoTheme.primary.withOpacity(0.08) : RevoTheme.background,
+            color: isOver ? RevoTheme.primary.withValues(alpha:0.08) : RevoTheme.background,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -533,9 +533,9 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                               decoration: BoxDecoration(
-                                                color: RevoTheme.primary.withOpacity(0.15),
+                                                color: RevoTheme.primary.withValues(alpha:0.15),
                                                 borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: RevoTheme.primary.withOpacity(0.3)),
+                                                border: Border.all(color: RevoTheme.primary.withValues(alpha:0.3)),
                                               ),
                                               child: Text(
                                                 field.type.toUpperCase(),
@@ -642,7 +642,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.rule_folder_outlined, size: 48, color: RevoTheme.textSecondary.withOpacity(0.4)),
+                          Icon(Icons.rule_folder_outlined, size: 48, color: RevoTheme.textSecondary.withValues(alpha:0.4)),
                           const SizedBox(height: 12),
                           Text(
                             "No conditional rules defined for this step.",
@@ -837,7 +837,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.gpp_maybe_outlined, size: 48, color: RevoTheme.textSecondary.withOpacity(0.4)),
+                          Icon(Icons.gpp_maybe_outlined, size: 48, color: RevoTheme.textSecondary.withValues(alpha:0.4)),
                           const SizedBox(height: 12),
                           Text(
                             "No custom validations configured for this step.",
@@ -1058,7 +1058,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.api_rounded, size: 48, color: RevoTheme.textSecondary.withOpacity(0.4)),
+                          Icon(Icons.api_rounded, size: 48, color: RevoTheme.textSecondary.withValues(alpha:0.4)),
                           const SizedBox(height: 12),
                           Text(
                             "No background API calls configured for this step.",
@@ -1203,7 +1203,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: RevoTheme.cardBg,
                                       foregroundColor: RevoTheme.textPrimary,
-                                      side: BorderSide(color: RevoTheme.primaryLight.withOpacity(0.4)),
+                                      side: BorderSide(color: RevoTheme.primaryLight.withValues(alpha:0.4)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     ),
@@ -1266,8 +1266,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
                                       color: _stepApiTestSuccess 
-                                          ? RevoTheme.success.withOpacity(0.3) 
-                                          : RevoTheme.error.withOpacity(0.3),
+                                          ? RevoTheme.success.withValues(alpha:0.3) 
+                                          : RevoTheme.error.withValues(alpha:0.3),
                                     ),
                                   ),
                                   child: Text(
@@ -1438,7 +1438,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.flash_on_rounded, size: 48, color: RevoTheme.textSecondary.withOpacity(0.4)),
+                          Icon(Icons.flash_on_rounded, size: 48, color: RevoTheme.textSecondary.withValues(alpha:0.4)),
                           const SizedBox(height: 12),
                           Text(
                             "No step-level actions configured yet.",
@@ -1618,7 +1618,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                     const SizedBox(width: 4),
                                     Text(
                                       "revojourneytryone.com/run/journey",
-                                      style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withOpacity(0.7)),
+                                      style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha:0.7)),
                                     ),
                                   ],
                                 ),
@@ -1975,7 +1975,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: displayOptions.contains(value) ? value : null,
-              hint: Text(field.placeholder ?? field.hintText ?? "Select", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withOpacity(0.5))),
+              hint: Text(field.placeholder ?? field.hintText ?? "Select", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5))),
               isExpanded: true,
               dropdownColor: RevoTheme.cardBg,
               style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary),
@@ -2011,7 +2011,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                   field.apiUrl != null && field.apiUrl!.isNotEmpty 
                       ? "API: ${field.apiUrl}" 
                       : (field.placeholder ?? field.hintText ?? "Select (API Loaded)"),
-                  style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withOpacity(0.5), overflow: TextOverflow.ellipsis),
+                  style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha:0.5), overflow: TextOverflow.ellipsis),
                 ),
               ),
               Icon(Icons.cloud_sync_outlined, size: 12, color: RevoTheme.primaryLight),
@@ -2057,7 +2057,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
               Icon(
                 isChecked ? Icons.check_box : Icons.check_box_outline_blank,
                 size: 14,
-                color: isChecked ? RevoTheme.primaryLight : RevoTheme.textSecondary.withOpacity(0.5),
+                color: isChecked ? RevoTheme.primaryLight : RevoTheme.textSecondary.withValues(alpha:0.5),
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -2115,9 +2115,9 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
               children: [
                 Text(
                   value.isNotEmpty ? value : (field.placeholder ?? "DD/MM/YYYY"),
-                  style: TextStyle(fontSize: 10, color: value.isNotEmpty ? RevoTheme.textPrimary : RevoTheme.textSecondary.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 10, color: value.isNotEmpty ? RevoTheme.textPrimary : RevoTheme.textSecondary.withValues(alpha:0.5)),
                 ),
-                Icon(Icons.calendar_today_rounded, size: 10, color: RevoTheme.textSecondary.withOpacity(0.5)),
+                Icon(Icons.calendar_today_rounded, size: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
               ],
             ),
           ),
@@ -2146,7 +2146,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     hintText: field.placeholder ?? "Enter mobile",
-                    hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withOpacity(0.5)),
+                    hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
                     fillColor: RevoTheme.background,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
@@ -2176,7 +2176,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               hintText: field.placeholder ?? "Enter value",
-              hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withOpacity(0.5)),
+              hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
               fillColor: RevoTheme.background,
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
@@ -2379,7 +2379,7 @@ class _CanvasTextFieldState extends State<_CanvasTextField> {
           maxLines: widget.maxLines,
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary.withOpacity(0.5)),
+            hintStyle: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             filled: true,
             fillColor: RevoTheme.cardBg,

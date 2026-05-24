@@ -94,10 +94,10 @@ class RevoSidebar extends StatelessWidget {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected ? RevoTheme.primary.withOpacity(0.15) : Colors.transparent,
+                          color: isSelected ? RevoTheme.primary.withValues(alpha:0.15) : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                           border: isSelected 
-                              ? Border.all(color: RevoTheme.primary.withOpacity(0.3)) 
+                              ? Border.all(color: RevoTheme.primary.withValues(alpha:0.3)) 
                               : null,
                         ),
                         child: Row(
