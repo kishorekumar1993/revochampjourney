@@ -301,10 +301,10 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
 
   JourneyConfigNotifier(this._ref, JourneyConfig initial) : super(initial);
 
-  // Set configuration from parsed JSON string
   bool updateFromJson(String jsonStr) {
     try {
-      final decoded = json.decode(jsonStr);
+      final rawDecoded = json.decode(jsonStr);
+      final decoded = json.decode(json.encode(rawDecoded)) as Map<String, dynamic>;
       final newConfig = JourneyConfig.fromJson(decoded);
       state = newConfig;
       

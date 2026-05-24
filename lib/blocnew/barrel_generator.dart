@@ -5,7 +5,6 @@
 //   import 'features/user/user_feature.dart';  // exports everything
 
 import 'package:revojourneytryone/blocnew/field_schema.dart';
-import 'package:revojourneytryone/blocnew/field_schema.dart';
 
 
 class BarrelGenerator {

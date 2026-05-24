@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:revojourneytryone/blocnew/download.dart';
+
 import 'package:revojourneytryone/blocnew/revochamp_bloc_generator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -345,33 +345,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
       );
     }
   }
-  /// "Motor Insurance Journey" → "motorInsurance"
-  /// "Health Insurance"       → "healthInsurance"
-  /// "my_journey"             → "myJourney"
-  String _toJourneyNamespace(String name) {
-    // Remove common suffixes
-    final cleaned = name
-        .replaceAll(RegExp(r'\bjourney\b', caseSensitive: false), '')
-        .replaceAll(RegExp(r'[^a-zA-Z0-9\s_\-]'), '')
-        .trim();
 
-    if (cleaned.isEmpty) return 'journey';
-
-    // Split on spaces, underscores, hyphens
-    final parts = cleaned
-        .split(RegExp(r'[\s_\-]+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-
-    if (parts.isEmpty) return 'journey';
-
-    // camelCase: first word lowercase, rest capitalized
-    return parts.first.toLowerCase() +
-        parts
-            .skip(1)
-            .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
-            .join();
-  }
 
   @override
   Widget build(BuildContext context) {
