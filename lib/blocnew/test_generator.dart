@@ -34,7 +34,7 @@ class TestGenerator {
     buf.writeln("import 'package:mocktail/mocktail.dart';");
     buf.writeln("import 'package:dartz/dartz.dart';");
     buf.writeln();
-    buf.writeln("import '../../../../core/runtime/async_state.dart';");
+    buf.writeln("import '../../../../../core/runtime/async_state.dart';");
     buf.writeln("import '../../core/runtime/reactive_value.dart';");
     buf.writeln("import '../../features/$baseName/domain/usecases/${snakeName}_usecases.dart';");
     buf.writeln("import '../../features/$baseName/presentation/bloc/${snakeName}_bloc.dart';");

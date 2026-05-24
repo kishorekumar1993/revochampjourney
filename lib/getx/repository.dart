@@ -43,7 +43,7 @@ String generaterepositoryClass(
   // }
 
   // Import the API service provider.
-  buffer.writeln("import '../../../core/service/api_service.dart';\n");
+  buffer.writeln("import '/core/service/api_service.dart';\n");
 
   // Use a Set to store unique dropdown model names to avoid duplicate imports.
   final dropdownModels = <String>{};

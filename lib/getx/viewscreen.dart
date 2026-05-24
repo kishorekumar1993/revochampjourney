@@ -5,336 +5,549 @@ String generateviewClass(
 ) {
   final buffer = StringBuffer();
 
+  // ─── Conditional imports ───────────────────────────────────────
+  final hasRadio = fields.any((f) =>
+      (f['type'] ?? '').toString().toLowerCase().startsWith('radio'));
+  final hasDropdown = fields.any((f) =>
+      (f['type'] ?? '').toString().toLowerCase() == 'dropdown');
+
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase()}_controller.dart';",
   );
-  buffer.writeln("import '../../../widget/common_text_form.dart';");
-  buffer.writeln("import '../../../widget/common_radiobutton.dart';");
-  buffer.writeln("import '../../../widget/common_dropdown_search.dart';");
+  buffer.writeln("import '/widget/common_text_form.dart';");
+  if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
+  if (hasDropdown)
+    buffer.writeln("import '/widget/common_dropdown_search.dart';");
 
-  final dropdownModels = <String>{}; // ✅ Collect required dropdown model names
-
-  // // ✅ Now write dynamic model imports
-  // for (final model in dropdownModels) {
-  //   buffer.writeln(
-  //     "import '../model/${model.toLowerCase().toString().replaceAll(" ", "_")}_model.dart';",
-  //   );
-  // }
-  void parseField(Map<String, dynamic> field) {
-    final type = field['type'] ?? '';
-    if (type == 'Dropdown') {
-      final staticOpts = field['staticOptions'] as List<dynamic>?;
-      // only add if there are NO staticOptions (i.e. we need a model)
+  // ─── Collect dynamic dropdown model imports ────────────────────
+  final dropdownModels = <String>{};
+  for (final field in fields) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    if (type == 'dropdown') {
+      final staticOpts = (field['options'] as List<dynamic>?) ??
+          (field['staticOptions'] as List<dynamic>?);
       if (staticOpts == null || staticOpts.isEmpty) {
         final label = (field['label'] ?? '').toString().trim();
         dropdownModels.add(label);
       }
-      // dropdownModels.add(label); // ✅ Add model name to set
     }
   }
-
-  // ✅ Preprocess fields to collect model imports
-  for (Map<String, dynamic> item in fields) {
-    parseField(item);
-  }
-
-  // 2️⃣ Now import each model *once*
   for (final model in dropdownModels) {
-    final fileName = model.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
-    buffer.writeln("import '../model/${fileName}_model.dart';");
+    final modelFile = model.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+    buffer.writeln("import '../model/${modelFile}_model.dart';");
   }
 
+  buffer.writeln();
   buffer.writeln("class ${className}View extends StatelessWidget {");
   buffer.writeln("  const ${className}View({super.key});");
-
+  buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  Widget build(BuildContext context) {");
   buffer.writeln("    final controller = Get.find<${className}Controller>();");
-  buffer.writeln("    final _formKey = GlobalKey<FormState>();");
-
+  buffer.writeln("    final formKey = GlobalKey<FormState>();");
+  buffer.writeln();
   buffer.writeln("    return Scaffold(");
-  buffer.writeln("      appBar: AppBar(title: Text('$className Form')),");
-
+  buffer.writeln(
+      "      appBar: AppBar(title: const Text('$className Form')),");
   buffer.writeln("      body: Padding(");
   buffer.writeln("        padding: const EdgeInsets.all(16.0),");
   buffer.writeln("        child: Form(");
-  buffer.writeln("          key: _formKey,");
+  buffer.writeln("          key: formKey,");
   buffer.writeln(
-    "          autovalidateMode: AutovalidateMode.onUserInteraction,",
-  );
+      "          autovalidateMode: AutovalidateMode.onUserInteraction,");
   buffer.writeln("          child: SingleChildScrollView(");
   buffer.writeln("            child: Column(");
-  buffer.writeln("              crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln(
+      "              crossAxisAlignment: CrossAxisAlignment.start,");
   buffer.writeln("              children: [");
 
-  for (var field in fields) {
-    final fieldLabel = (field['label'] ?? 'Field').toString();
-    final fieldName = fieldLabel.replaceAll(RegExp(r'\s+'), '');
-    // final capitalLabel = capitalize(label);
-
-    final controllerName = fieldName[0].toLowerCase() + fieldName.substring(1);
-    final hint = field['hintText'] ?? '';
-    final isRequired = field['required'] == true;
-    final isPassword = field['obscureText'] ?? false;
-    final isReadOnly = field['readOnly'] ?? false;
-    final keyboardType = (field['keyboardType'] ?? 'text');
-    final isNumber = keyboardType == 'number';
-    final textInputAction = (field['textInputAction'] ?? 'done').toLowerCase();
-    final textCapitalization =
-        (field['textCapitalization'] ?? 'none').toLowerCase();
-    final minLength = field['minLength'] ?? 0;
-    final maxLength = field['maxLength'] ?? 0;
-    final pattern = (field['validationPattern'] ?? '').toString().replaceAll(
-      r'\',
-      r'\\',
-    );
-    final errorMessage = field['errorMessage'] ?? 'Invalid format';
-    final type = field['type'];
-
-
-    // // final name = capitalname.replaceAll(RegExp(r'\s+'), '');
-    // final labelnew = (field['label'] ?? '').toString().trim();
-    // // final name = label.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-    // final labelname = labelnew[0].toLowerCase() + labelnew.substring(1);
-    // final name = labelname.replaceAll(RegExp(r'\s+'), '');
-
-    // final capitalLabel = capitalize(name);
-    final rawLabel = (field['label'] ?? '').toString().trim();
+  for (final field in fields) {
+    final rawLabel = (field['label'] ?? 'Field').toString().trim();
     final name = camelCaseName(rawLabel);
     final capitalLabel = pascalCaseName(rawLabel);
+    final type = (field['type'] ?? '').toString().toLowerCase().trim();
+    final hint =
+        (field['placeholder'] ?? field['hintText'] ?? '').toString();
+    final isRequired = field['required'] == true;
+    final isPassword = field['obscureText'] == true;
+    final isReadOnly = field['readOnly'] == true;
+    final rawKeyboard =
+        (field['keyboardType'] ?? 'text').toString().toLowerCase();
+    final keyboardType = _mapKeyboardType(rawKeyboard);
+    final isNumber = rawKeyboard == 'number';
+    final textInputAction =
+        (field['textInputAction'] ?? 'done').toString().toLowerCase();
+    final textCapitalization =
+        (field['textCapitalization'] ?? 'none').toString().toLowerCase();
+    final minLength = (field['minLength'] ?? 0) as int;
+    final maxLength = (field['maxLength'] ?? 0) as int;
+    final pattern = (field['validationPattern'] ?? '')
+        .toString()
+        .replaceAll(r'\', r'\\');
+    final errorMessage =
+        (field['errorMessage'] ?? 'Invalid format').toString();
+    final staticOpts = (field['options'] as List<dynamic>?) ??
+        (field['staticOptions'] as List<dynamic>?);
 
-    if (type == 'TextField') {
+    // ══════════════════════════════════════════════
+    //  text | textfield
+    // ══════════════════════════════════════════════
+    if (type == 'text' || type == 'textfield') {
+      _writeTextFormField(
+        buffer,
+        label: rawLabel,
+        name: name,
+        hint: hint,
+        isRequired: isRequired,
+        isPassword: isPassword,
+        isReadOnly: isReadOnly,
+        keyboardType: keyboardType,
+        isNumber: isNumber,
+        textInputAction: textInputAction,
+        textCapitalization: textCapitalization,
+        minLength: minLength,
+        maxLength: maxLength,
+        pattern: pattern,
+        errorMessage: errorMessage,
+      );
+
+    // ══════════════════════════════════════════════
+    //  phone
+    // ══════════════════════════════════════════════
+    } else if (type == 'phone') {
+      _writeTextFormField(
+        buffer,
+        label: rawLabel,
+        name: name,
+        hint: hint,
+        isRequired: isRequired,
+        isPassword: false,
+        isReadOnly: isReadOnly,
+        keyboardType: 'phone',
+        isNumber: true,
+        textInputAction: textInputAction,
+        textCapitalization: 'none',
+        minLength: minLength,
+        maxLength: maxLength,
+        pattern: pattern.isNotEmpty ? pattern : r'^\+?[0-9]{7,15}$',
+        errorMessage: errorMessage.isNotEmpty
+            ? errorMessage
+            : 'Enter a valid phone number',
+      );
+
+    // ══════════════════════════════════════════════
+    //  date
+    // ══════════════════════════════════════════════
+    } else if (type == 'date') {
       buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$fieldLabel',");
+      buffer.writeln("                  label: '$rawLabel',");
       buffer.writeln("                  hint: '$hint',");
       buffer.writeln("                  isMandatory: $isRequired,");
       buffer.writeln(
-        "                  controller: controller.${name}Controller,",
-      );
-      buffer.writeln(
-        "                  keyboardType: TextInputType.$keyboardType,",
-      );
-      buffer.writeln("                  isPassword: $isPassword,");
-      buffer.writeln("                  isNumber: $isNumber,");
-      buffer.writeln("                  readOnly: $isReadOnly,");
-      buffer.writeln(
-        "                  textInputAction: TextInputAction.$textInputAction,",
-      );
-      buffer.writeln(
-        "                  textCapitalization: TextCapitalization.$textCapitalization,",
-      );
-      buffer.writeln("                  validator: (value) {");
-      buffer.writeln("                    try {");
-
-      if (isRequired) {
-        buffer.writeln(
-          "                      if (value == null || value.isEmpty) return '$fieldLabel is required';",
-        );
-      }
-      if (minLength > 0) {
-        buffer.writeln(
-          "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';",
-        );
-      }
-      if (maxLength > 0) {
-        buffer.writeln(
-          "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';",
-        );
-      }
-      if (pattern.isNotEmpty) {
-        buffer.writeln(
-          "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-        );
-      }
-
-      buffer.writeln("                      return null;");
-      buffer.writeln("                    } catch (e) {");
-      buffer.writeln("                      return 'Invalid input';");
-      buffer.writeln("                    }");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
-    } else if (type == 'Date') {
-      buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$fieldLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-        "                  controller: controller.${name}Controller,",
-      );
+          "                  controller: controller.${name}Controller,");
       buffer.writeln("                  isDatePicker: true,");
       buffer.writeln("                  readOnly: $isReadOnly,");
       buffer.writeln("                  validator: (value) {");
       buffer.writeln("                    try {");
-
       if (isRequired) {
         buffer.writeln(
-          "                      if (value == null || value.isEmpty) return '$fieldLabel is required';",
-        );
+            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
       }
-
       if (pattern.isNotEmpty) {
         buffer.writeln(
-          "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-        );
+            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
       }
-
       buffer.writeln("                      return null;");
       buffer.writeln("                    } catch (e) {");
       buffer.writeln("                      return 'Invalid input';");
       buffer.writeln("                    }");
       buffer.writeln("                  },");
       buffer.writeln("                ),");
-    } else if (type == 'Date Time') {
+
+    // ══════════════════════════════════════════════
+    //  datetime / date time
+    // ══════════════════════════════════════════════
+    } else if (type == 'datetime' || type == 'date time') {
       buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$fieldLabel',");
+      buffer.writeln("                  label: '$rawLabel',");
       buffer.writeln("                  hint: '$hint',");
       buffer.writeln("                  isMandatory: $isRequired,");
       buffer.writeln(
-        "                  controller: controller.${name}Controller,",
-      );
+          "                  controller: controller.${name}Controller,");
       buffer.writeln("                  isDateTimePicker: true,");
       buffer.writeln("                  readOnly: $isReadOnly,");
       buffer.writeln("                  validator: (value) {");
       buffer.writeln("                    try {");
-
       if (isRequired) {
         buffer.writeln(
-          "                      if (value == null || value.isEmpty) return '$fieldLabel is required';",
-        );
+            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
       }
       if (pattern.isNotEmpty) {
         buffer.writeln(
-          "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-        );
+            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
       }
-
       buffer.writeln("                      return null;");
       buffer.writeln("                    } catch (e) {");
       buffer.writeln("                      return 'Invalid input';");
       buffer.writeln("                    }");
       buffer.writeln("                  },");
       buffer.writeln("                ),");
-    } else if (type == 'Dropdown') {
-      var apidata = field['dropdowndata'];
 
-      String? dropdownmodel;
-      // apidata.forEach((key, value) {
-      //   String type = getType(value, key);
-      //   print('  final123 $type? $key');
-      //   if (value is List) {
-      //     if (value.isNotEmpty && value.first is Map<String, dynamic>) {
-      //       dropdownmodel = capitalize(key);
-
-      //       return 'List<${capitalize(key)}>';
-      //     }
-      //   }
-      // });
-      if (apidata is Map<String, dynamic>) {
-        for (final entry in apidata.entries) {
-          final key = entry.key;
-          final value = entry.value;
-
-          if (value is List &&
-              value.isNotEmpty &&
-              value.first is Map<String, dynamic>) {
-            dropdownmodel = capitalize(key);
-            break;
-          }
-        }
-      }
-      // 2️⃣ now handle static vs dynamic
-      final staticOpts = field['staticOptions'] as List<dynamic>?;
-      if (staticOpts != null && staticOpts.isNotEmpty) {
-
-        buffer.writeln("""
-  Obx(() => DropdownSearch<DropdownItem>(
-    hint: '$fieldLabel',
-    label:'$fieldLabel',
-    
-    isMandatory: $isRequired,
-    labelType: LabelType.top,
-    itemAsString: (item) => item.value,
-    items: controller.${name}Options,
-    value: controller.selected$capitalLabel.value,
-    onChanged: (val) => controller.selected$capitalLabel.value = val,
-    ${isRequired ? """
-    validator: (value) {
-      if (value == null) return '$fieldLabel is required';
-      return null;
-    },""" : ""}
-  )),
-""");
-      } else {
-        final dropdownKey = field['dropdownValue'] ?? 'name';
-
-        buffer.writeln("""
-  Obx(() => DropdownSearch<$dropdownmodel>(
-    hint: '$fieldLabel',
-    label:'$fieldLabel',
-    isMandatory: $isRequired,
-    labelType: LabelType.top,
-    itemAsString: (item) => item?.$dropdownKey ?? '',
-    items: controller.${name}Options,
-    value: controller.selected$capitalLabel.value,
-    onChanged: (val) => controller.selected$capitalLabel.value = val,
-    ${isRequired ? """
-    validator: (value) {
-      if (value == null) return '$fieldLabel is required';
-      return null;
-    },""" : ""}
-  )),
-""");
-      }
-    } else if (type == 'Radio Buttons') {
-      final capitalname = capitalLabel.toLowerCase().replaceAll(
-        RegExp(r'\s+'),
-        '',
-      );
-
-      buffer.writeln("                Obx(() => CustomRadioGroup<String>(");
-      buffer.writeln("                  label: '$fieldLabel',");
+    // ══════════════════════════════════════════════
+    //  textarea
+    // ══════════════════════════════════════════════
+    } else if (type == 'textarea') {
+      buffer.writeln("                CustomTextFormField(");
+      buffer.writeln("                  label: '$rawLabel',");
+      buffer.writeln("                  hint: '$hint',");
       buffer.writeln("                  isMandatory: $isRequired,");
       buffer.writeln(
-        "                  selectedValue: controller.selected$capitalname.value,",
-      );
+          "                  controller: controller.${name}Controller,");
+      buffer.writeln("                  maxLines: 4,");
+      buffer.writeln("                  readOnly: $isReadOnly,");
       buffer.writeln(
-        "                  onChanged: (value) => controller.selected$capitalname.value = value!,",
-      );
+          "                  keyboardType: TextInputType.multiline,");
+      buffer.writeln(
+          "                  textInputAction: TextInputAction.newline,");
+      buffer.writeln("                  validator: (value) {");
+      buffer.writeln("                    try {");
+      if (isRequired) {
+        buffer.writeln(
+            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
+      }
+      buffer.writeln("                      return null;");
+      buffer.writeln("                    } catch (e) {");
+      buffer.writeln("                      return 'Invalid input';");
+      buffer.writeln("                    }");
+      buffer.writeln("                  },");
+      buffer.writeln("                ),");
+
+    // ══════════════════════════════════════════════
+    //  dropdown
+    // ══════════════════════════════════════════════
+    } else if (type == 'dropdown') {
+      if (staticOpts != null && staticOpts.isNotEmpty) {
+        final optionsList = staticOpts.map((o) {
+          final val = o.toString().replaceAll("'", "\\'");
+          return "DropdownItem(key: '$val', value: '$val')";
+        }).join(', ');
+
+        buffer.writeln(
+            "                Obx(() => DropdownSearch<DropdownItem>(");
+        buffer.writeln("                  hint: '$rawLabel',");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln("                  labelType: LabelType.top,");
+        buffer.writeln(
+            "                  itemAsString: (item) => item.value,");
+        buffer.writeln("                  items: [$optionsList],");
+        buffer.writeln(
+            "                  value: controller.selected$capitalLabel.value,");
+        buffer.writeln(
+            "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+        if (isRequired) {
+          buffer.writeln("                  validator: (value) {");
+          buffer.writeln(
+              "                    if (value == null) return '$rawLabel is required';");
+          buffer.writeln("                    return null;");
+          buffer.writeln("                  },");
+        }
+        buffer.writeln("                )),");
+      } else {
+        final dropdownKey =
+            (field['dropdownValue'] ?? 'name').toString();
+        String? dropdownmodel;
+        final apidata = field['dropdowndata'];
+        if (apidata is Map<String, dynamic>) {
+          for (final entry in apidata.entries) {
+            final v = entry.value;
+            if (v is List &&
+                v.isNotEmpty &&
+                v.first is Map<String, dynamic>) {
+              dropdownmodel = capitalize(entry.key);
+              break;
+            }
+          }
+        }
+        dropdownmodel ??= '${capitalLabel}Model';
+
+        buffer.writeln(
+            "                Obx(() => DropdownSearch<$dropdownmodel>(");
+        buffer.writeln("                  hint: '$rawLabel',");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln("                  labelType: LabelType.top,");
+        buffer.writeln(
+            "                  itemAsString: (item) => item?.$dropdownKey ?? '',");
+        buffer.writeln(
+            "                  items: controller.${name}Options,");
+        buffer.writeln(
+            "                  value: controller.selected$capitalLabel.value,");
+        buffer.writeln(
+            "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+        if (isRequired) {
+          buffer.writeln("                  validator: (value) {");
+          buffer.writeln(
+              "                    if (value == null) return '$rawLabel is required';");
+          buffer.writeln("                    return null;");
+          buffer.writeln("                  },");
+        }
+        buffer.writeln("                )),");
+      }
+
+    // ══════════════════════════════════════════════
+    //  radio | radio buttons  ✅ FIXED
+    // ══════════════════════════════════════════════
+    } else if (type == 'radio' || type == 'radio buttons') {
+      // ✅ Wrap each string in RadioOption<String> — NOT raw strings
+      final optionsList = staticOpts != null
+          ? staticOpts.map((o) {
+              final val = o.toString().replaceAll("'", "\\'");
+              return "RadioOption<String>(value: '$val', label: '$val')";
+            }).join(', ')
+          : '';
 
       buffer.writeln(
-        "                  options: controller.${controllerName.toLowerCase().replaceAll(RegExp(r'\s+'), '')}Options,",
-      );
-      // ✅ Add validator if mandatory
+          "                Obx(() => CustomRadioGroup<String>(");
+      buffer.writeln("                  label: '$rawLabel',");
+      buffer.writeln("                  isMandatory: $isRequired,");
+      buffer.writeln(
+          "                  selectedValue: controller.selected$capitalLabel.value,");
+      buffer.writeln(
+          "                  onChanged: (value) => controller.selected$capitalLabel.value = value!,");
+      if (optionsList.isNotEmpty) {
+        buffer.writeln(
+            "                  options: [$optionsList],");
+      } else {
+        buffer.writeln(
+            "                  options: controller.${name}Options,");
+      }
       if (isRequired) {
         buffer.writeln("                  validator: (value) {");
         buffer.writeln(
-          "                    if (value == null || value.isEmpty) return '$fieldLabel is required';",
-        );
+            "                    if (value == null || value.isEmpty) return '$rawLabel is required';");
         buffer.writeln("                    return null;");
         buffer.writeln("                  },");
       }
       buffer.writeln("                )),");
+
+    // ══════════════════════════════════════════════
+    //  switch
+    // ══════════════════════════════════════════════
+    } else if (type == 'switch') {
+      buffer.writeln("                Obx(() => FormField<bool>(");
+      buffer.writeln("                  initialValue: false,");
+      buffer.writeln("                  validator: (value) {");
+      if (isRequired) {
+        buffer.writeln(
+            "                    if (value != true) return '$rawLabel';");
+      }
+      buffer.writeln("                    return null;");
+      buffer.writeln("                  },");
+      buffer.writeln(
+          "                  builder: (formState) => Column(");
+      buffer.writeln(
+          "                    crossAxisAlignment: CrossAxisAlignment.start,");
+      buffer.writeln("                    children: [");
+      buffer.writeln("                      SwitchListTile(");
+      buffer.writeln(
+          "                        title: const Text('$rawLabel'),");
+      buffer.writeln(
+          "                        value: controller.${name}Value.value,");
+      buffer.writeln("                        onChanged: (val) {");
+      buffer.writeln(
+          "                          controller.${name}Value.value = val;");
+      buffer.writeln(
+          "                          formState.didChange(val);");
+      buffer.writeln("                        },");
+      buffer.writeln(
+          "                        contentPadding: EdgeInsets.zero,");
+      buffer.writeln("                      ),");
+      if (isRequired) {
+        buffer.writeln(
+            "                      if (formState.hasError)");
+        buffer.writeln("                        Padding(");
+        buffer.writeln(
+            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
+        buffer.writeln("                          child: Text(");
+        buffer.writeln(
+            "                            formState.errorText ?? '',");
+        buffer.writeln(
+            "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+        buffer.writeln("                          ),");
+        buffer.writeln("                        ),");
+      }
+      buffer.writeln("                    ],");
+      buffer.writeln("                  ),");
+      buffer.writeln("                )),");
+
+    // ══════════════════════════════════════════════
+    //  file
+    // ══════════════════════════════════════════════
+    } else if (type == 'file') {
+      buffer.writeln("                Obx(() => FormField<String>(");
+      buffer.writeln(
+          "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty");
+      buffer.writeln(
+          "                      ? '$rawLabel is required' : null,");
+      buffer.writeln(
+          "                  builder: (formState) => Column(");
+      buffer.writeln(
+          "                    crossAxisAlignment: CrossAxisAlignment.start,");
+      buffer.writeln("                    children: [");
+      buffer.writeln("                      Text(");
+      buffer.writeln(
+          "                        '$rawLabel${isRequired ? ' *' : ''}',");
+      buffer.writeln(
+          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+      buffer.writeln("                      ),");
+      buffer.writeln("                      const SizedBox(height: 8),");
+      buffer.writeln("                      GestureDetector(");
+      buffer.writeln("                        onTap: () async {");
+      buffer.writeln(
+          "                          await controller.pick${capitalLabel}File();");
+      buffer.writeln(
+          "                          formState.didChange(controller.${name}FileName.value);");
+      buffer.writeln("                        },");
+      buffer.writeln("                        child: Container(");
+      buffer.writeln(
+          "                          width: double.infinity,");
+      buffer.writeln(
+          "                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),");
+      buffer.writeln(
+          "                          decoration: BoxDecoration(");
+      buffer.writeln(
+          "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),");
+      buffer.writeln(
+          "                            borderRadius: BorderRadius.circular(8),");
+      buffer.writeln("                          ),");
+      buffer.writeln("                          child: Row(");
+      buffer.writeln("                            children: [");
+      buffer.writeln(
+          "                              const Icon(Icons.upload_file, color: Colors.grey),");
+      buffer.writeln(
+          "                              const SizedBox(width: 8),");
+      buffer.writeln("                              Expanded(");
+      buffer.writeln("                                child: Text(");
+      buffer.writeln(
+          "                                  controller.${name}FileName.value.isEmpty");
+      buffer.writeln(
+          "                                      ? 'Tap to upload $rawLabel'");
+      buffer.writeln(
+          "                                      : controller.${name}FileName.value,");
+      buffer.writeln(
+          "                                  style: TextStyle(color: Colors.grey[700]),");
+      buffer.writeln(
+          "                                  overflow: TextOverflow.ellipsis,");
+      buffer.writeln("                                ),");
+      buffer.writeln("                              ),");
+      buffer.writeln("                            ],");
+      buffer.writeln("                          ),");
+      buffer.writeln("                        ),");
+      buffer.writeln("                      ),");
+      buffer.writeln(
+          "                      if (formState.hasError)");
+      buffer.writeln("                        Padding(");
+      buffer.writeln(
+          "                          padding: const EdgeInsets.only(top: 6, left: 4),");
+      buffer.writeln("                          child: Text(");
+      buffer.writeln(
+          "                            formState.errorText ?? '',");
+      buffer.writeln(
+          "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+      buffer.writeln("                          ),");
+      buffer.writeln("                        ),");
+      buffer.writeln("                    ],");
+      buffer.writeln("                  ),");
+      buffer.writeln("                )),");
+
+    // ══════════════════════════════════════════════
+    //  otp  ✅ FIXED: removed maxLength (not a param)
+    // ══════════════════════════════════════════════
+    } else if (type == 'otp') {
+      buffer.writeln("                Column(");
+      buffer.writeln(
+          "                  crossAxisAlignment: CrossAxisAlignment.start,");
+      buffer.writeln("                  children: [");
+      buffer.writeln("                    Text(");
+      buffer.writeln(
+          "                      '$rawLabel${isRequired ? ' *' : ''}',");
+      buffer.writeln(
+          "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+      buffer.writeln("                    ),");
+      buffer.writeln("                    const SizedBox(height: 8),");
+      buffer.writeln("                    CustomTextFormField(");
+      buffer.writeln("                      label: '',");
+      buffer.writeln("                      hint: '$hint',");
+      buffer.writeln("                      isMandatory: $isRequired,");
+      buffer.writeln(
+          "                      controller: controller.${name}Controller,");
+      buffer.writeln(
+          "                      keyboardType: TextInputType.number,");
+      buffer.writeln(
+          "                      maxLines: 1,"); // ✅ maxLength removed
+      buffer.writeln("                      validator: (value) {");
+      buffer.writeln("                        try {");
+      if (isRequired) {
+        buffer.writeln(
+            "                          if (value == null || value.isEmpty) return '$rawLabel is required';");
+        buffer.writeln(
+            "                          if (value.length != 6) return 'Enter a valid 6-digit code';");
+      }
+      buffer.writeln("                          return null;");
+      buffer.writeln("                        } catch (e) {");
+      buffer.writeln("                          return 'Invalid input';");
+      buffer.writeln("                        }");
+      buffer.writeln("                      },");
+      buffer.writeln("                    ),");
+      buffer.writeln("                  ],");
+      buffer.writeln("                ),");
+
+    // ══════════════════════════════════════════════
+    //  divider
+    // ══════════════════════════════════════════════
+    } else if (type == 'divider') {
+      buffer.writeln("                Padding(");
+      buffer.writeln(
+          "                  padding: const EdgeInsets.symmetric(vertical: 12.0),");
+      buffer.writeln("                  child: Column(");
+      buffer.writeln(
+          "                    crossAxisAlignment: CrossAxisAlignment.start,");
+      buffer.writeln("                    children: [");
+      buffer.writeln("                      Text(");
+      buffer.writeln("                        '$rawLabel',");
+      buffer.writeln(
+          "                        style: Theme.of(context).textTheme.bodyMedium,");
+      buffer.writeln("                      ),");
+      buffer.writeln("                      const SizedBox(height: 8),");
+      buffer.writeln("                      const Divider(),");
+      buffer.writeln("                    ],");
+      buffer.writeln("                  ),");
+      buffer.writeln("                ),");
+
+    } else {
+      buffer.writeln(
+          "                // TODO: unsupported field type '$type' for '$rawLabel'");
     }
 
-    buffer.writeln("                SizedBox(height: 16),");
+    buffer.writeln("                const SizedBox(height: 16),");
   }
 
-  buffer.writeln("                SizedBox(height: 20),");
+  // ─── Submit button ────────────────────────────────────────────
+  buffer.writeln("                const SizedBox(height: 20),");
   buffer.writeln("                Center(");
   buffer.writeln("                  child: ElevatedButton(");
   buffer.writeln("                    onPressed: () {");
   buffer.writeln(
-    "                      if (_formKey.currentState?.validate() ?? false) {",
-  );
+      "                      if (formKey.currentState?.validate() ?? false) {");
   buffer.writeln("                        // TODO: Submit logic");
   buffer.writeln("                      }");
   buffer.writeln("                    },");
-  buffer.writeln("                    child: Text('Submit'),");
+  buffer.writeln("                    child: const Text('Submit'),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
-
   buffer.writeln("              ],");
   buffer.writeln("            ),");
   buffer.writeln("          ),");
@@ -347,42 +560,98 @@ String generateviewClass(
   return buffer.toString();
 }
 
-String getType(dynamic value, String key) {
-  if (value is int) return 'int';
-  if (value is double) return 'double';
-  if (value is String) return 'String';
-  if (value is bool) return 'bool';
-  if (value is List) {
-    if (value.isNotEmpty && value.first is Map<String, dynamic>) {
-      return 'List<${capitalize(key)}>';
-    }
-    return 'List<dynamic>';
+// ─── Shared helper ────────────────────────────────────────────────
+void _writeTextFormField(
+  StringBuffer buffer, {
+  required String label,
+  required String name,
+  required String hint,
+  required bool isRequired,
+  required bool isPassword,
+  required bool isReadOnly,
+  required String keyboardType,
+  required bool isNumber,
+  required String textInputAction,
+  required String textCapitalization,
+  required int minLength,
+  required int maxLength,
+  required String pattern,
+  required String errorMessage,
+}) {
+  buffer.writeln("                CustomTextFormField(");
+  buffer.writeln("                  label: '$label',");
+  buffer.writeln("                  hint: '$hint',");
+  buffer.writeln("                  isMandatory: $isRequired,");
+  buffer.writeln(
+      "                  controller: controller.${name}Controller,");
+  buffer.writeln(
+      "                  keyboardType: TextInputType.$keyboardType,");
+  buffer.writeln("                  isPassword: $isPassword,");
+  buffer.writeln("                  isNumber: $isNumber,");
+  buffer.writeln("                  readOnly: $isReadOnly,");
+  buffer.writeln(
+      "                  textInputAction: TextInputAction.$textInputAction,");
+  buffer.writeln(
+      "                  textCapitalization: TextCapitalization.$textCapitalization,");
+  buffer.writeln("                  validator: (value) {");
+  buffer.writeln("                    try {");
+  if (isRequired) {
+    buffer.writeln(
+        "                      if (value == null || value.isEmpty) return '$label is required';");
   }
-  if (value is Map<String, dynamic>) {
-    return capitalize(key);
+  if (minLength > 0) {
+    buffer.writeln(
+        "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';");
   }
-  return 'dynamic';
+  if (maxLength > 0) {
+    buffer.writeln(
+        "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';");
+  }
+  if (pattern.isNotEmpty) {
+    buffer.writeln(
+        "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
+  }
+  buffer.writeln("                      return null;");
+  buffer.writeln("                    } catch (e) {");
+  buffer.writeln("                      return 'Invalid input';");
+  buffer.writeln("                    }");
+  buffer.writeln("                  },");
+  buffer.writeln("                ),");
 }
 
+// ─── Maps JSON keyboardType → Flutter TextInputType ──────────────
+String _mapKeyboardType(String raw) {
+  switch (raw) {
+    case 'number':
+    case 'numeric':
+      return 'number';
+    case 'phone':
+      return 'phone';
+    case 'email':
+    case 'emailAddress':
+      return 'emailAddress';
+    case 'url':
+      return 'url';
+    case 'multiline':
+      return 'multiline';
+    default:
+      return 'text';
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────
 String capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
-// 🔹 Helpers
 String normalizeLabel(String label) =>
     label.trim().replaceAll(RegExp(r'\s+'), '');
 
 String camelCaseName(String label) {
-  final normalized = normalizeLabel(label);
-  return normalized.isEmpty
-      ? ''
-      : normalized[0].toLowerCase() + normalized.substring(1);
+  final n = normalizeLabel(label);
+  return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);
 }
 
-
-
 String pascalCaseName(String label) {
-  final normalized = normalizeLabel(label);
-  return normalized.isEmpty
-      ? ''
-      : normalized[0].toUpperCase() + normalized.substring(1);
+  final n = normalizeLabel(label);
+  return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
 }

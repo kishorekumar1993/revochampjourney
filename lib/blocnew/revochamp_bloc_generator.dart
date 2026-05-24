@@ -402,7 +402,7 @@ class RevochampBlocGenerator {
           featureName: featureName,
           fields: fields,
           resultDataClass: resultData,
-          runtimeImportPrefix: '../../../../core/runtime',
+          runtimeImportPrefix: '../../../../../core/runtime',
         ).generate();
     files['$featBase/presentation/mapper/${snakeName}_mapper.dart'] =
         MapperGenerator(
@@ -415,11 +415,8 @@ class RevochampBlocGenerator {
         BlocGenerator(
           featureName: featureName,
           fields: fields,
-          stateName: '${featureName}FeatureState',
-          mapperName: '${featureName}Mapper',
-          validatorsName: '${featureName}Validators',
-          resultDataClass: resultData,
-          runtimeImportPrefix: '../../../../core/runtime',
+          // hasAsyncDropdown: fields.any((f) => f.isAsyncDropdown
+          // ),
         ).generate();
     files['$featBase/presentation/screens/${snakeName}_screen.dart'] =
         ScreenGenerator(featureName: featureName, fields: fields).generate();
@@ -471,6 +468,10 @@ class RevochampBlocGenerator {
     files['$base/app_dropdown_field.dart']       = ReusableWidgetSources.appDropdownField;
     files['$base/app_async_dropdown_field.dart'] = ReusableWidgetSources.appAsyncDropdownField;
     files['$base/app_checkbox_field.dart']       = ReusableWidgetSources.appCheckboxField;
+    files['$base/app_date_picker_field.dart']    = ReusableWidgetSources.appDatePickerField;
+    files['$base/app_radio_group_field.dart']    = ReusableWidgetSources.appRadioGroupField;
+    files['$base/app_file_upload_field.dart']    = ReusableWidgetSources.appFileUploadField;
+    files['$base/app_multi_select_field.dart']   = ReusableWidgetSources.appMultiSelectField;
     files['$base/app_form_button.dart']          = ReusableWidgetSources.appFormButton;
     files['$base/app_error_widget.dart']         = ReusableWidgetSources.appErrorWidget;
     files['$base/app_loading_widget.dart']       = ReusableWidgetSources.appLoadingWidget;
@@ -521,6 +522,23 @@ List<Map<String, dynamic>> _deepClone(List<Map<String, dynamic>> input) {
       .toList();
 }
 
+ // ── Helper functions ─────────────────────────────────────────────────────
+  String toSnakeCase(String text) {
+    if (text.isEmpty) return text;
+    final buffer = StringBuffer();
+    buffer.write(text[0].toLowerCase());
+    for (int i = 1; i < text.length; i++) {
+      final char = text[i];
+      if (char.toUpperCase() == char && char != char.toLowerCase()) {
+        // It's an uppercase letter
+        buffer.write('_${char.toLowerCase()}');
+      } else {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
+
 /// "Motor Insurance Journey" → "motorInsurance"
 String _toJourneyNamespace(String name) {
   final cleaned = name
@@ -543,4 +561,3 @@ String _toJourneyNamespace(String name) {
           .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
           .join();
 }
-

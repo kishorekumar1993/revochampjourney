@@ -426,10 +426,9 @@ class RevochampBlocGenerator {
         MapperGenerator(featureName: featureName, fields: fields,
             entityClassName: '${featureName}Entity', stateName: '${featureName}FeatureState').generate();
     files['$featBase/presentation/bloc/${snakeName}_bloc.dart'] =
-        BlocGenerator(featureName: featureName, fields: fields,
-            stateName: '${featureName}FeatureState', mapperName: '${featureName}Mapper',
-            validatorsName: '${featureName}Validators', resultDataClass: resultData,
-            runtimeImportPrefix: '../../../../core/runtime').generate();
+        BlocGenerator(featureName: featureName, fields: fields, 
+            generateAsyncValueSeparately: fields.any((f) => f.isAsyncDropdown
+            )).generate();
     files['$featBase/presentation/screens/${snakeName}_screen.dart'] =
         ScreenGenerator(featureName: featureName, fields: fields).generate();
 
@@ -535,6 +534,23 @@ Map<String, dynamic>? _extractDropdownSample(Map<String, dynamic> field) {
     return Map<String, dynamic>.from(raw);
   return null;
 }
+ // ── Helper functions ─────────────────────────────────────────────────────
+  String toSnakeCase(String text) {
+    if (text.isEmpty) return text;
+    final buffer = StringBuffer();
+    buffer.write(text[0].toLowerCase());
+    for (int i = 1; i < text.length; i++) {
+      final char = text[i];
+      if (char.toUpperCase() == char && char != char.toLowerCase()) {
+        // It's an uppercase letter
+        buffer.write('_${char.toLowerCase()}');
+      } else {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
+
 
 String _toJourneyNamespace(String name) {
   final cleaned = name

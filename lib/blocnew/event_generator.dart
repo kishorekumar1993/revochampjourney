@@ -8,7 +8,6 @@
 
 import 'package:revojourneytryone/blocnew/field_schema.dart';
 
-
 class EventGenerator {
   EventGenerator({
     required this.featureName,
@@ -43,49 +42,54 @@ class EventGenerator {
     // Generic field-change event
     buf.writeln('/// Fired by any field widget when its value changes.');
     buf.writeln('/// [T] is inferred from [value] at the call site.');
-    buf.writeln('final class ComponentUpdatedEvent<T> extends ${featureName}Event {');
-    buf.writeln('  const ComponentUpdatedEvent(this.componentKey, this.value,');
+    buf.writeln('final class ${featureName}ComponentUpdatedEvent<T> extends ${featureName}Event {');
+    buf.writeln('  const ${featureName}ComponentUpdatedEvent(this.componentKey, this.value,');
     buf.writeln('      {this.metadata = const {}});');
     buf.writeln('  final String componentKey;');
     buf.writeln('  final T value;');
     buf.writeln('  final Map<String, dynamic> metadata;');
-    buf.writeln('  @override List<Object?> get props => [componentKey, value, metadata];');
+    buf.writeln('  @override');
+    buf.writeln('  List<Object?> get props => [componentKey, value, metadata];');
     buf.writeln('}');
     buf.writeln();
 
     // Batch event
     buf.writeln('/// Fires multiple field updates in one state emission (API prefill, undo/redo).');
-    buf.writeln('final class BatchComponentUpdatedEvent extends ${featureName}Event {');
-    buf.writeln('  const BatchComponentUpdatedEvent(this.updates, {this.metadata = const {}});');
+    buf.writeln('final class ${featureName}BatchComponentUpdatedEvent extends ${featureName}Event {');
+    buf.writeln('  const ${featureName}BatchComponentUpdatedEvent(this.updates, {this.metadata = const {}});');
     buf.writeln('  final Map<String, dynamic> updates;');
     buf.writeln('  final Map<String, dynamic> metadata;');
-    buf.writeln('  @override List<Object?> get props => [updates, metadata];');
+    buf.writeln('  @override');
+    buf.writeln('  List<Object?> get props => [updates, metadata];');
     buf.writeln('}');
     buf.writeln();
 
-    // Lifecycle: load dropdown data
+    // Lifecycle: load dropdown data (only if async dropdowns exist)
     if (hasAsyncDropdown) {
       buf.writeln('/// Loads remote dropdown data for the $featureName screen.');
       buf.writeln('final class Load${featureName}DataEvent extends ${featureName}Event {');
       buf.writeln('  const Load${featureName}DataEvent();');
-      buf.writeln('  @override List<Object?> get props => const [];');
+      buf.writeln('  @override');
+      buf.writeln('  List<Object?> get props => const [];');
       buf.writeln('}');
       buf.writeln();
     }
 
-    // Submit
+    // Submit event (without extra "Form" suffix)
     buf.writeln('/// Submits the $featureName form.');
-    buf.writeln('final class Submit${featureName}FormEvent extends ${featureName}Event {');
-    buf.writeln('  const Submit${featureName}FormEvent();');
-    buf.writeln('  @override List<Object?> get props => const [];');
+    buf.writeln('final class Submit${featureName}Event extends ${featureName}Event {');
+    buf.writeln('  const Submit${featureName}Event();');
+    buf.writeln('  @override');
+    buf.writeln('  List<Object?> get props => const [];');
     buf.writeln('}');
     buf.writeln();
 
-    // Reset
+    // Reset event (without extra "Form" suffix)
     buf.writeln('/// Resets the $featureName form to its initial state.');
-    buf.writeln('final class Reset${featureName}FormEvent extends ${featureName}Event {');
-    buf.writeln('  const Reset${featureName}FormEvent();');
-    buf.writeln('  @override List<Object?> get props => const [];');
+    buf.writeln('final class Reset${featureName}Event extends ${featureName}Event {');
+    buf.writeln('  const Reset${featureName}Event();');
+    buf.writeln('  @override');
+    buf.writeln('  List<Object?> get props => const [];');
     buf.writeln('}');
 
     return buf.toString();

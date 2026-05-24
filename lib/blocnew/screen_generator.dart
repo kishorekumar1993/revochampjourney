@@ -11,129 +11,146 @@ class ScreenGenerator {
   final String featureName;
   final List<FieldSchema> fields;
 
+  bool get hasAsyncDropdown => fields.any((f) => f.isAsyncDropdown);
+
   String generate() {
-    final snakeName = toSnakeCase(featureName);
-    final stateName = '${featureName}FeatureState';
+    final snakeName = _toSnakeCase(featureName);
+    final stateName = '${featureName}State';
     final blocName  = '${featureName}Bloc';
     final keysClass = '${featureName}ComponentKeys';
     final buf       = StringBuffer();
 
+    // ─── Imports (all relative) ────────────────────────────────────────────
     buf.writeln("import 'package:flutter/material.dart';");
     buf.writeln("import 'package:flutter_bloc/flutter_bloc.dart';");
-    buf.writeln("import '../bloc/${snakeName}_bloc.dart';");
-    buf.writeln("import '../state/${snakeName}_feature_state.dart';");
-    buf.writeln("import '../events/${snakeName}_event.dart';");
+    // Core imports (relative from presentation/screens/ to core/)
     buf.writeln("import '../../../../core/runtime/reactive_value.dart';");
+    buf.writeln("import '../../${snakeName}_feature.dart';");
+    buf.writeln("import '/core/widgets/widgets.dart';");
+    buf.writeln("import '/core/runtime/reactive_value.dart';");
+    // Feature imports
+    buf.writeln("import '../bloc/${snakeName}_bloc.dart';");
+    buf.writeln("import '../state/${snakeName}_state.dart';");
+    buf.writeln("import '../events/${snakeName}_event.dart';");
     buf.writeln();
 
-    // ── Screen ──────────────────────────────────────────────────────────────
+    // ─── Screen widget ──────────────────────────────────────────────────────
     buf.writeln('class ${featureName}Screen extends StatelessWidget {');
     buf.writeln('  const ${featureName}Screen({super.key});');
     buf.writeln();
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
     buf.writeln('    return BlocListener<$blocName, $stateName>(');
-    buf.writeln('      listenWhen: (p, c) => p.submission != c.submission,');
+    buf.writeln('      listenWhen: (previous, current) => previous.submission != current.submission,');
     buf.writeln('      listener: (context, state) {');
     buf.writeln('        state.submission.maybeWhen(');
-    buf.writeln("          success: (data) => _showSuccess(context, data.message ?? 'Submitted!'),");
-    buf.writeln('          onFailure: (f)    => _showError(context, f.message),');
+    buf.writeln("          success: (data) => _showSuccess(context, data.message),");
+    buf.writeln('          onFailure: (failure) => _showError(context, failure.message),');
     buf.writeln('          orElse: () {},');
     buf.writeln('        );');
     buf.writeln('      },');
     buf.writeln('      child: Scaffold(');
-    buf.writeln("        backgroundColor: const Color(0xFFF0F4F8),");
+    buf.writeln("        backgroundColor: const Color(0xFFF8FAFC),");
     buf.writeln("        appBar: AppBar(");
-    buf.writeln("          title: const Text('$featureName'),");
-    buf.writeln("          backgroundColor: const Color(0xFF1A73E8),");
-    buf.writeln("          foregroundColor: Colors.white,");
+    buf.writeln("          title: const Text('$featureName', style: TextStyle(fontWeight: FontWeight.w600)),");
+    buf.writeln("          backgroundColor: Colors.transparent,");
+    buf.writeln("          foregroundColor: const Color(0xFF0F172A),");
     buf.writeln("          elevation: 0,");
+    buf.writeln("          centerTitle: true,");
     buf.writeln("          actions: [");
     buf.writeln("            IconButton(");
-    buf.writeln("              icon: const Icon(Icons.refresh_rounded),");
+    buf.writeln("              icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B)),");
     buf.writeln("              tooltip: 'Reset',");
-    buf.writeln("              onPressed: () => context.read<$blocName>()");
-    buf.writeln("                  .add(const Reset${featureName}FormEvent()),");
+    buf.writeln("              onPressed: () => context.read<$blocName>().add(const Reset${featureName}Event()),");
     buf.writeln("            ),");
     buf.writeln("          ],");
     buf.writeln("        ),");
-    buf.writeln('        body: const _${featureName}Body(),');
+    buf.writeln('        body: const SafeArea(');
+    buf.writeln('          child: _${featureName}Body(),');
+    buf.writeln('        ),');
     buf.writeln('      ),');
     buf.writeln('    );');
     buf.writeln('  }');
     buf.writeln();
-    buf.writeln("  void _showSuccess(BuildContext ctx, String msg) =>");
-    buf.writeln('    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(');
-    buf.writeln("      content: Text(msg),");
-    buf.writeln("      backgroundColor: Colors.green,");
+    buf.writeln("  void _showSuccess(BuildContext context, String message) {");
+    buf.writeln("    ScaffoldMessenger.of(context).showSnackBar(SnackBar(");
+    buf.writeln("      content: Text(message),");
+    buf.writeln("      backgroundColor: const Color(0xFF10B981),");
     buf.writeln("      behavior: SnackBarBehavior.floating,");
-    buf.writeln('    ));');
+    buf.writeln("    ));");
+    buf.writeln("  }");
     buf.writeln();
-    buf.writeln("  void _showError(BuildContext ctx, String msg) =>");
-    buf.writeln('    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(');
-    buf.writeln("      content: Text(msg),");
-    buf.writeln("      backgroundColor: Colors.red,");
+    buf.writeln("  void _showError(BuildContext context, String message) {");
+    buf.writeln("    ScaffoldMessenger.of(context).showSnackBar(SnackBar(");
+    buf.writeln("      content: Text(message),");
+    buf.writeln("      backgroundColor: const Color(0xFFEF4444),");
     buf.writeln("      behavior: SnackBarBehavior.floating,");
-    buf.writeln('    ));');
+    buf.writeln("    ));");
+    buf.writeln("  }");
     buf.writeln('}');
     buf.writeln();
 
-    // ── Body ─────────────────────────────────────────────────────────────────
+    // ─── Body widget ────────────────────────────────────────────────────────
     buf.writeln('class _${featureName}Body extends StatelessWidget {');
     buf.writeln('  const _${featureName}Body();');
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
-    buf.writeln('    return SingleChildScrollView(');
-    buf.writeln('      padding: const EdgeInsets.all(16),');
-    buf.writeln('      child: Column(');
-    buf.writeln('        crossAxisAlignment: CrossAxisAlignment.start,');
-    buf.writeln('        children: [');
+    buf.writeln('    return Center(');
+    buf.writeln('      child: ConstrainedBox(');
+    buf.writeln('        constraints: const BoxConstraints(maxWidth: 600),');
+    buf.writeln('        child: SingleChildScrollView(');
+    buf.writeln('          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),');
+    buf.writeln('          child: Container(');
+    buf.writeln('            padding: const EdgeInsets.all(24),');
+    buf.writeln('            decoration: BoxDecoration(');
+    buf.writeln('              color: Colors.white,');
+    buf.writeln('              borderRadius: BorderRadius.circular(20),');
+    buf.writeln('              border: Border.all(color: const Color(0xFFE2E8F0)),');
+    buf.writeln('              boxShadow: const [');
+    buf.writeln('                BoxShadow(');
+    buf.writeln('                  color: Color(0x0A000000),');
+    buf.writeln('                  blurRadius: 20,');
+    buf.writeln('                  offset: Offset(0, 10),');
+    buf.writeln('                ),');
+    buf.writeln('              ],');
+    buf.writeln('            ),');
+    buf.writeln('            child: Column(');
+    buf.writeln('              crossAxisAlignment: CrossAxisAlignment.start,');
+    buf.writeln('              children: [');
     for (final f in fields) {
       if (f.isHidden) continue;
-      buf.writeln("          _${toCap(f.fieldName)}Field(key: const ValueKey('${f.fieldName}')),");
-      buf.writeln('          const SizedBox(height: 16),');
+      buf.writeln("                _${_toCap(f.fieldName)}Field(key: const ValueKey('${f.fieldName}')),");
     }
-    buf.writeln('          _SubmitButton(),');
-    buf.writeln('          const SizedBox(height: 32),');
-    buf.writeln('        ],');
+    buf.writeln('                const SizedBox(height: 12),');
+    buf.writeln('                _SubmitButton(),');
+    buf.writeln('              ],');
+    buf.writeln('            ),');
+    buf.writeln('          ),');
+    buf.writeln('        ),');
     buf.writeln('      ),');
     buf.writeln('    );');
     buf.writeln('  }');
     buf.writeln('}');
     buf.writeln();
 
-    // ── Per-field widget classes ──────────────────────────────────────────────
+    // ─── Field widgets ──────────────────────────────────────────────────────
     for (final f in fields) {
       if (f.isHidden) continue;
       _writeFieldClass(buf, f, stateName, blocName, keysClass);
       buf.writeln();
     }
 
-    // ── Submit button ─────────────────────────────────────────────────────────
+    // ─── Submit button ──────────────────────────────────────────────────────
     buf.writeln('class _SubmitButton extends StatelessWidget {');
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
     buf.writeln('    return BlocSelector<$blocName, $stateName, bool>(');
-    buf.writeln('      selector: (s) => s.isSubmitting,');
-    buf.writeln('      builder: (ctx, busy) => SizedBox(');
-    buf.writeln('        width: double.infinity,');
-    buf.writeln('        height: 52,');
-    buf.writeln('        child: ElevatedButton(');
-    buf.writeln('          style: ElevatedButton.styleFrom(');
-    buf.writeln('            backgroundColor: const Color(0xFF1A73E8),');
-    buf.writeln('            foregroundColor: Colors.white,');
-    buf.writeln('            shape: RoundedRectangleBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('          ),');
-    buf.writeln('          onPressed: busy ? null : () =>');
-    buf.writeln('              ctx.read<$blocName>().add(const Submit${featureName}FormEvent()),');
-    buf.writeln('          child: busy');
-    buf.writeln('              ? const SizedBox(height: 22, width: 22,');
-    buf.writeln('                  child: CircularProgressIndicator(');
-    buf.writeln('                    color: Colors.white, strokeWidth: 2.5))');
-    buf.writeln("              : const Text('Submit',");
-    buf.writeln('                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),');
-    buf.writeln('        ),');
+    buf.writeln('      selector: (state) => state.isSubmitting,');
+    buf.writeln('      builder: (context, isSubmitting) => AppFormButton(');
+    buf.writeln("        label: 'Submit',");
+    buf.writeln("        loadingLabel: 'Submitting...',");
+    buf.writeln('        state: isSubmitting ? AppButtonState.loading : AppButtonState.idle,');
+    buf.writeln('        onPressed: () => context.read<$blocName>().add(const Submit${featureName}Event()),');
     buf.writeln('      ),');
     buf.writeln('    );');
     buf.writeln('  }');
@@ -142,13 +159,11 @@ class ScreenGenerator {
     return buf.toString();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Field class writers
-  // ─────────────────────────────────────────────────────────────────────────
+  // --------------------------------------------------------------------------
+  // Field widget builders
+  // --------------------------------------------------------------------------
 
-  void _writeFieldClass(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    // Text-input types need StatefulWidget + TextEditingController so that
-    // external state changes (form reset) properly clear the displayed text.
+  void _writeFieldClass(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
     final isTextInput = switch (f.fieldType) {
       FieldType.text ||
       FieldType.email ||
@@ -162,50 +177,50 @@ class ScreenGenerator {
     };
 
     if (isTextInput) {
-      _writeTextFieldStateful(buf, f, s, b, k);
+      _writeTextFieldStateful(buf, f, stateName, blocName, keysClass);
       return;
     }
 
-    buf.writeln('class _${toCap(f.fieldName)}Field extends StatelessWidget {');
-    buf.writeln('  const _${toCap(f.fieldName)}Field({super.key});');
+    buf.writeln('class _${_toCap(f.fieldName)}Field extends StatelessWidget {');
+    buf.writeln('  const _${_toCap(f.fieldName)}Field({super.key});');
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
 
     switch (f.fieldType) {
       case FieldType.dropdown:
         if (f.isStaticStringOnly) {
-          _writeStaticStringDropdown(buf, f, s, b, k);
+          _writeStaticStringDropdown(buf, f, stateName, blocName, keysClass);
         } else {
-          _writeApiDropdown(buf, f, s, b, k);
+          _writeApiDropdown(buf, f, stateName, blocName, keysClass);
         }
       case FieldType.radio:
-        _writeRadioGroup(buf, f, s, b, k);
+        _writeRadioGroup(buf, f, stateName, blocName, keysClass);
       case FieldType.date:
       case FieldType.time:
       case FieldType.dateTime:
-        _writeDatePicker(buf, f, s, b, k);
+        _writeDatePicker(buf, f, stateName, blocName, keysClass);
       case FieldType.checkbox:
-        _writeCheckbox(buf, f, s, b, k);
+        _writeCheckbox(buf, f, stateName, blocName, keysClass);
       case FieldType.file:
       case FieldType.image:
       case FieldType.fileUpload:
-        _writeFileUpload(buf, f, s, b, k);
+        _writeFileUpload(buf, f, stateName, blocName, keysClass);
       case FieldType.multiSelect:
-        _writeMultiSelect(buf, f, s, b, k);
+        _writeMultiSelect(buf, f, stateName, blocName, keysClass);
       default:
-        _writeApiDropdown(buf, f, s, b, k);
+        _writeApiDropdown(buf, f, stateName, blocName, keysClass);
     }
 
     buf.writeln('  }');
     buf.writeln('}');
   }
 
-  void _writeTextFieldStateful(StringBuffer buf, FieldSchema f, String s, String b, String k) {
+  void _writeTextFieldStateful(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
     final kbType   = _flutterKeyboardType(f.keyboardType);
     final capType  = _flutterCapitalization(f.textCapitalization);
     final action   = _flutterInputAction(f.textInputAction);
     final hintText = f.hint ?? '';
-    final cap      = toCap(f.fieldName);
+    final cap      = _toCap(f.fieldName);
     final isArea   = f.fieldType == FieldType.textarea;
 
     buf.writeln('class _${cap}Field extends StatefulWidget {');
@@ -215,41 +230,40 @@ class ScreenGenerator {
     buf.writeln('}');
     buf.writeln();
     buf.writeln('class _${cap}FieldState extends State<_${cap}Field> {');
-    buf.writeln('  late final TextEditingController _ctrl;');
+    buf.writeln('  late final TextEditingController _controller;');
     buf.writeln();
     buf.writeln('  @override');
     buf.writeln('  void initState() {');
     buf.writeln('    super.initState();');
-    buf.writeln('    _ctrl = TextEditingController(');
-    buf.writeln("        text: context.read<$b>().state.${f.fieldName}Field.value);");
+    buf.writeln('    _controller = TextEditingController(');
+    buf.writeln("        text: context.read<$blocName>().state.${f.fieldName}.value);");
     buf.writeln('  }');
     buf.writeln();
     buf.writeln('  @override');
     buf.writeln('  void dispose() {');
-    buf.writeln('    _ctrl.dispose();');
+    buf.writeln('    _controller.dispose();');
     buf.writeln('    super.dispose();');
     buf.writeln('  }');
     buf.writeln();
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
-    buf.writeln('    return BlocConsumer<$b, $s>(');
-    buf.writeln('      listenWhen: (prev, curr) =>');
-    buf.writeln('          prev.${f.fieldName}Field.value != curr.${f.fieldName}Field.value,');
-    buf.writeln('      listener: (ctx, state) {');
-    buf.writeln('        final newVal = state.${f.fieldName}Field.value;');
-    buf.writeln('        if (_ctrl.text != newVal) _ctrl.text = newVal;');
+    buf.writeln('    return BlocConsumer<$blocName, $stateName>(');
+    buf.writeln('      listenWhen: (previous, current) => previous.${f.fieldName}.value != current.${f.fieldName}.value,');
+    buf.writeln('      listener: (context, state) {');
+    buf.writeln('        final newValue = state.${f.fieldName}.value;');
+    buf.writeln('        if (_controller.text != newValue) _controller.text = newValue;');
     buf.writeln('      },');
-    buf.writeln('      buildWhen: (prev, curr) =>');
-    buf.writeln('          prev.${f.fieldName}Field.hasError != curr.${f.fieldName}Field.hasError,');
-    buf.writeln('      builder: (ctx, state) {');
-    buf.writeln('        final field = state.${f.fieldName}Field;');
-    buf.writeln('        return TextFormField(');
-    buf.writeln('          controller: _ctrl,');
+    buf.writeln('      buildWhen: (previous, current) => previous.${f.fieldName}.hasError != current.${f.fieldName}.hasError,');
+    buf.writeln('      builder: (context, state) {');
+    buf.writeln('        final field = state.${f.fieldName};');
+    buf.writeln('        return AppTextField(');
+    buf.writeln('          controller: _controller,');
+    buf.writeln("          label: '${_escape(f.label)}',");
+    if (hintText.isNotEmpty) buf.writeln("          hint: '${_escape(hintText)}',");
+    buf.writeln('          errorText: .hasError ? field.error?.message : null,');
     if (f.isReadOnly)         buf.writeln('          readOnly: true,');
     if (f.isDisabled)         buf.writeln('          enabled: false,');
     if (f.obscureText)        buf.writeln('          obscureText: true,');
-    if (!f.autocorrect)       buf.writeln('          autocorrect: false,');
-    if (!f.enableSuggestions) buf.writeln('          enableSuggestions: false,');
     if (f.maxLength != null)  buf.writeln('          maxLength: ${f.maxLength},');
     if (isArea) {
       buf.writeln('          maxLines: 5,');
@@ -258,32 +272,9 @@ class ScreenGenerator {
     buf.writeln('          keyboardType: $kbType,');
     buf.writeln('          textCapitalization: $capType,');
     buf.writeln('          textInputAction: $action,');
-    buf.writeln('          decoration: InputDecoration(');
-    buf.writeln("            labelText: '${_esc(f.label)}',");
-    if (hintText.isNotEmpty) {
-      buf.writeln("            hintText: '${_esc(hintText)}',");
-    }
-    buf.writeln('            errorText: field.hasError ? field.error?.message : null,');
-    buf.writeln('            filled: true,');
-    buf.writeln('            fillColor: const Color(0xFFF8F9FA),');
-    if (isArea) buf.writeln('            alignLabelWithHint: true,');
-    buf.writeln('            border: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('            enabledBorder: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln("                borderSide: const BorderSide(color: Color(0xFFDEE2E6))),");
-    buf.writeln('            focusedBorder: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln("                borderSide: const BorderSide(color: Color(0xFF1A73E8), width: 1.8)),");
-    buf.writeln('            errorBorder: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln("                borderSide: const BorderSide(color: Colors.red, width: 1.5)),");
-    buf.writeln('            focusedErrorBorder: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln("                borderSide: const BorderSide(color: Colors.red, width: 1.8)),");
+    buf.writeln('          onChanged: (value) => context.read<$blocName>().add(');
+    buf.writeln('            ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
     buf.writeln('          ),');
-    buf.writeln('          onChanged: (v) => ctx.read<$b>().add(');
-    buf.writeln('            ComponentUpdatedEvent($k.${f.fieldName}, v)),');
     buf.writeln('        );');
     buf.writeln('      },');
     buf.writeln('    );');
@@ -291,343 +282,221 @@ class ScreenGenerator {
     buf.writeln('}');
   }
 
-  void _writeStaticStringDropdown(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    final opts = f.staticStringValues.map((v) => "'${_esc(v)}'").join(', ');
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<String>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) => DropdownButtonFormField<String>(');
-    buf.writeln('        value: field.value.isEmpty ? null : field.value,');
-    buf.writeln("        hint: const Text('Select ${_esc(f.label)}'),");
-    buf.writeln('        isExpanded: true,');
-    buf.writeln('        decoration: InputDecoration(');
-    buf.writeln("          labelText: '${_esc(f.label)}',");
-    buf.writeln('          errorText: field.hasError ? field.error?.message : null,');
-    buf.writeln('          filled: true,');
-    buf.writeln('          fillColor: const Color(0xFFF8F9FA),');
-    buf.writeln('          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('        ),');
-    buf.writeln('        items: [$opts].map((v) =>');
-    buf.writeln('          DropdownMenuItem(value: v, child: Text(v))).toList(),');
-    buf.writeln('        onChanged: (v) { if (v != null) ctx.read<$b>().add(');
-    buf.writeln('          ComponentUpdatedEvent($k.${f.fieldName}, v)); },');
-    buf.writeln('      ),');
-    buf.writeln('    );');
-  }
-
-  void _writeApiDropdown(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    // ✅ FIX: dropdownValue is dynamic — safe toString with fallback
-    final labelKey = (f.dropdownValue?.toString().isNotEmpty == true)
-        ? toCamelCase(f.dropdownValue.toString())
-        : 'title';
-    buf.writeln('    return BlocBuilder<$b, $s>(');
-    buf.writeln('      buildWhen: (p, c) =>');
-    buf.writeln('          p.${f.fieldName}Options != c.${f.fieldName}Options ||');
-    buf.writeln('          p.${f.fieldName}Field   != c.${f.fieldName}Field   ||');
-    buf.writeln('          p.${f.fieldName}State   != c.${f.fieldName}State,');
-    buf.writeln('      builder: (ctx, state) {');
-    buf.writeln('        final opts  = state.${f.fieldName}Options;');
-    buf.writeln('        final field = state.${f.fieldName}Field;');
-    buf.writeln('        final async = state.${f.fieldName}State;');
-    // Loading state: keep full dropdown height to prevent layout shift
-    buf.writeln('        if (async.isLoading)');
-    buf.writeln('          return DropdownButtonFormField<String>(');
-    buf.writeln('            value: null, items: const [], onChanged: null,');
-    buf.writeln('            isExpanded: true,');
-    buf.writeln("            hint: const Row(mainAxisSize: MainAxisSize.min, children: [");
-    buf.writeln("              SizedBox(width: 14, height: 14,");
-    buf.writeln("                child: CircularProgressIndicator(strokeWidth: 2)),");
-    buf.writeln("              SizedBox(width: 8), Text('Loading…'),");
-    buf.writeln("            ]),");
-    buf.writeln('            decoration: InputDecoration(');
-    buf.writeln("              labelText: '${_esc(f.label)}',");
-    buf.writeln('              filled: true, fillColor: const Color(0xFFF8F9FA),');
-    buf.writeln('              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('            ),');
-    buf.writeln('          );');
-    // Error state: same height, red border to signal failure
-    buf.writeln('        if (async.isFailure)');
-    buf.writeln('          return DropdownButtonFormField<String>(');
-    buf.writeln('            value: null, items: const [], onChanged: null,');
-    buf.writeln('            isExpanded: true,');
-    buf.writeln("            hint: Text(async.failureOrNull?.message ?? 'Failed to load',");
-    buf.writeln("              style: const TextStyle(color: Colors.red, fontSize: 13)),");
-    buf.writeln('            decoration: InputDecoration(');
-    buf.writeln("              labelText: '${_esc(f.label)}',");
-    buf.writeln('              filled: true, fillColor: const Color(0xFFF8F9FA),');
-    buf.writeln('              border: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln('                borderSide: const BorderSide(color: Colors.red)),');
-    buf.writeln('              enabledBorder: OutlineInputBorder(');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln('                borderSide: const BorderSide(color: Colors.red)),');
-    buf.writeln('            ),');
-    buf.writeln('          );');
-    buf.writeln('        return DropdownButtonFormField<String>(');
-    buf.writeln('          value: field.value?.toString().isEmpty == true ? null : field.value?.toString(),');
-    buf.writeln("          hint: const Text('Select ${_esc(f.label)}'),");
-    buf.writeln('          isExpanded: true,');
-    buf.writeln('          decoration: InputDecoration(');
-    buf.writeln("            labelText: '${_esc(f.label)}',");
-    buf.writeln('            errorText: field.hasError ? field.error?.message : null,');
-    buf.writeln('            filled: true,');
-    buf.writeln('            fillColor: const Color(0xFFF8F9FA),');
-    buf.writeln('            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('          ),');
-    buf.writeln('          items: opts.map((e) => DropdownMenuItem(');
-    buf.writeln("            value: e.$labelKey.toString(),");
-    buf.writeln("            child: Text(e.$labelKey.toString()),");
-    buf.writeln('          )).toList(),');
-    buf.writeln('          onChanged: (v) { if (v != null) ctx.read<$b>().add(');
-    buf.writeln('            ComponentUpdatedEvent($k.${f.fieldName}, v)); },');
-    buf.writeln('        );');
-    buf.writeln('      },');
-    buf.writeln('    );');
-  }
-
-  void _writeRadioGroup(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    final opts = f.isStaticStringOnly
-        ? f.staticStringValues
-        : ['Option1', 'Option2', 'Option3'];
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<String>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) => Column(');
-    buf.writeln('        crossAxisAlignment: CrossAxisAlignment.start,');
-    buf.writeln('        children: [');
-    buf.writeln("          Text('${_esc(f.label)}',");
-    buf.writeln('            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),');
-    buf.writeln('          const SizedBox(height: 4),');
-    buf.writeln('          Container(');
-    buf.writeln('            decoration: BoxDecoration(');
-    buf.writeln('              border: Border.all(color: field.hasError');
-    buf.writeln('                  ? Colors.red : const Color(0xFFDEE2E6)),');
-    buf.writeln('              borderRadius: BorderRadius.circular(12),');
-    buf.writeln('              color: const Color(0xFFF8F9FA),');
-    buf.writeln('            ),');
-    buf.writeln('            child: Column(');
-    buf.writeln('              children: [');
-    for (final opt in opts) {
-      buf.writeln('                RadioListTile<String>(');
-      buf.writeln("                  value: '${_esc(opt)}',");
-      buf.writeln('                  groupValue: field.value.isEmpty ? null : field.value,');
-      buf.writeln("                  title: const Text('${_esc(opt)}'),");
-      buf.writeln('                  dense: true,');
-      buf.writeln('                  onChanged: (v) { if (v != null) ctx.read<$b>().add(');
-      buf.writeln('                    ComponentUpdatedEvent($k.${f.fieldName}, v)); },');
-      buf.writeln('                ),');
-    }
-    buf.writeln('              ],');
-    buf.writeln('            ),');
-    buf.writeln('          ),');
-    buf.writeln('          if (field.hasError)');
-    buf.writeln('            Padding(');
-    buf.writeln('              padding: const EdgeInsets.only(left: 12, top: 4),');
-    // ✅ FIX: field.error?.message instead of field.error!.message
-    buf.writeln("              child: Text(field.error?.message ?? '',");
-    buf.writeln('                style: const TextStyle(color: Colors.red, fontSize: 12))),');
-    buf.writeln('        ],');
-    buf.writeln('      ),');
-    buf.writeln('    );');
-  }
-
-  void _writeDatePicker(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<DateTime?>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) {');
-    buf.writeln("        final display = field.value == null ? 'Select date'");
-    // ✅ FIX: safe null check with ?? instead of !
-    buf.writeln("            : '\${field.value?.day.toString().padLeft(2, \"0\") ?? \"\"}/\${field.value?.month.toString().padLeft(2, \"0\") ?? \"\"}/\${field.value?.year ?? \"\"}';");
-    buf.writeln('        return GestureDetector(');
-    buf.writeln('          onTap: () async {');
-    buf.writeln('            final picked = await showDatePicker(');
-    buf.writeln('              context: ctx,');
-    buf.writeln('              initialDate: DateTime(2000),');
-    buf.writeln('              firstDate: DateTime(1900),');
-    buf.writeln('              lastDate: DateTime.now(),');
+  void _writeStaticStringDropdown(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    final options = f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<String>>(');
+    buf.writeln('      selector: (state) => state.${f.fieldName},');
+    buf.writeln('      builder: (context, field) => AppDropdownField<String>(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        value: .value.isEmpty ? null : .value,');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        items: [$options],');
+    buf.writeln('        itemLabelBuilder: (item) => item,');
+    buf.writeln('        onChanged: (value) {');
+    buf.writeln('          if (value != null) {');
+    buf.writeln('            context.read<$blocName>().add(');
+    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
     buf.writeln('            );');
-    buf.writeln('            if (picked != null && ctx.mounted) {');
-    buf.writeln('              ctx.read<$b>().add(');
-    buf.writeln('                ComponentUpdatedEvent($k.${f.fieldName}, picked));');
+    buf.writeln('          }');
+    buf.writeln('        },');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+  }
+
+  void _writeApiDropdown(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    final labelKey = (f.dropdownValue?.toString().isNotEmpty == true)
+        ? _toCamelCase(f.dropdownValue.toString())
+        : 'title';
+    buf.writeln('    return BlocBuilder<$blocName, $stateName>(');
+    buf.writeln('      buildWhen: (previous, current) =>');
+    buf.writeln('          previous.${f.fieldName}Options != current.${f.fieldName}Options ||');
+    buf.writeln('          previous.${f.fieldName}Field   != current.${f.fieldName}Field   ||');
+    buf.writeln('          previous.${f.fieldName}State   != current.${f.fieldName}State,');
+    buf.writeln('      builder: (context, state) {');
+    buf.writeln('        final options = state.${f.fieldName}Options;');
+    buf.writeln('        final field   = state.${f.fieldName};');
+    buf.writeln('        final async   = state.${f.fieldName}State;');
+    buf.writeln('        return AppAsyncDropdownField<dynamic>(');
+    buf.writeln("          label: '${_escape(f.label)}',");
+    buf.writeln('          asyncState: async.map(options),');
+    buf.writeln('          value: .value?.toString().isEmpty == true ? null : options.firstWhere(');
+    buf.writeln('            (item) => item.$labelKey.toString() == .value.toString(),');
+    buf.writeln('            orElse: () => null,');
+    buf.writeln('          ),');
+    buf.writeln('          itemLabelBuilder: (item) => item.$labelKey.toString(),');
+    buf.writeln('          errorText: .hasError ? field.error?.message : null,');
+    if (hasAsyncDropdown) {
+      buf.writeln('          onRetry: () => context.read<$blocName>().add(const Load${featureName}DataEvent()),');
+    } else {
+      buf.writeln('          onRetry: () {},');
+    }
+    buf.writeln('          onChanged: (value) {');
+    buf.writeln('            if (value != null) {');
+    buf.writeln('              context.read<$blocName>().add(');
+    buf.writeln('                ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value.$labelKey.toString()),');
+    buf.writeln('              );');
     buf.writeln('            }');
     buf.writeln('          },');
-    buf.writeln('          child: InputDecorator(');
-    buf.writeln('            decoration: InputDecoration(');
-    buf.writeln("              labelText: '${_esc(f.label)}',");
-    buf.writeln('              suffixIcon: const Icon(Icons.calendar_today_outlined),');
-    buf.writeln('              errorText: field.hasError ? field.error?.message : null,');
-    buf.writeln('              filled: true,');
-    buf.writeln('              fillColor: const Color(0xFFF8F9FA),');
-    buf.writeln('              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),');
-    buf.writeln('            ),');
-    buf.writeln('            child: Text(display,');
-    buf.writeln('              style: TextStyle(color: field.value == null ? Colors.grey : Colors.black87)),');
-    buf.writeln('          ),');
     buf.writeln('        );');
     buf.writeln('      },');
     buf.writeln('    );');
   }
 
-  void _writeCheckbox(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<bool>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) => Column(');
-    buf.writeln('        crossAxisAlignment: CrossAxisAlignment.start,');
-    buf.writeln('        children: [');
-    buf.writeln('          CheckboxListTile(');
-    buf.writeln('            value: field.value,');
-    buf.writeln("            title: const Text('${_esc(f.label)}'),");
-    buf.writeln('            controlAffinity: ListTileControlAffinity.leading,');
-    buf.writeln('            contentPadding: EdgeInsets.zero,');
-    buf.writeln('            onChanged: (v) => ctx.read<$b>().add(');
-    buf.writeln('              ComponentUpdatedEvent($k.${f.fieldName}, v ?? false)),');
-    buf.writeln('          ),');
-    buf.writeln('          if (field.hasError)');
-    buf.writeln('            Padding(');
-    buf.writeln('              padding: const EdgeInsets.only(left: 12),');
-    // ✅ FIX: field.error?.message instead of field.error!.message
-    buf.writeln("              child: Text(field.error?.message ?? '',");
-    buf.writeln('                style: const TextStyle(color: Colors.red, fontSize: 12))),');
-    buf.writeln('        ],');
+  void _writeRadioGroup(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    final options = f.isStaticStringOnly
+        ? f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ')
+        : "'Option 1', 'Option 2'";
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<String>>(');
+    buf.writeln('      selector: (state) => state.${f.fieldName},');
+    buf.writeln('      builder: (context, field) => AppRadioGroupField(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        options: [$options],');
+    buf.writeln('        value: .value.isEmpty ? null : .value,');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        onChanged: (value) {');
+    buf.writeln('          if (value != null) {');
+    buf.writeln('            context.read<$blocName>().add(');
+    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln('            );');
+    buf.writeln('          }');
+    buf.writeln('        },');
     buf.writeln('      ),');
     buf.writeln('    );');
   }
 
-  void _writeFileUpload(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<dynamic>>(');
+  void _writeDatePicker(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<DateTime?>>(');
     buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) {');
-    buf.writeln('        final file = field.value as dynamic;');
-    // ✅ FIX: safe null check on file path
-    buf.writeln("        final name = file == null ? 'No file selected' : file.toString();");
-    buf.writeln('        return Column(');
-    buf.writeln('          crossAxisAlignment: CrossAxisAlignment.start,');
-    buf.writeln('          children: [');
-    buf.writeln("            Text('${_esc(f.label)}',");
-    buf.writeln('              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),');
-    buf.writeln('            const SizedBox(height: 6),');
-    buf.writeln('            Container(');
-    buf.writeln('              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),');
-    buf.writeln('              decoration: BoxDecoration(');
-    buf.writeln('                border: Border.all(color: field.hasError');
-    buf.writeln('                    ? Colors.red : const Color(0xFFDEE2E6)),');
-    buf.writeln('                borderRadius: BorderRadius.circular(12),');
-    buf.writeln('                color: const Color(0xFFF8F9FA),');
-    buf.writeln('              ),');
-    buf.writeln('              child: Row(');
-    buf.writeln('                children: [');
-    buf.writeln('                  Expanded(');
-    buf.writeln('                    child: Text(name,');
-    buf.writeln('                      style: TextStyle(');
-    buf.writeln('                        color: file == null ? Colors.grey : Colors.black87,');
-    buf.writeln('                        overflow: TextOverflow.ellipsis),');
-    buf.writeln('                      maxLines: 1),');
-    buf.writeln('                  ),');
-    buf.writeln('                  const SizedBox(width: 8),');
-    buf.writeln('                  ElevatedButton.icon(');
-    buf.writeln('                    style: ElevatedButton.styleFrom(');
-    buf.writeln('                      backgroundColor: const Color(0xFF1A73E8),');
-    buf.writeln('                      foregroundColor: Colors.white,');
-    buf.writeln('                      shape: RoundedRectangleBorder(');
-    buf.writeln('                          borderRadius: BorderRadius.circular(8)),');
-    buf.writeln('                    ),');
-    buf.writeln('                    icon: const Icon(Icons.upload_file, size: 18),');
-    buf.writeln("                    label: const Text('Browse'),");
-    buf.writeln('                    onPressed: () async {');
-    buf.writeln('                      // TODO: integrate file_picker package');
-    buf.writeln('                      // final result = await FilePicker.platform.pickFiles();');
-    buf.writeln('                      // if (result != null && ctx.mounted) {');
-    buf.writeln('                      //   ctx.read<$b>().add(ComponentUpdatedEvent(');
-    buf.writeln('                      //     $k.${f.fieldName}, result.files.single.path));');
-    buf.writeln('                      // }');
-    buf.writeln('                    },');
-    buf.writeln('                  ),');
-    buf.writeln('                ],');
-    buf.writeln('              ),');
-    buf.writeln('            ),');
-    buf.writeln('            if (field.hasError)');
-    buf.writeln('              Padding(');
-    buf.writeln('                padding: const EdgeInsets.only(left: 12, top: 4),');
-    // ✅ FIX: field.error?.message instead of field.error!.message
-    buf.writeln("                child: Text(field.error?.message ?? '',");
-    buf.writeln('                  style: const TextStyle(color: Colors.red, fontSize: 12))),');
-    buf.writeln("            const Padding(");
-    buf.writeln('              padding: EdgeInsets.only(left: 12, top: 4),');
-    buf.writeln("              child: Text('Accepted: PDF, JPG, PNG · Max 5 MB',");
-    buf.writeln('                style: TextStyle(color: Colors.grey, fontSize: 11))),');
-    buf.writeln('          ],');
-    buf.writeln('        );');
-    buf.writeln('      },');
-    buf.writeln('    );');
-  }
-
-  void _writeMultiSelect(StringBuffer buf, FieldSchema f, String s, String b, String k) {
-    final opts = f.staticStringValues.isNotEmpty
-        ? f.staticStringValues.map((v) => "'${_esc(v)}'").join(', ')
-        : "'Option1', 'Option2', 'Option3'";
-    buf.writeln('    return BlocSelector<$b, $s, ReactiveValue<List<String>>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (ctx, field) => Column(');
-    buf.writeln('        crossAxisAlignment: CrossAxisAlignment.start,');
-    buf.writeln('        children: [');
-    buf.writeln("          Text('${_esc(f.label)}',");
-    buf.writeln('              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),');
-    buf.writeln('          const SizedBox(height: 8),');
-    buf.writeln('          Wrap(');
-    buf.writeln('            spacing: 8,');
-    buf.writeln('            children: [$opts].map((opt) {');
-    buf.writeln('              final selected = field.value.contains(opt);');
-    buf.writeln('              return FilterChip(');
-    buf.writeln('                label: Text(opt),');
-    buf.writeln('                selected: selected,');
-    buf.writeln('                onSelected: (_) {');
-    buf.writeln('                  final current = List<String>.from(field.value);');
-    buf.writeln('                  selected ? current.remove(opt) : current.add(opt);');
-    buf.writeln('                  ctx.read<$b>().add(');
-    buf.writeln('                    ComponentUpdatedEvent($k.${f.fieldName}, current));');
-    buf.writeln('                },');
-    buf.writeln('              );');
-    buf.writeln('            }).toList(),');
-    buf.writeln('          ),');
-    buf.writeln('          if (field.hasError)');
-    buf.writeln('            Padding(');
-    buf.writeln('              padding: const EdgeInsets.only(top: 4),');
-    // ✅ FIX: field.error?.message instead of field.error!.message
-    buf.writeln("              child: Text(field.error?.message ?? '',");
-    buf.writeln('                style: const TextStyle(color: Colors.red, fontSize: 12))),');
-    buf.writeln('        ],');
+    buf.writeln('      builder: (context, field) => AppDatePickerField(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        value: .value,');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        onChanged: (value) {');
+    buf.writeln('          if (value != null) {');
+    buf.writeln('            context.read<$blocName>().add(');
+    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln('            );');
+    buf.writeln('          }');
+    buf.writeln('        },');
     buf.writeln('      ),');
     buf.writeln('    );');
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  void _writeCheckbox(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<bool>>(');
+    buf.writeln('      selector: (state) => state.${f.fieldName},');
+    buf.writeln('      builder: (context, field) => AppCheckboxField(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        value: .value,');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
+    buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value ?? false),');
+    buf.writeln('        ),');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+  }
 
-  /// Escape single quotes inside generated string literals
-  String _esc(String s) => s.replaceAll("'", "\\'");
+  void _writeFileUpload(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<dynamic>>(');
+    buf.writeln('      selector: (state) => state.${f.fieldName},');
+    buf.writeln('      builder: (context, field) => AppFileUploadField(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        value: .value?.toString(),');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        onChanged: (value) {');
+    buf.writeln('          if (value != null) {');
+    buf.writeln('            context.read<$blocName>().add(');
+    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln('            );');
+    buf.writeln('          }');
+    buf.writeln('        },');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+  }
 
-  String _flutterKeyboardType(String kt) => switch (kt.toLowerCase()) {
-        'emailaddress' || 'email' => 'TextInputType.emailAddress',
-        'number'                  => 'TextInputType.number',
-        'phone'                   => 'TextInputType.phone',
-        'multiline'               => 'TextInputType.multiline',
-        'url'                     => 'TextInputType.url',
-        'visiblepassword'         => 'TextInputType.visiblePassword',
-        _                         => 'TextInputType.text',
-      };
+  void _writeMultiSelect(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
+    final options = f.staticStringValues.isNotEmpty
+        ? f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ')
+        : "'Option 1', 'Option 2', 'Option 3'";
+    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<List<String>>>(');
+    buf.writeln('      selector: (state) => state.${f.fieldName},');
+    buf.writeln('      builder: (context, field) => AppMultiSelectField(');
+    buf.writeln("        label: '${_escape(f.label)}',");
+    buf.writeln('        options: [$options],');
+    buf.writeln('        selectedValues: .value,');
+    buf.writeln('        errorText: .hasError ? field.error?.message : null,');
+    buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
+    buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln('        ),');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+  }
 
-  String _flutterCapitalization(String cap) => switch (cap.toLowerCase()) {
-        'words'      => 'TextCapitalization.words',
-        'sentences'  => 'TextCapitalization.sentences',
-        'characters' => 'TextCapitalization.characters',
-        _            => 'TextCapitalization.none',
-      };
+  // --------------------------------------------------------------------------
+  // Helpers (all static)
+  // --------------------------------------------------------------------------
 
-  String _flutterInputAction(String action) => switch (action.toLowerCase()) {
-        'next'    => 'TextInputAction.next',
-        'search'  => 'TextInputAction.search',
-        'send'    => 'TextInputAction.send',
-        'go'      => 'TextInputAction.go',
-        'newline' => 'TextInputAction.newline',
-        _         => 'TextInputAction.done',
-      };
+  static String _escape(String s) => s.replaceAll("'", "\\'");
+
+  static String _flutterKeyboardType(String keyboardType) {
+    switch (keyboardType.toLowerCase()) {
+      case 'emailaddress': case 'email': return 'TextInputType.emailAddress';
+      case 'number': return 'TextInputType.number';
+      case 'phone': return 'TextInputType.phone';
+      case 'multiline': return 'TextInputType.multiline';
+      case 'url': return 'TextInputType.url';
+      case 'visiblepassword': return 'TextInputType.visiblePassword';
+      default: return 'TextInputType.text';
+    }
+  }
+
+  static String _flutterCapitalization(String capitalization) {
+    switch (capitalization.toLowerCase()) {
+      case 'words': return 'TextCapitalization.words';
+      case 'sentences': return 'TextCapitalization.sentences';
+      case 'characters': return 'TextCapitalization.characters';
+      default: return 'TextCapitalization.none';
+    }
+  }
+
+  static String _flutterInputAction(String inputAction) {
+    switch (inputAction.toLowerCase()) {
+      case 'next': return 'TextInputAction.next';
+      case 'search': return 'TextInputAction.search';
+      case 'send': return 'TextInputAction.send';
+      case 'go': return 'TextInputAction.go';
+      case 'newline': return 'TextInputAction.newline';
+      default: return 'TextInputAction.done';
+    }
+  }
+
+  static String _toSnakeCase(String input) {
+    if (input.isEmpty) return input;
+    final buffer = StringBuffer();
+    buffer.write(input[0].toLowerCase());
+    for (int i = 1; i < input.length; i++) {
+      final char = input[i];
+      if (char.toUpperCase() == char && char != char.toLowerCase()) {
+        buffer.write('_${char.toLowerCase()}');
+      } else {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
+
+  static String _toCap(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
+  static String _toCamelCase(String input) {
+    if (input.isEmpty) return input;
+    final parts = input.split('_');
+    final buffer = StringBuffer(parts.first);
+    for (int i = 1; i < parts.length; i++) {
+      buffer.write(_toCap(parts[i]));
+    }
+    return buffer.toString();
+  }
 }
