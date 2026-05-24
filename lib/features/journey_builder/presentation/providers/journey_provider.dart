@@ -311,9 +311,8 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
       // Update history
       _ref.read(historyProvider.notifier).push(newConfig);
 
-      // Verify active step exists, if not set to first step
-      final activeStepId = _ref.read(activeStepIdProvider);
-      if (!newConfig.steps.any((s) => s.id == activeStepId) && newConfig.steps.isNotEmpty) {
+      // Reset active step to first step of the loaded configuration
+      if (newConfig.steps.isNotEmpty) {
         _ref.read(activeStepIdProvider.notifier).state = newConfig.steps.first.id;
       }
       return true;

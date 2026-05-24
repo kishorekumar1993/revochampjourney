@@ -25,6 +25,10 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
   String? _errorMessage;
   bool _isDownloadingConfig = false;
 
+  // Search and filter state
+  String _searchQuery = "";
+  String _selectedCategory = "All";
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +50,6 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
 
       if (response.statusCode == 200) {
         final rawDecoded = json.decode(utf8.decode(response.bodyBytes));
-        // Safe JSON serialization/deserialization to ensure strongly typed structures on all platforms
         final decoded = json.decode(json.encode(rawDecoded));
 
         List<dynamic> templatesList = [];
@@ -189,8 +192,131 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
     return RevoTheme.primaryLight;
   }
 
+  Color _getBadgeTextColor(Color badgeColor, bool isDark) {
+    final hsl = HSLColor.fromColor(badgeColor);
+    if (isDark) {
+      if (hsl.lightness < 0.4) {
+        return hsl.withLightness(0.7).toColor();
+      }
+      return badgeColor;
+    } else {
+      if (hsl.lightness > 0.5) {
+        return hsl.withLightness(0.35).toColor();
+      }
+      return badgeColor;
+    }
+  }
+
+  Widget _buildSearchBar() {
+    return SizedBox(
+      width: 300,
+      height: 42,
+      child: TextField(
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+        style: GoogleFonts.inter(fontSize: 13, color: RevoTheme.textPrimary),
+        decoration: InputDecoration(
+          hintText: "Search templates...",
+          hintStyle: GoogleFonts.inter(fontSize: 13, color: RevoTheme.textSecondary),
+          prefixIcon: Icon(Icons.search, color: RevoTheme.textSecondary, size: 18),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, color: RevoTheme.textSecondary, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = "";
+                    });
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: RevoTheme.cardBg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: RevoTheme.cardBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: RevoTheme.cardBorder),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(List<String> categories) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = _selectedCategory == cat;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(
+                cat,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : RevoTheme.textPrimary,
+                ),
+              ),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedCategory = cat;
+                });
+              },
+              selectedColor: RevoTheme.primary,
+              backgroundColor: RevoTheme.cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? Colors.transparent : RevoTheme.cardBorder,
+                ),
+              ),
+              showCheckmark: false,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Watch the themeModeProvider to trigger UI rebuilds on theme toggle
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark;
+
+    // Dynamically extract categories from available templates list
+    final List<String> categories = ["All"];
+    for (var t in _templates) {
+      final badge = t['badge'] as String? ?? '';
+      if (badge.isNotEmpty && !categories.contains(badge)) {
+        categories.add(badge);
+      }
+    }
+
+    // Filter templates list based on search query and category
+    final filteredTemplates = _templates.where((t) {
+      final title = (t['title'] as String? ?? '').toLowerCase();
+      final desc = (t['description'] as String? ?? '').toLowerCase();
+      final badge = (t['badge'] as String? ?? '').toLowerCase();
+      final matchesSearch = title.contains(_searchQuery.toLowerCase()) ||
+          desc.contains(_searchQuery.toLowerCase());
+          
+      if (_selectedCategory == "All") {
+        return matchesSearch;
+      } else {
+        return matchesSearch && badge == _selectedCategory.toLowerCase();
+      }
+    }).toList();
+
     return Scaffold(
       backgroundColor: RevoTheme.background,
       body: Stack(
@@ -217,11 +343,40 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
                     color: RevoTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-                // Dynamic templates grid
+                // Responsive Search and Filters Controls
+                if (!_isLoadingTemplates && _errorMessage == null && _templates.isNotEmpty) ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 700;
+                      if (isWide) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: _buildFilterChips(categories)),
+                            const SizedBox(width: 24),
+                            _buildSearchBar(),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSearchBar(),
+                            const SizedBox(height: 12),
+                            _buildFilterChips(categories),
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Content Area
                 Expanded(
-                  child: _buildContent(),
+                  child: _buildContent(filteredTemplates, isDark),
                 ),
               ],
             ),
@@ -258,7 +413,7 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(List<dynamic> filteredTemplates, bool isDark) {
     if (_isLoadingTemplates) {
       return Center(
         child: Column(
@@ -320,136 +475,206 @@ class _RevoTemplatesScreenState extends ConsumerState<RevoTemplatesScreen> {
       );
     }
 
+    if (filteredTemplates.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, size: 48, color: RevoTheme.textSecondary),
+            const SizedBox(height: 16),
+            Text(
+              "No templates match your search filters.",
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: RevoTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 480,
         crossAxisSpacing: 24,
         mainAxisSpacing: 24,
-        childAspectRatio: 1.5,
+        mainAxisExtent: 260,
       ),
-      itemCount: _templates.length,
+      itemCount: filteredTemplates.length,
       itemBuilder: (context, index) {
-        final t = _templates[index] as Map<String, dynamic>;
-        final badgeColor = _parseHexColor(t['badgeColor'] as String?);
+        final t = filteredTemplates[index] as Map<String, dynamic>;
+        final rawColor = _parseHexColor(t['badgeColor'] as String?);
         final icon = _getIconData(t['icon'] as String?);
+        final textBadgeColor = _getBadgeTextColor(rawColor, isDark);
 
-        return Container(
-          decoration: BoxDecoration(
-            color: RevoTheme.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: RevoTheme.cardBorder),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0C000000),
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Row with Icon & Badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: badgeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: badgeColor,
-                      size: 24,
-                    ),
-                  ),
-                  if (t['badge'] != null && (t['badge'] as String).isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-                      ),
-                      child: Text(
-                        t['badge'] as String,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: badgeColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Title
-              Text(
-                t['title'] as String? ?? 'Untitled Journey',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: RevoTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Description
-              Expanded(
-                child: Text(
-                  t['description'] as String? ?? '',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: RevoTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Bottom Actions Row (Steps Count & Use Button)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.layers_outlined, size: 14, color: RevoTheme.textSecondary),
-                      const SizedBox(width: 6),
-                      Text(
-                        "${t['stepsCount'] ?? 0} Steps",
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: RevoTheme.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _useTemplate(t),
-                    icon: const Icon(Icons.check_rounded, size: 14),
-                    label: const Text("Use Template"),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      backgroundColor: RevoTheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        return TemplateCard(
+          template: t,
+          badgeColor: rawColor,
+          icon: icon,
+          isDark: isDark,
+          textBadgeColor: textBadgeColor,
+          onUse: () => _useTemplate(t),
         );
       },
+    );
+  }
+}
+
+class TemplateCard extends StatefulWidget {
+  final Map<String, dynamic> template;
+  final Color badgeColor;
+  final IconData icon;
+  final bool isDark;
+  final Color textBadgeColor;
+  final VoidCallback onUse;
+
+  const TemplateCard({
+    super.key,
+    required this.template,
+    required this.badgeColor,
+    required this.icon,
+    required this.isDark,
+    required this.textBadgeColor,
+    required this.onUse,
+  });
+
+  @override
+  State<TemplateCard> createState() => _TemplateCardState();
+}
+
+class _TemplateCardState extends State<TemplateCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.template;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        transform: Matrix4.translationValues(0.0, _isHovered ? -4.0 : 0.0, 0.0),
+        decoration: BoxDecoration(
+          color: RevoTheme.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered ? RevoTheme.primary.withValues(alpha: 0.8) : RevoTheme.cardBorder,
+            width: _isHovered ? 2.0 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered ? RevoTheme.primary.withValues(alpha: 0.15) : const Color(0x0C000000),
+              blurRadius: _isHovered ? 24 : 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row with Icon & Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: widget.badgeColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: widget.badgeColor.withValues(alpha: 0.4)),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.textBadgeColor,
+                    size: 24,
+                  ),
+                ),
+                if (t['badge'] != null && (t['badge'] as String).isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: widget.badgeColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: widget.badgeColor.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      t['badge'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: widget.textBadgeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              t['title'] as String? ?? 'Untitled Journey',
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: RevoTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Description
+            Expanded(
+              child: Text(
+                t['description'] as String? ?? '',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: RevoTheme.textSecondary,
+                  height: 1.4,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Bottom Actions Row (Steps Count & Use Button)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.layers_outlined, size: 14, color: RevoTheme.textSecondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      "${t['stepsCount'] ?? 0} Steps",
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: RevoTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: widget.onUse,
+                  icon: const Icon(Icons.check_rounded, size: 14),
+                  label: const Text("Use Template"),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: RevoTheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

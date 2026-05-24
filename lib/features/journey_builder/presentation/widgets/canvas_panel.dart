@@ -16,7 +16,7 @@ class RevoCanvasPanel extends ConsumerStatefulWidget {
 class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   String _activeTab = 'Design';
   bool _isMobilePreview = true;
-  bool _showPreview = true;
+  bool _showPreview = false;
 
   bool _testingStepApi = false;
   int? _testingStepApiIndex;

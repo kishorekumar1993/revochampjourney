@@ -1055,7 +1055,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     return InkWell(
       onTap: () => setState(() => _activeTab = text),
       borderRadius: BorderRadius.circular(4),
-      child: Container(
+      child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? RevoTheme.primary : Colors.transparent,

@@ -88,7 +88,7 @@ class RevoSidebar extends StatelessWidget {
                     child: InkWell(
                       onTap: () => onMenuChanged(item['id'] as String),
                       borderRadius: BorderRadius.circular(10),
-                      child: Container(
+                      child: Ink(
                         padding: EdgeInsets.symmetric(
                           horizontal: isCollapsed ? 12 : 16,
                           vertical: 12,

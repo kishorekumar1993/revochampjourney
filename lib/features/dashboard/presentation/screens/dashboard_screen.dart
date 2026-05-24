@@ -382,6 +382,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                             setState(() {
                               _activeMenu = 'journeys';
                               _isEditingJourney = true;
+                              _isSidebarCollapsed = true;
                             });
                           },
                         )
@@ -407,6 +408,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                                                                 ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
                                                                 setState(() {
                                                                   _isEditingJourney = true;
+                                                                  _isSidebarCollapsed = true;
                                                                 });
                                                               },
                                                               onCreateNew: () {
@@ -414,6 +416,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                                                                 ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
                                                                 setState(() {
                                                                   _isEditingJourney = true;
+                                                                  _isSidebarCollapsed = true;
                                                                 });
                                                               },
                                                             )
@@ -481,6 +484,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     onPressed: () {
                       setState(() {
                         _isEditingJourney = false;
+                        _isSidebarCollapsed = false;
                       });
                     },
                   ),

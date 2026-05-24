@@ -376,61 +376,108 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 final isSelected = step.id == activeStepId;
                 final stepNum = index + 1;
 
-                return Container(
+                return Padding(
                   key: ValueKey(step.id),
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected ? RevoTheme.primary.withValues(alpha:0.15) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected ? RevoTheme.primary.withValues(alpha:0.4) : Colors.transparent,
-                      width: 1,
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    selected: isSelected,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected 
+                            ? RevoTheme.primary 
+                            : RevoTheme.cardBorder,
+                        width: 1.5,
+                      ),
+                    ),
+                    tileColor: RevoTheme.cardBg,
+                    selectedTileColor: RevoTheme.primary.withValues(alpha: 0.1),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     leading: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ReorderableDragStartListener(
                           index: index,
-                          child: Icon(Icons.drag_indicator_rounded, color: RevoTheme.textSecondary, size: 16),
+                          child: Icon(
+                            Icons.drag_indicator_rounded, 
+                            color: RevoTheme.textSecondary, 
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: isSelected ? RevoTheme.primary : RevoTheme.cardBg,
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: isSelected 
+                                ? RevoTheme.primary 
+                                : RevoTheme.cardBorder,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
                           child: Text(
                             "$stepNum",
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : RevoTheme.textSecondary,
+                              color: isSelected ? Colors.white : RevoTheme.textPrimary,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    title: Row(
+                    title: Text(
+                      step.title,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: RevoTheme.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        "${step.fields.length} fields • id: ${step.id}",
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: RevoTheme.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           _getStepIcon(step.id),
-                          color: isSelected ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          color: isSelected ? RevoTheme.primary : RevoTheme.textSecondary,
                           size: 16,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            step.title,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                        const SizedBox(width: 4),
+                        PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert_rounded, size: 16, color: RevoTheme.textSecondary),
+                          color: RevoTheme.cardBg,
+                          onSelected: (val) {
+                            if (val == 'delete') {
+                              ref.read(journeyConfigProvider.notifier).removeStep(step.id);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline_rounded, color: Colors.red, size: 16),
+                                  SizedBox(width: 8),
+                                  Text("Delete Step", style: TextStyle(color: Colors.red, fontSize: 13)),
+                                ],
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -438,21 +485,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       ref.read(activeStepIdProvider.notifier).state = step.id;
                       ref.read(selectedFieldIdProvider.notifier).state = null;
                     },
-                    trailing: PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert_rounded, size: 16, color: RevoTheme.textSecondary),
-                      color: RevoTheme.cardBg,
-                      onSelected: (val) {
-                        if (val == 'delete') {
-                          ref.read(journeyConfigProvider.notifier).removeStep(step.id);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete Step', style: TextStyle(color: Colors.red, fontSize: 12)),
-                        ),
-                      ],
-                    ),
                   ),
                 );
               },
