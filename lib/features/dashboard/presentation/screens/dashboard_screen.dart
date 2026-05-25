@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:revojourneytryone/blocnew/revochamp_bloc_generator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme.dart';
@@ -399,45 +398,46 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text("Cancel", style: TextStyle(color: RevoTheme.textSecondary)),
                 ),
-                ElevatedButton(
-                  onPressed: !hasSelection
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                          final architectures = <Architecture>{
-                            if (blocSelected) Architecture.bloc,
-                            if (getxSelected) Architecture.getx,
-                            if (riverpodSelected) Architecture.riverpod,
-                          };
+                // ElevatedButton(
+                //   onPressed: !hasSelection
+                //       ? null
+                //       : () {
+                //           Navigator.pop(dialogContext);
+                //           final architectures = <Architecture>{
+                //             if (blocSelected) Architecture.bloc,
+                //             if (getxSelected) Architecture.getx,
+                //             if (riverpodSelected) Architecture.riverpod,
+                //           };
 
-                          try {
-                            generateAndSaveAllFiles(
-                              journeyConfig: journeyConfig,
-                              architectures: architectures,
-                            );
+                //           try {
+                //             generateAndSaveAllFiles(
+                //               journeyConfig: journeyConfig,
+                //               architectures: architectures,
+                //             );
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("✅ Code generation started — select your project folder!"),
-                                backgroundColor: Colors.green,
-                                duration: Duration(seconds: 4),
-                              ),
-                            );
-                          } catch (e, stack) {
-                            debugPrint("Generation error: $e\n$stack");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Generation error: $e"),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: RevoTheme.primary,
-                  ),
-                  child: const Text("Generate"),
-                ),
+                //             ScaffoldMessenger.of(context).showSnackBar(
+                //               const SnackBar(
+                //                 content: Text("✅ Code generation started — select your project folder!"),
+                //                 backgroundColor: Colors.green,
+                //                 duration: Duration(seconds: 4),
+                //               ),
+                //             );
+                //           } catch (e, stack) {
+                //             debugPrint("Generation error: $e\n$stack");
+                //             ScaffoldMessenger.of(context).showSnackBar(
+                //               SnackBar(
+                //                 content: Text("Generation error: $e"),
+                //                 backgroundColor: Colors.redAccent,
+                //               ),
+                //             );
+                //           }
+                //         },
+                //   style: ElevatedButton.styleFrom(
+                //     backgroundColor: RevoTheme.primary,
+                //   ),
+                //   child: const Text("Generate"),
+                // ),
+          
               ],
             );
           },
