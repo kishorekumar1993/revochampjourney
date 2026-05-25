@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +22,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   bool _isValidJson = true;
   String _jsonError = '';
   bool _showJsonConfig = false;
+  final FocusNode _jsonFocus = FocusNode();
+  Timer? _jsonDebounce;
 
   // Section collapse states to prevent scrolling ("crawling")
   bool _showGeneralSettings = true;
@@ -45,6 +48,9 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   bool _testingGridApi = false;
   String? _gridApiTestResult;
   bool _gridApiTestSuccess = false;
+  List<Map<String, dynamic>>? _gridApiPreviewRows;
+
+  ProviderSubscription<JourneyConfig>? _configSubscription;
 
   @override
   void initState() {
@@ -54,10 +60,28 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
       final config = ref.read(journeyConfigProvider);
       _jsonController.text = _beautifyJson(config.toJson());
     });
+
+    // Sync JSON text field if updated visually
+    _configSubscription = ref.listenManual<JourneyConfig>(journeyConfigProvider, (prev, next) {
+      if (!mounted) return;
+      if (_jsonFocus.hasFocus) return; // Prevent overwriting while actively typing
+      try {
+        final currentTextDecoded = json.encode(json.decode(_jsonController.text));
+        final nextDecoded = json.encode(next.toJson());
+        if (currentTextDecoded != nextDecoded) {
+          _jsonController.text = _beautifyJson(next.toJson());
+        }
+      } catch (_) {
+        _jsonController.text = _beautifyJson(next.toJson());
+      }
+    });
   }
 
   @override
   void dispose() {
+    _configSubscription?.close();
+    _jsonDebounce?.cancel();
+    _jsonFocus.dispose();
     _jsonController.dispose();
     super.dispose();
   }
@@ -69,19 +93,23 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
 
   void _onJsonTextChanged(String val, WidgetRef ref) {
     if (val.trim().isEmpty) return;
-    try {
-      json.decode(val);
-      final success = ref.read(journeyConfigProvider.notifier).updateFromJson(val);
-      setState(() {
-        _isValidJson = success;
-        _jsonError = success ? '' : 'Schema mismatch or invalid keys';
-      });
-    } catch (e) {
-      setState(() {
-        _isValidJson = false;
-        _jsonError = e.toString();
-      });
-    }
+    _jsonDebounce?.cancel();
+    _jsonDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      try {
+        json.decode(val);
+        final success = ref.read(journeyConfigProvider.notifier).updateFromJson(val);
+        setState(() {
+          _isValidJson = success;
+          _jsonError = success ? '' : 'Schema mismatch or invalid keys';
+        });
+      } catch (e) {
+        setState(() {
+          _isValidJson = false;
+          _jsonError = e.toString();
+        });
+      }
+    });
   }
 
   void _beautifyText() {
@@ -106,20 +134,6 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     final config = ref.watch(journeyConfigProvider);
     final activeStepId = ref.watch(activeStepIdProvider);
     final selectedFieldId = ref.watch(selectedFieldIdProvider);
-
-    // Sync JSON text field if updated visually
-    ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
-      if (!mounted) return;
-      try {
-        final currentTextDecoded = json.encode(json.decode(_jsonController.text));
-        final nextDecoded = json.encode(next.toJson());
-        if (currentTextDecoded != nextDecoded) {
-          _jsonController.text = _beautifyJson(next.toJson());
-        }
-      } catch (_) {
-        _jsonController.text = _beautifyJson(next.toJson());
-      }
-    });
 
     // Find the highlighted field in the active step
     JourneyField? selectedField;
@@ -249,6 +263,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             Expanded(
                               child: TextField(
                                 controller: _jsonController,
+                                focusNode: _jsonFocus,
                                 maxLines: null,
                                 expands: true,
                                 style: GoogleFonts.sourceCodePro(fontSize: 11, color: Colors.greenAccent),
@@ -1500,6 +1515,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     setState(() {
       _testingGridApi = true;
       _gridApiTestResult = null;
+      _gridApiPreviewRows = null;
     });
 
     try {
@@ -1548,6 +1564,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         _testingGridApi = false;
         _gridApiTestSuccess = true;
         _gridApiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${rows.length} grid row(s) and saved sample data.";
+        _gridApiPreviewRows = rows.take(2).toList();
       });
     } catch (e) {
       if (!mounted) return;
@@ -1579,11 +1596,12 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     final pageParam = config['apiPageParam']?.toString() ?? 'page';
     final sizeParam = config['apiPageSizeParam']?.toString() ?? 'limit';
     final rowsPerPage = config['rowsPerPage']?.toString() ?? '10';
-    return uri.replace(queryParameters: {
-      ...uri.queryParameters,
-      if (pageParam.isNotEmpty) pageParam: '1',
-      if (sizeParam.isNotEmpty) sizeParam: rowsPerPage,
-    });
+    
+    final newParams = Map<String, dynamic>.from(uri.queryParametersAll);
+    if (pageParam.isNotEmpty) newParams[pageParam] = ['1'];
+    if (sizeParam.isNotEmpty) newParams[sizeParam] = [rowsPerPage];
+    
+    return uri.replace(queryParameters: newParams);
   }
 
   Map<String, String> _gridApiHeaders(dynamic rawHeaders) {
@@ -1929,9 +1947,36 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   color: _gridApiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.25) : Colors.redAccent.withValues(alpha: 0.25),
                 ),
               ),
-              child: Text(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 _gridApiTestResult!,
                 style: GoogleFonts.inter(fontSize: 10, color: _gridApiTestSuccess ? Colors.greenAccent : Colors.redAccent),
+              ),
+              if (_gridApiTestSuccess && _gridApiPreviewRows != null && _gridApiPreviewRows!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  "Sample Row Preview:",
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: RevoTheme.background,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    json.encode(_gridApiPreviewRows),
+                    style: GoogleFonts.sourceCodePro(fontSize: 9, color: Colors.greenAccent.withValues(alpha: 0.8)),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
               ),
             ),
           ],

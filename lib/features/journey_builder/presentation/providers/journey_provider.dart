@@ -497,6 +497,9 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 
   void reorderSteps(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= state.steps.length) return;
+    if (newIndex < 0 || newIndex > state.steps.length) return;
+
     final updatedSteps = List<JourneyStep>.from(state.steps);
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -567,6 +570,9 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
 
     final step = state.steps[stepIndex];
     final updatedFields = List<JourneyField>.from(step.fields);
+    if (oldIndex < 0 || oldIndex >= updatedFields.length) return;
+    if (newIndex < 0 || newIndex > updatedFields.length) return;
+
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }

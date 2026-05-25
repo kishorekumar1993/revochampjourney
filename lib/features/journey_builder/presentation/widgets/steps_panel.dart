@@ -6,6 +6,97 @@ import '../../../../core/theme.dart';
 import '../../data/models.dart';
 import '../providers/journey_provider.dart';
 
+class BuildAuditResult {
+  final List<String> errors;
+  final List<String> warnings;
+
+  const BuildAuditResult({
+    required this.errors,
+    required this.warnings,
+  });
+}
+
+/// Memoized provider that recalculates the audit ONLY when journeyConfigProvider changes.
+final buildAuditProvider = Provider.autoDispose<BuildAuditResult>((ref) {
+  final config = ref.watch(journeyConfigProvider);
+  final List<String> buildErrors = [];
+  final List<String> buildWarnings = [];
+  final allFieldIds = <String>{};
+  final duplicatedFieldIds = <String>{};
+
+  for (final s in config.steps) {
+    if (s.fields.isEmpty) {
+      buildWarnings.add("Step '${s.title}' has no fields on the canvas.");
+    }
+    for (final f in s.fields) {
+      if (allFieldIds.contains(f.id)) {
+        duplicatedFieldIds.add(f.id);
+      } else {
+        allFieldIds.add(f.id);
+      }
+      if (f.label.trim().isEmpty) {
+        buildWarnings.add("Field '${f.id}' in Step '${s.title}' has an empty label.");
+      }
+      if ((f.type == 'dropdown' || f.type == 'radio' || f.type == 'multi_select') &&
+          f.useStaticOptions &&
+          (f.staticOptions == null || f.staticOptions!.isEmpty)) {
+        buildWarnings.add("Dropdown/Radio field '${f.id}' has static options enabled but none configured.");
+      }
+      if (f.type == 'api_dropdown' && (f.dropdownApiUrl == null || f.dropdownApiUrl!.isEmpty)) {
+        buildErrors.add("API Dropdown '${f.id}' is missing its Endpoint URL.");
+      }
+    }
+
+    // Check Step Conditions
+    for (final cond in s.conditions) {
+      if (cond.field.isNotEmpty && !allFieldIds.contains(cond.field)) {
+        buildErrors.add("Step '${s.title}' condition references non-existent field ID '${cond.field}'.");
+      }
+      if (cond.type == 'nextStepIf' && (cond.targetStep == null || !config.steps.any((step) => step.id == cond.targetStep))) {
+        buildErrors.add("Step '${s.title}' branch target step '${cond.targetStep}' does not exist.");
+      }
+    }
+
+    // Check Step Validations
+    for (final val in s.validations) {
+      if (val.field.isNotEmpty && !s.fields.any((f) => f.id == val.field)) {
+        buildErrors.add("Step '${s.title}' validation references non-existent field ID '${val.field}'.");
+      }
+      if (val.type == 'dependency' && val.dependentField != null && !s.fields.any((f) => f.id == val.dependentField)) {
+        buildErrors.add("Step '${s.title}' dependency validation references non-existent dependent field '${val.dependentField}'.");
+      }
+    }
+
+    // Check Step APIs
+    for (final api in s.apiCalls) {
+      if (api.url.trim().isEmpty) {
+        buildErrors.add("Step '${s.title}' has an API action with an empty Endpoint URL.");
+      }
+    }
+  }
+  for (final dup in duplicatedFieldIds) {
+    buildErrors.add("Duplicate field ID '$dup' found across steps.");
+  }
+
+  for (int i = 0; i < config.steps.length; i++) {
+    final step = config.steps[i];
+    if (step.nextStep != null && step.nextStep!.isNotEmpty) {
+      if (!config.steps.any((s) => s.id == step.nextStep)) {
+        buildErrors.add("Step '${step.title}' next transition step '${step.nextStep}' does not exist.");
+      }
+    }
+    if (i < config.steps.length - 1) {
+      final next = step.nextStep;
+      final hasBranch = step.conditions.any((c) => c.type == 'nextStepIf');
+      if ((next == null || next.trim().isEmpty) && !hasBranch) {
+        buildWarnings.add("Step '${step.title}' has no transition link to follow next.");
+      }
+    }
+  }
+
+  return BuildAuditResult(errors: buildErrors, warnings: buildWarnings);
+});
+
 class RevoStepsPanel extends ConsumerStatefulWidget {
   const RevoStepsPanel({super.key});
 
@@ -27,7 +118,13 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
   String _selectedCategory = 'Onboarding';
   String _selectedLocale = 'English (US)';
   String _selectedPlatform = 'All Devices';
-
+  
+  late FocusNode _nameFocus;
+  late FocusNode _versionFocus;
+  late FocusNode _descriptionFocus;
+  
+  ProviderSubscription<JourneyConfig>? _configSubscription;
+  
   @override
   void initState() {
     super.initState();
@@ -38,13 +135,44 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     _selectedCategory = config.category;
     _selectedLocale = config.locale;
     _selectedPlatform = config.platform;
+    
+    _nameFocus = FocusNode();
+    _versionFocus = FocusNode();
+    _descriptionFocus = FocusNode();
+
+    // Safely sync input fields if config changes externally (e.g., JSON import or history rollback).
+    // Checks focus to prevent erasing trailing spaces while the user is actively typing.
+    _configSubscription = ref.listenManual<JourneyConfig>(journeyConfigProvider, (prev, next) {
+      if (!_nameFocus.hasFocus && _nameController.text != next.journeyName) {
+        _nameController.text = next.journeyName;
+      }
+      if (!_versionFocus.hasFocus && _versionController.text != next.version) {
+        _versionController.text = next.version;
+      }
+      if (!_descriptionFocus.hasFocus && _descriptionController.text != next.description) {
+        _descriptionController.text = next.description;
+      }
+      if (_selectedCategory != next.category) {
+        setState(() => _selectedCategory = next.category);
+      }
+      if (_selectedLocale != next.locale) {
+        setState(() => _selectedLocale = next.locale);
+      }
+      if (_selectedPlatform != next.platform) {
+        setState(() => _selectedPlatform = next.platform);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _configSubscription?.close();
     _nameController.dispose();
     _versionController.dispose();
     _descriptionController.dispose();
+    _nameFocus.dispose();
+    _versionFocus.dispose();
+    _descriptionFocus.dispose();
     super.dispose();
   }
 
@@ -72,10 +200,12 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
   void _showAddStepDialog(BuildContext context) {
     final titleController = TextEditingController();
     final idController = TextEditingController();
+    String? idError;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         backgroundColor: RevoTheme.cardBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -95,16 +225,23 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 hintText: "e.g. Address Details",
               ),
               onChanged: (val) {
-                idController.text = val.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+                setState(() {
+                  idController.text = val.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+                  idError = null;
+                });
               },
             ),
             const SizedBox(height: 16),
             TextField(
               controller: idController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Step ID (Unique Key)",
                 hintText: "e.g. address_details",
+                errorText: idError,
               ),
+              onChanged: (_) {
+                if (idError != null) setState(() => idError = null);
+              },
             ),
           ],
         ),
@@ -118,6 +255,11 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
               final title = titleController.text.trim();
               final id = idController.text.trim();
               if (title.isNotEmpty && id.isNotEmpty) {
+                final config = ref.read(journeyConfigProvider);
+                if (config.steps.any((s) => s.id == id)) {
+                  setState(() => idError = "Step ID already exists.");
+                  return;
+                }
                 final newStep = JourneyStep(
                   id: id,
                   title: title,
@@ -132,36 +274,16 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           ),
         ],
       ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch themeModeProvider to trigger a rebuild when the global theme changes
     ref.watch(themeModeProvider);
     final config = ref.watch(journeyConfigProvider);
     final activeStepId = ref.watch(activeStepIdProvider);
-
-    // Sync input fields if config changes from outside (e.g. JSON import)
-    ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
-      if (next.journeyName != _nameController.text) {
-        _nameController.text = next.journeyName;
-      }
-      if (next.version != _versionController.text) {
-        _versionController.text = next.version;
-      }
-      if (next.description != _descriptionController.text) {
-        _descriptionController.text = next.description;
-      }
-      if (next.category != _selectedCategory) {
-        setState(() => _selectedCategory = next.category);
-      }
-      if (next.locale != _selectedLocale) {
-        setState(() => _selectedLocale = next.locale);
-      }
-      if (next.platform != _selectedPlatform) {
-        setState(() => _selectedPlatform = next.platform);
-      }
-    });
 
     return Container(
       width: 320,
@@ -194,7 +316,9 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
+                    Tooltip(
+                      message: "Rename Journey",
+                      child: IconButton(
                       icon: Icon(Icons.edit, size: 16, color: RevoTheme.textSecondary),
                       onPressed: () {
                         // Rename journey dialog
@@ -225,6 +349,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                           ),
                         );
                       },
+                    ),
                     ),
                   ],
                 ),
@@ -391,7 +516,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       ),
                     ),
                     tileColor: RevoTheme.cardBg,
-                    selectedTileColor: RevoTheme.primary.withValues(alpha: 0.1),
+                    selectedTileColor: RevoTheme.primary.withOpacity(0.1),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     leading: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -463,7 +588,13 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                           color: RevoTheme.cardBg,
                           onSelected: (val) {
                             if (val == 'delete') {
+                              final currentActive = ref.read(activeStepIdProvider);
                               ref.read(journeyConfigProvider.notifier).removeStep(step.id);
+                              if (currentActive == step.id) {
+                                final steps = ref.read(journeyConfigProvider).steps;
+                                final newActive = steps.isNotEmpty ? steps.first.id : '';
+                                ref.read(activeStepIdProvider.notifier).state = newActive;
+                              }
                             }
                           },
                           itemBuilder: (context) => [
@@ -590,80 +721,9 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
 
   Widget _buildBuildTabContent(JourneyConfig config) {
     // 1. Run validation audits on config
-    final List<String> buildErrors = [];
-    final List<String> buildWarnings = [];
-    final allFieldIds = <String>{};
-    final duplicatedFieldIds = <String>{};
-
-    for (final s in config.steps) {
-      if (s.fields.isEmpty) {
-        buildWarnings.add("Step '${s.title}' has no fields on the canvas.");
-      }
-      for (final f in s.fields) {
-        if (allFieldIds.contains(f.id)) {
-          duplicatedFieldIds.add(f.id);
-        } else {
-          allFieldIds.add(f.id);
-        }
-        if (f.label.trim().isEmpty) {
-          buildWarnings.add("Field '${f.id}' in Step '${s.title}' has an empty label.");
-        }
-        if ((f.type == 'dropdown' || f.type == 'radio' || f.type == 'multi_select') &&
-            f.useStaticOptions &&
-            (f.staticOptions == null || f.staticOptions!.isEmpty)) {
-          buildWarnings.add("Dropdown/Radio field '${f.id}' has static options enabled but none configured.");
-        }
-        if (f.type == 'api_dropdown' && (f.dropdownApiUrl == null || f.dropdownApiUrl!.isEmpty)) {
-          buildErrors.add("API Dropdown '${f.id}' is missing its Endpoint URL.");
-        }
-      }
-
-      // Check Step Conditions
-      for (final cond in s.conditions) {
-        if (cond.field.isNotEmpty && !allFieldIds.contains(cond.field)) {
-          buildErrors.add("Step '${s.title}' condition references non-existent field ID '${cond.field}'.");
-        }
-        if (cond.type == 'nextStepIf' && (cond.targetStep == null || !config.steps.any((step) => step.id == cond.targetStep))) {
-          buildErrors.add("Step '${s.title}' branch target step '${cond.targetStep}' does not exist.");
-        }
-      }
-
-      // Check Step Validations
-      for (final val in s.validations) {
-        if (val.field.isNotEmpty && !s.fields.any((f) => f.id == val.field)) {
-          buildErrors.add("Step '${s.title}' validation references non-existent field ID '${val.field}'.");
-        }
-        if (val.type == 'dependency' && val.dependentField != null && !s.fields.any((f) => f.id == val.dependentField)) {
-          buildErrors.add("Step '${s.title}' dependency validation references non-existent dependent field '${val.dependentField}'.");
-        }
-      }
-
-      // Check Step APIs
-      for (final api in s.apiCalls) {
-        if (api.url.trim().isEmpty) {
-          buildErrors.add("Step '${s.title}' has an API action with an empty Endpoint URL.");
-        }
-      }
-    }
-    for (final dup in duplicatedFieldIds) {
-      buildErrors.add("Duplicate field ID '$dup' found across steps.");
-    }
-
-    for (int i = 0; i < config.steps.length; i++) {
-      final step = config.steps[i];
-      if (step.nextStep != null && step.nextStep!.isNotEmpty) {
-        if (!config.steps.any((s) => s.id == step.nextStep)) {
-          buildErrors.add("Step '${step.title}' next transition step '${step.nextStep}' does not exist.");
-        }
-      }
-      if (i < config.steps.length - 1) {
-        final next = step.nextStep;
-        final hasBranch = step.conditions.any((c) => c.type == 'nextStepIf');
-        if ((next == null || next.trim().isEmpty) && !hasBranch) {
-          buildWarnings.add("Step '${step.title}' has no transition link to follow next.");
-        }
-      }
-    }
+    final auditResult = ref.watch(buildAuditProvider);
+    final buildErrors = auditResult.errors;
+    final buildWarnings = auditResult.warnings;
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -732,7 +792,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.terminal_rounded, size: 36, color: RevoTheme.textSecondary.withValues(alpha:0.3)),
+                            Icon(Icons.terminal_rounded, size: 36, color: RevoTheme.textSecondary.withOpacity(0.3)),
                             const SizedBox(height: 12),
                             Text(
                               "Click button above to compile and run build checks.",
@@ -750,10 +810,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: buildErrors.isEmpty ? Colors.green.withValues(alpha:0.1) : Colors.red.withValues(alpha:0.1),
+                                color: buildErrors.isEmpty ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: buildErrors.isEmpty ? Colors.green.withValues(alpha:0.3) : Colors.red.withValues(alpha:0.3),
+                                  color: buildErrors.isEmpty ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
                                 ),
                               ),
                               child: Row(
@@ -804,7 +864,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
 
                             if (buildErrors.isEmpty && buildWarnings.isEmpty) ...[
                               const SizedBox(height: 40),
-                              Icon(Icons.done_all_rounded, size: 48, color: RevoTheme.success.withValues(alpha:0.5)),
+                              Icon(Icons.done_all_rounded, size: 48, color: RevoTheme.success.withOpacity(0.5)),
                               const SizedBox(height: 12),
                               Text(
                                 "Excellent! All structural logic is verified and compiled cleanly.",
@@ -826,9 +886,9 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.06),
+        color: color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha:0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,6 +928,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 6),
           TextField(
             controller: _nameController,
+            focusNode: _nameFocus,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
@@ -883,6 +944,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 6),
           TextField(
             controller: _descriptionController,
+            focusNode: _descriptionFocus,
             maxLines: 3,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -899,6 +961,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 6),
           TextField(
             controller: _versionController,
+            focusNode: _versionFocus,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
@@ -1049,6 +1112,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       ? null
                       : () {
                           ref.read(historyProvider.notifier).undo();
+                          // Reset active step to avoid dangling reference
+                          final restoredConfig = ref.read(journeyConfigProvider);
+                          final firstStepId = restoredConfig.steps.isNotEmpty ? restoredConfig.steps.first.id : '';
+                          ref.read(activeStepIdProvider.notifier).state = firstStepId;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Undone last change!"), duration: Duration(milliseconds: 600)),
                           );
@@ -1068,6 +1135,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       ? null
                       : () {
                           ref.read(historyProvider.notifier).redo();
+                          // Reset active step to avoid dangling reference
+                          final restoredConfig = ref.read(journeyConfigProvider);
+                          final firstStepId = restoredConfig.steps.isNotEmpty ? restoredConfig.steps.first.id : '';
+                          ref.read(activeStepIdProvider.notifier).state = firstStepId;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Redone change!"), duration: Duration(milliseconds: 600)),
                           );
@@ -1096,7 +1167,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.history_toggle_off_rounded, size: 36, color: RevoTheme.textSecondary.withValues(alpha:0.3)),
+                        Icon(Icons.history_toggle_off_rounded, size: 36, color: RevoTheme.textSecondary.withOpacity(0.3)),
                         const SizedBox(height: 12),
                         Text(
                           "No past edits recorded yet.\nMake changes to log history checkpoints.",
@@ -1119,6 +1190,10 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             ? null
                             : () {
                                 ref.read(historyProvider.notifier).rollbackTo(index);
+                                // Reset active step to avoid dangling reference
+                                final restoredConfig = ref.read(journeyConfigProvider);
+                                final firstStepId = restoredConfig.steps.isNotEmpty ? restoredConfig.steps.first.id : '';
+                                ref.read(activeStepIdProvider.notifier).state = firstStepId;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text("Restored state #${index + 1}!"), backgroundColor: RevoTheme.success),
                                 );
@@ -1127,7 +1202,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isCurrent ? RevoTheme.primary.withValues(alpha:0.1) : RevoTheme.cardBg,
+                            color: isCurrent ? RevoTheme.primary.withOpacity(0.1) : RevoTheme.cardBg,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isCurrent ? RevoTheme.primary : RevoTheme.cardBorder,
@@ -1151,7 +1226,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                                        color: isCurrent ? RevoTheme.textPrimary : RevoTheme.textPrimary.withValues(alpha:0.8),
+                                        color: isCurrent ? RevoTheme.textPrimary : RevoTheme.textPrimary.withOpacity(0.8),
                                       ),
                                     ),
                                     const SizedBox(height: 2),
