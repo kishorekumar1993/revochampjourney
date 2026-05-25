@@ -10,7 +10,9 @@ String generateviewClass(
     if (source == null) return;
     
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     
@@ -57,8 +59,9 @@ String generateviewClass(
   );
   buffer.writeln("import '/widget/common_text_form.dart';");
   if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
-  if (hasDropdown)
+  if (hasDropdown) {
     buffer.writeln("import '/widget/common_dropdown_search.dart';");
+  }
 
   // ─── Collect dynamic dropdown model imports ────────────────────
   final dropdownModels = <String>{};

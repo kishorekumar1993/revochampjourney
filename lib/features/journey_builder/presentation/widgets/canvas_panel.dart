@@ -2737,6 +2737,7 @@ class _CanvasToolbox extends StatelessWidget {
 class _CanvasBottomStats extends StatelessWidget {
   final JourneyStep step;
 
+  // ignore: use_super_parameters
   const _CanvasBottomStats({Key? key, required this.step}) : super(key: key);
 
   @override

@@ -1,9 +1,7 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
-import 'dart:convert';
-
 enum ComponentType {
-  text, textarea, number, dropdown, api_dropdown, radio, checkbox, switchType, date, time, datetime, file, image, otp, phone, multi_select, table_grid, repeater, timeline, row, column, section, card, tabs, accordion, divider, formula, unknown
+  text, textarea, number, dropdown, apiDropdown, radio, checkbox, switchType, date, time, datetime, file, image, otp, phone, multiSelect, tableGrid, repeater, timeline, row, column, section, card, tabs, accordion, divider, formula, unknown
 }
 
 class JourneyConfig {

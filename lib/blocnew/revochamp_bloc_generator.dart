@@ -235,7 +235,11 @@ List<Map<String, String>> _generateGetxFiles({
   final base      = 'lib/getx/features/$journeyNamespace/$baseName';
 
   // ── Generate GetX files ──────────────────────────────────────────────────
-  final binding    = generatebindingClass(className, rawFields.first, fileName);
+  final binding    = generateBindingClass(
+    className, 
+    rawFields.isNotEmpty ? rawFields.first : <String, dynamic>{}, 
+    fileName,
+  );
   final controller = generatecontrollerClass(className, rawFields, fileName);
   final repository = generaterepositoryClass(className, rawFields, fileName);
   final view       = generateviewClass(className, rawFields, fileName);

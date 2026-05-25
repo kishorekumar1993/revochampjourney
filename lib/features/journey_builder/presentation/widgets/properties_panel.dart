@@ -239,11 +239,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       icon: Icon(Icons.copy_all_rounded, size: 14, color: RevoTheme.textSecondary),
                                       onPressed: () async {
                                         await Clipboard.setData(ClipboardData(text: _jsonController.text));
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text("JSON Copied!")),
-                                          );
-                                        }
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("JSON Copied!")),
+                                        );
                                       },
                                       constraints: const BoxConstraints(),
                                       padding: EdgeInsets.zero,
@@ -2555,7 +2554,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               child: Switch(
                 value: value,
                 activeTrackColor: RevoTheme.primaryLight.withValues(alpha:0.5),
-                activeColor: RevoTheme.primaryLight,
+                activeThumbColor: RevoTheme.primaryLight,
                 onChanged: onChanged,
               ),
             ),

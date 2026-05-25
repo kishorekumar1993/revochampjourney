@@ -5,15 +5,13 @@
 // - DioClient implementation for datasources
 // - Centralized Exception handling via mapExceptionToFailure
 
-import 'dart:convert';
-
 /// Public function designed to be called by JS interop for bulk file saving
 List<Map<String, dynamic>> generateFileDataArray({
   required String screenName,
   required String modelName,
   required List<Map<String, dynamic>> fieldJsonRaw,
 }) {
-  final generator = revojourneytryoneBlocGenerator(
+  final generator = RevojourneytryoneBlocGenerator(
     screenName: screenName,
     modelName: modelName,
     fieldJsonRaw: fieldJsonRaw,
@@ -37,12 +35,12 @@ List<Map<String, dynamic>> generateFileDataArray({
   return fileDataArray;
 }
 
-class revojourneytryoneBlocGenerator {
+class RevojourneytryoneBlocGenerator {
   final String screenName;
   final String modelName;
   final List<Map<String, dynamic>> fieldJsonRaw;
 
-  revojourneytryoneBlocGenerator({
+  RevojourneytryoneBlocGenerator({
     required this.screenName,
     required this.modelName,
     required this.fieldJsonRaw,
@@ -163,7 +161,7 @@ class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
   Future<Map<String, dynamic>> submitData(Map<String, dynamic> payload) async {
     // FIX: Using DioClient instead of raw http.Client
     final response = await dioClient.post<Map<String, dynamic>>(
-      '/api/${snakeName}/submit',
+      '/api/$snakeName/submit',
       data: payload,
     );
     

@@ -46,7 +46,7 @@ class NamingUtils {
   /// Convert entity class name (e.g., "VehicleMakeEntity") to model class name ("VehicleMakeModel")
   static String entityToModelClassName(String entityClassName) {
     if (entityClassName.endsWith('Entity')) {
-      return entityClassName.substring(0, entityClassName.length - 6) + 'Model';
+      return '${entityClassName.substring(0, entityClassName.length - 6)}Model';
     }
     return '${entityClassName}Model';
   }
@@ -67,7 +67,6 @@ class ResultModelGenerator {
   final String featureName;
 
   String generate() {
-    final snake = NamingUtils.toSnakeCase(featureName);
     final resultName = '${featureName}Result';
     return '''
 // AUTO-GENERATED — do not edit
@@ -165,7 +164,6 @@ class DataSourceGenerator {
 
     buf.writeln("import '../../../../../core/network/app_exception.dart';");
     for (final f in asyncDropdowns) {
-      final modelClass = NamingUtils.entityToModelClassName(f.entityClassName);
       final base = NamingUtils.entityToImportBase(f.entityClassName);
       buf.writeln("import '$modelImportPath/${base}_model.dart';");
     }
@@ -361,9 +359,6 @@ class RepositoryImplGenerator {
     }
     return buffer.toString();
   }
-
-  String _toCap(String input) =>
-      input.isEmpty ? input : input[0].toUpperCase() + input.substring(1);
 }
 
 // ---------------------------------------------------------------------------

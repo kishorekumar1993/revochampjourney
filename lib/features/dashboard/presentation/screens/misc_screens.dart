@@ -39,8 +39,6 @@ class RevoDashboardOverviewScreen extends ConsumerWidget {
     
     final uniqueUsers = runs.map((r) => r['user'].toString()).toSet().length;
 
-    final theme = Theme.of(context);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
       child: Column(
