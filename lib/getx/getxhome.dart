@@ -35,8 +35,8 @@ class _GetxMultiFileDownloaderState extends State<GetxMultiFileDownloader> {
       {
         "layer": "motorhome",
         "subfolder": "models",
-        "textContent": "This is locator content for $baseName.",
-        "fileName": "${baseName.toLowerCase()}_locator.dart",
+        "textContent": "This is model content for $baseName.",
+        "fileName": "${baseName.toLowerCase()}_model.dart",
       },
       {
         "layer": "motorhome",

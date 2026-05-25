@@ -365,7 +365,7 @@ String generatecontrollerClass(
             if (col is Map) {
               final colType = col['type'] ?? 'text';
               if (colType == 'text' || colType == 'number') {
-                buffer.writeln("  // Column ${col['fieldId']} controller needed");
+                buffer.writeln("  // Column ${col['fieldId']} inline editing bound");
               }
             }
           }
@@ -374,11 +374,14 @@ String generatecontrollerClass(
         extraMethods.addAll([
           "  void add${capitalLabel}Row() {",
           "    ${name}Rows.add({});",
-          "    // TODO: show dialog to fill row fields",
           "  }",
           "",
-          "  void edit${capitalLabel}Row(int index) {",
-          "    // TODO: show dialog pre-filled with ${name}Rows[index]",
+          "  void update${capitalLabel}Cell(int index, String key, dynamic value) {",
+          "    if (index >= 0 && index < ${name}Rows.length) {",
+          "      final row = Map<String, dynamic>.from(${name}Rows[index]);",
+          "      row[key] = value;",
+          "      ${name}Rows[index] = row;",
+          "    }",
           "  }",
           "",
           "  void delete${capitalLabel}Row(int index) {",

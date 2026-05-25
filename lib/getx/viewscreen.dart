@@ -1165,7 +1165,8 @@ String generateviewClass(
     } else if (type == 'grid' ||
         type == 'table' ||
         type == 'table/grid' ||
-        type == 'table grid') {
+        type == 'table grid' ||
+        type == 'table_grid') {
       final columns = (field['columns'] as List<dynamic>?) ?? [];
       final hasColumns = columns.isNotEmpty;
 
@@ -1223,17 +1224,26 @@ String generateviewClass(
               ? (col['fieldId'] ?? col['id'] ?? col['label'] ?? 'value').toString()
               : col.toString();
           buffer.writeln(
-              "                            DataCell(Text(row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '')),");
+              "                            DataCell(");
+          buffer.writeln("                              TextFormField(");
+          buffer.writeln("                                initialValue: row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '',");
+          buffer.writeln("                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
+          buffer.writeln("                                onChanged: (val) => controller.update${capitalLabel}Cell(i, '${fieldId.replaceAll("'", "\\'")}', val),");
+          buffer.writeln("                              ),");
+          buffer.writeln("                            ),");
         }
       } else {
         buffer.writeln(
             "                            DataCell(Text('\${i + 1}')),");
-        buffer.writeln(
-            "                            DataCell(Text(row.toString())),");
+        buffer.writeln("                            DataCell(");
+        buffer.writeln("                              TextFormField(");
+        buffer.writeln("                                initialValue: row.toString(),");
+        buffer.writeln("                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
+        buffer.writeln("                                onChanged: (val) => controller.update${capitalLabel}Cell(i, 'value', val),");
+        buffer.writeln("                              ),");
+        buffer.writeln("                            ),");
       }
       buffer.writeln("                            DataCell(Row(children: [");
-      buffer.writeln(
-          "                              IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => controller.edit${capitalLabel}Row(i)),");
       buffer.writeln(
           "                              IconButton(icon: const Icon(Icons.delete, size: 18, color: Colors.red), onPressed: () => controller.delete${capitalLabel}Row(i)),");
       buffer.writeln("                            ])),");
