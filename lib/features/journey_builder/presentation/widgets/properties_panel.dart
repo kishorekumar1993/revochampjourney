@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -37,9 +38,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   String? _headersError;
   String? _testDataError;
 
-  bool _testingApi = false;
-  String? _apiTestResult;
-  bool _apiTestSuccess = false;
+  bool _testingDropdownApi = false;
+  String? _dropdownApiTestResult;
+  bool _dropdownApiTestSuccess = false;
+
+  bool _testingGridApi = false;
+  String? _gridApiTestResult;
+  bool _gridApiTestSuccess = false;
 
   @override
   void initState() {
@@ -49,6 +54,12 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
       final config = ref.read(journeyConfigProvider);
       _jsonController.text = _beautifyJson(config.toJson());
     });
+  }
+
+  @override
+  void dispose() {
+    _jsonController.dispose();
+    super.dispose();
   }
 
   String _beautifyJson(Map<String, dynamic> jsonMap) {
@@ -98,6 +109,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
 
     // Sync JSON text field if updated visually
     ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
+      if (!mounted) return;
       try {
         final currentTextDecoded = json.encode(json.decode(_jsonController.text));
         final nextDecoded = json.encode(next.toJson());
@@ -211,10 +223,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   children: [
                                     IconButton(
                                       icon: Icon(Icons.copy_all_rounded, size: 14, color: RevoTheme.textSecondary),
-                                      onPressed: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text("JSON Copied!")),
-                                        );
+                                      onPressed: () async {
+                                        await Clipboard.setData(ClipboardData(text: _jsonController.text));
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("JSON Copied!")),
+                                          );
+                                        }
                                       },
                                       constraints: const BoxConstraints(),
                                       padding: EdgeInsets.zero,
@@ -390,7 +405,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     label: "Field ID",
                                     initialValue: selectedField.id,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..id = val.trim();
+                                      final updated = selectedField!.copyWith()..id = val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       ref.read(selectedFieldIdProvider.notifier).state = val.trim();
@@ -431,7 +446,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       'divider'
                                     ],
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..type = val;
+                                      final updated = selectedField!.copyWith()..type = val;
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -447,7 +462,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     label: "Label Text",
                                     initialValue: selectedField.label,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..label = val.trim();
+                                      final updated = selectedField!.copyWith()..label = val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -461,7 +476,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       initialValue: selectedField.fieldtype ?? '',
                                       hint: "e.g. text, select",
                                       onChanged: (val) {
-                                        final updated = selectedField!.copy()..fieldtype = val.trim().isEmpty ? null : val.trim();
+                                        final updated = selectedField!.copyWith()..fieldtype = val.trim().isEmpty ? null : val.trim();
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -479,7 +494,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       label: "Placeholder",
                                       initialValue: selectedField.placeholder ?? '',
                                       onChanged: (val) {
-                                        final updated = selectedField!.copy()..placeholder = val.trim().isEmpty ? null : val.trim();
+                                        final updated = selectedField!.copyWith()..placeholder = val.trim().isEmpty ? null : val.trim();
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -491,7 +506,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       label: "Hint Text",
                                       initialValue: selectedField.hintText ?? '',
                                       onChanged: (val) {
-                                        final updated = selectedField!.copy()..hintText = val.trim().isEmpty ? null : val.trim();
+                                        final updated = selectedField!.copyWith()..hintText = val.trim().isEmpty ? null : val.trim();
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -506,7 +521,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               initialValue: selectedField.defaultValue ?? '',
                               hint: "Initial value of the field",
                               onChanged: (val) {
-                                final updated = selectedField!.copy()..defaultValue = val.trim().isEmpty ? null : val.trim();
+                                final updated = selectedField!.copyWith()..defaultValue = val.trim().isEmpty ? null : val.trim();
                                 ref.read(journeyConfigProvider.notifier)
                                     .updateFieldInStep(activeStepId, selectedField.id, updated);
                               },
@@ -534,7 +549,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   label: "Required",
                                   value: selectedField.required,
                                   onChanged: (val) {
-                                    final updated = selectedField!.copy()..required = val;
+                                    final updated = selectedField!.copyWith()..required = val;
                                     ref.read(journeyConfigProvider.notifier)
                                         .updateFieldInStep(activeStepId, selectedField.id, updated);
                                   },
@@ -543,7 +558,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   label: "Visible",
                                   value: selectedField.visible,
                                   onChanged: (val) {
-                                    final updated = selectedField!.copy()..visible = val;
+                                    final updated = selectedField!.copyWith()..visible = val;
                                     ref.read(journeyConfigProvider.notifier)
                                         .updateFieldInStep(activeStepId, selectedField.id, updated);
                                   },
@@ -552,7 +567,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   label: "Read Only",
                                   value: selectedField.readOnly,
                                   onChanged: (val) {
-                                    final updated = selectedField!.copy()..readOnly = val;
+                                    final updated = selectedField!.copyWith()..readOnly = val;
                                     ref.read(journeyConfigProvider.notifier)
                                         .updateFieldInStep(activeStepId, selectedField.id, updated);
                                   },
@@ -561,7 +576,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   label: "Disabled",
                                   value: selectedField.disable,
                                   onChanged: (val) {
-                                    final updated = selectedField!.copy()..disable = val;
+                                    final updated = selectedField!.copyWith()..disable = val;
                                     ref.read(journeyConfigProvider.notifier)
                                         .updateFieldInStep(activeStepId, selectedField.id, updated);
                                   },
@@ -570,7 +585,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   label: "Hidden",
                                   value: selectedField.hidden,
                                   onChanged: (val) {
-                                    final updated = selectedField!.copy()..hidden = val;
+                                    final updated = selectedField!.copyWith()..hidden = val;
                                     ref.read(journeyConfigProvider.notifier)
                                         .updateFieldInStep(activeStepId, selectedField.id, updated);
                                   },
@@ -601,7 +616,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 initialValue: selectedField.validationPattern ?? '',
                                 hint: "e.g. ^[0-9]{10}\$ or Letters only",
                                 onChanged: (val) {
-                                  final updated = selectedField!.copy()..validationPattern = val.trim().isEmpty ? null : val.trim();
+                                  final updated = selectedField!.copyWith()..validationPattern = val.trim().isEmpty ? null : val.trim();
                                   ref.read(journeyConfigProvider.notifier)
                                       .updateFieldInStep(activeStepId, selectedField.id, updated);
                                 },
@@ -612,7 +627,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 initialValue: selectedField.errorMessage ?? '',
                                 hint: "Message shown on validation failure",
                                 onChanged: (val) {
-                                  final updated = selectedField!.copy()..errorMessage = val.trim().isEmpty ? null : val.trim();
+                                  final updated = selectedField!.copyWith()..errorMessage = val.trim().isEmpty ? null : val.trim();
                                   ref.read(journeyConfigProvider.notifier)
                                       .updateFieldInStep(activeStepId, selectedField.id, updated);
                                 },
@@ -627,7 +642,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       hint: "e.g. 2",
                                       onChanged: (val) {
                                         final parsed = int.tryParse(val.trim());
-                                        final updated = selectedField!.copy()..minLength = parsed;
+                                        final updated = selectedField!.copyWith()..minLength = parsed;
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -641,7 +656,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       hint: "e.g. 50",
                                       onChanged: (val) {
                                         final parsed = int.tryParse(val.trim());
-                                        final updated = selectedField!.copy()..maxLength = parsed;
+                                        final updated = selectedField!.copyWith()..maxLength = parsed;
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -658,7 +673,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       currentValue: selectedField.keyboardType ?? 'text',
                                       items: const ['text', 'number', 'email', 'phone', 'datetime'],
                                       onChanged: (val) {
-                                        final updated = selectedField!.copy()..keyboardType = val;
+                                        final updated = selectedField!.copyWith()..keyboardType = val;
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -671,7 +686,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       currentValue: selectedField.textInputAction ?? 'done',
                                       items: const ['done', 'next', 'search', 'none', 'go', 'send'],
                                       onChanged: (val) {
-                                        final updated = selectedField!.copy()..textInputAction = val;
+                                        final updated = selectedField!.copyWith()..textInputAction = val;
                                         ref.read(journeyConfigProvider.notifier)
                                             .updateFieldInStep(activeStepId, selectedField.id, updated);
                                       },
@@ -685,7 +700,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 currentValue: selectedField.textCapitalization ?? 'none',
                                 items: const ['none', 'characters', 'words', 'sentences'],
                                 onChanged: (val) {
-                                  final updated = selectedField!.copy()..textCapitalization = val;
+                                  final updated = selectedField!.copyWith()..textCapitalization = val;
                                   ref.read(journeyConfigProvider.notifier)
                                       .updateFieldInStep(activeStepId, selectedField.id, updated);
                                 },
@@ -703,7 +718,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     label: "Obscure Text",
                                     value: selectedField.obscureText,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..obscureText = val;
+                                      final updated = selectedField!.copyWith()..obscureText = val;
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -712,7 +727,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     label: "Autocorrect",
                                     value: selectedField.autocorrect,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..autocorrect = val;
+                                      final updated = selectedField!.copyWith()..autocorrect = val;
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -721,7 +736,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     label: "Suggestions",
                                     value: selectedField.enableSuggestions,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..enableSuggestions = val;
+                                      final updated = selectedField!.copyWith()..enableSuggestions = val;
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -755,7 +770,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     initialValue: selectedField.dropdownApiUrl ?? '',
                                     hint: "https://api.example.com/dropdown-data",
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..dropdownApiUrl = val.trim().isEmpty ? null : val.trim();
+                                      final updated = selectedField!.copyWith()..dropdownApiUrl = val.trim().isEmpty ? null : val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -768,7 +783,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     initialValue: selectedField.apiParam ?? '',
                                     hint: "e.g. tenantId or searchKey",
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..apiParam = val.trim().isEmpty ? null : val.trim();
+                                      final updated = selectedField!.copyWith()..apiParam = val.trim().isEmpty ? null : val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -787,14 +802,14 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       if (_headersError == null) {
                                         try {
                                           if (val.trim().isEmpty) {
-                                            final updated = selectedField!.copy()..dropdownApiHeaders = null;
+                                            final updated = selectedField!.copyWith()..dropdownApiHeaders = null;
                                             ref.read(journeyConfigProvider.notifier)
                                                 .updateFieldInStep(activeStepId, selectedField.id, updated);
                                           } else {
                                             final decoded = json.decode(val);
                                             if (decoded is Map) {
                                               final updatedMap = Map<String, dynamic>.from(decoded);
-                                              final updated = selectedField!.copy()..dropdownApiHeaders = updatedMap;
+                                              final updated = selectedField!.copyWith()..dropdownApiHeaders = updatedMap;
                                               ref.read(journeyConfigProvider.notifier)
                                                   .updateFieldInStep(activeStepId, selectedField.id, updated);
                                             }
@@ -814,7 +829,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     hint: '{"status": "active", "filter": "users"}',
                                     maxLines: 3,
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..dropdownApiBody = val.trim().isEmpty ? null : val.trim();
+                                      final updated = selectedField!.copyWith()..dropdownApiBody = val.trim().isEmpty ? null : val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -829,7 +844,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           initialValue: selectedField.dropdownkey ?? 'id',
                                           hint: "e.g. id, code",
                                           onChanged: (val) {
-                                            final updated = selectedField!.copy()..dropdownkey = val.trim().isEmpty ? null : val.trim();
+                                            final updated = selectedField!.copyWith()..dropdownkey = val.trim().isEmpty ? null : val.trim();
                                             ref.read(journeyConfigProvider.notifier)
                                                 .updateFieldInStep(activeStepId, selectedField.id, updated);
                                           },
@@ -842,7 +857,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           initialValue: selectedField.dropdownValue ?? 'title',
                                           hint: "e.g. title, name",
                                           onChanged: (val) {
-                                            final updated = selectedField!.copy()..dropdownValue = val.trim().isEmpty ? null : val.trim();
+                                            final updated = selectedField!.copyWith()..dropdownValue = val.trim().isEmpty ? null : val.trim();
                                             ref.read(journeyConfigProvider.notifier)
                                                 .updateFieldInStep(activeStepId, selectedField.id, updated);
                                           },
@@ -856,7 +871,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     initialValue: selectedField.dropdownListKey ?? '',
                                     hint: "e.g. data.items, result",
                                     onChanged: (val) {
-                                      final updated = selectedField!.copy()..dropdownListKey = val.trim().isEmpty ? null : val.trim();
+                                      final updated = selectedField!.copyWith()..dropdownListKey = val.trim().isEmpty ? null : val.trim();
                                       ref.read(journeyConfigProvider.notifier)
                                           .updateFieldInStep(activeStepId, selectedField.id, updated);
                                     },
@@ -874,7 +889,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       if (_testDataError == null) {
                                         try {
                                           if (val.trim().isEmpty) {
-                                            final updated = selectedField!.copy()..dropdowndata = null;
+                                            final updated = selectedField!.copyWith()..dropdowndata = null;
                                             ref.read(journeyConfigProvider.notifier)
                                                 .updateFieldInStep(activeStepId, selectedField.id, updated);
                                           } else {
@@ -883,12 +898,12 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                               final updatedList = decoded.map((item) {
                                                 return item is Map ? Map<String, dynamic>.from(item) : item;
                                               }).toList();
-                                              final updated = selectedField!.copy()..dropdowndata = updatedList;
+                                              final updated = selectedField!.copyWith()..dropdowndata = updatedList;
                                               ref.read(journeyConfigProvider.notifier)
                                                   .updateFieldInStep(activeStepId, selectedField.id, updated);
                                             } else if (decoded is Map) {
                                               final updatedMap = Map<String, dynamic>.from(decoded);
-                                              final updated = selectedField!.copy()..dropdowndata = updatedMap;
+                                              final updated = selectedField!.copyWith()..dropdowndata = updatedMap;
                                               ref.read(journeyConfigProvider.notifier)
                                                   .updateFieldInStep(activeStepId, selectedField.id, updated);
                                             }
@@ -922,18 +937,18 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                           padding: const EdgeInsets.symmetric(vertical: 12),
                                         ),
-                                        onPressed: _testingApi ? null : () async {
+                                        onPressed: _testingDropdownApi ? null : () async {
                                           setState(() {
-                                            _testingApi = true;
-                                            _apiTestResult = null;
+                                            _testingDropdownApi = true;
+                                            _dropdownApiTestResult = null;
                                           });
                                           
                                           final hasUrl = selectedField!.dropdownApiUrl != null && selectedField.dropdownApiUrl!.isNotEmpty;
                                           if (!hasUrl) {
                                             setState(() {
-                                              _testingApi = false;
-                                              _apiTestSuccess = false;
-                                              _apiTestResult = "Error: API URL Path is required to test.";
+                                              _testingDropdownApi = false;
+                                              _dropdownApiTestSuccess = false;
+                                              _dropdownApiTestResult = "Error: API URL Path is required to test.";
                                             });
                                             return;
                                           }
@@ -956,14 +971,16 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
 
                                             http.Response response;
                                             if (method == 'POST') {
-                                              response = await http.post(url, headers: headers, body: body);
+                                              response = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 15));
                                             } else if (method == 'PUT') {
-                                              response = await http.put(url, headers: headers, body: body);
+                                              response = await http.put(url, headers: headers, body: body).timeout(const Duration(seconds: 15));
                                             } else if (method == 'DELETE') {
-                                              response = await http.delete(url, headers: headers, body: body);
+                                              response = await http.delete(url, headers: headers, body: body).timeout(const Duration(seconds: 15));
                                             } else {
-                                              response = await http.get(url, headers: headers);
+                                              response = await http.get(url, headers: headers).timeout(const Duration(seconds: 15));
                                             }
+
+                                            if (!mounted) return;
 
                                             if (response.statusCode >= 200 && response.statusCode < 300) {
                                               final decoded = json.decode(response.body);
@@ -977,32 +994,33 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                                 normalizedData = decoded;
                                               }
 
-                                              final updated = selectedField.copy()..dropdowndata = normalizedData;
+                                              final updated = selectedField.copyWith()..dropdowndata = normalizedData;
                                               ref.read(journeyConfigProvider.notifier)
                                                   .updateFieldInStep(activeStepId, selectedField.id, updated);
                                               
                                               final options = updated.getResolvedOptions();
                                               setState(() {
-                                                _testingApi = false;
-                                                _apiTestSuccess = true;
-                                                _apiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${options.length} option(s) successfully and saved to state.";
+                                                _testingDropdownApi = false;
+                                                _dropdownApiTestSuccess = true;
+                                                _dropdownApiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${options.length} option(s) successfully and saved to state.";
                                               });
                                             } else {
                                               setState(() {
-                                                _testingApi = false;
-                                                _apiTestSuccess = false;
-                                                _apiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
+                                                _testingDropdownApi = false;
+                                                _dropdownApiTestSuccess = false;
+                                                _dropdownApiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
                                               });
                                             }
                                           } catch (e) {
+                                            if (!mounted) return;
                                             setState(() {
-                                              _testingApi = false;
-                                              _apiTestSuccess = false;
-                                              _apiTestResult = "API Test failed: ${e.toString()}";
+                                              _testingDropdownApi = false;
+                                              _dropdownApiTestSuccess = false;
+                                              _dropdownApiTestResult = "API Test failed: ${e.toString()}";
                                             });
                                           }
                                         },
-                                        icon: _testingApi 
+                                        icon: _testingDropdownApi 
                                             ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                             : const Icon(Icons.bolt_rounded, size: 14),
                                         label: Text("Test Connection", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1031,27 +1049,27 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     ),
                                   ],
                                 ),
-                                if (_apiTestResult != null) ...[
+                                if (_dropdownApiTestResult != null) ...[
                                   const SizedBox(height: 10),
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: _apiTestSuccess 
+                                      color: _dropdownApiTestSuccess 
                                           ? Colors.greenAccent.withValues(alpha:0.08) 
                                           : Colors.redAccent.withValues(alpha:0.08),
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: _apiTestSuccess 
+                                        color: _dropdownApiTestSuccess 
                                             ? Colors.greenAccent.withValues(alpha:0.3) 
                                             : Colors.redAccent.withValues(alpha:0.3),
                                       ),
                                     ),
                                     child: Text(
-                                      _apiTestResult!,
+                                      _dropdownApiTestResult!,
                                       style: GoogleFonts.inter(
                                         fontSize: 10,
-                                        color: _apiTestSuccess ? Colors.greenAccent : Colors.redAccent,
+                                        color: _dropdownApiTestSuccess ? Colors.greenAccent : Colors.redAccent,
                                         height: 1.4,
                                       ),
                                     ),
@@ -1272,8 +1290,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   }
 
   void _updateComponentConfig(JourneyField field, String activeStepId, String key, dynamic value) {
-    final updatedConfig = _componentConfig(field)..[key] = value;
-    final updated = field.copy()..componentConfig = updatedConfig;
+    final isInitial = field.componentConfig == null || field.componentConfig!.isEmpty;
+    final updatedConfig = Map<String, dynamic>.from(field.componentConfig ?? {});
+    if (isInitial) {
+      updatedConfig.addAll(_componentConfig(field));
+    }
+    updatedConfig[key] = value;
+    final updated = field.copyWith()..componentConfig = updatedConfig;
     ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
   }
 
@@ -1286,6 +1309,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   bool _boolConfig(Map<String, dynamic> config, String key, bool fallback) {
     final value = config[key];
     if (value is bool) return value;
+    if (value is int) return value == 1;
     if (value is String) return value.toLowerCase() == 'true';
     return fallback;
   }
@@ -1316,7 +1340,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   }
 
   void _updateEnterpriseField(JourneyField field, String activeStepId, void Function(JourneyField updated) mutate) {
-    final updated = field.copy();
+    final updated = field.copyWith();
     mutate(updated);
     ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
   }
@@ -1463,19 +1487,19 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   }
 
   Future<void> _testGridApiConnection(JourneyField field, String activeStepId) async {
-    final config = _componentConfig(field);
+    final config = field.componentConfig ?? {};
     final urlText = config['gridApiUrl']?.toString().trim() ?? '';
     if (urlText.isEmpty) {
       setState(() {
-        _apiTestSuccess = false;
-        _apiTestResult = "Error: Grid API URL is required.";
+        _gridApiTestSuccess = false;
+        _gridApiTestResult = "Error: Grid API URL is required.";
       });
       return;
     }
 
     setState(() {
-      _testingApi = true;
-      _apiTestResult = null;
+      _testingGridApi = true;
+      _gridApiTestResult = null;
     });
 
     try {
@@ -1490,20 +1514,22 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
 
       http.Response response;
       if (method == 'POST') {
-        response = await http.post(uri, headers: headers, body: body);
+        response = await http.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 15));
       } else if (method == 'PUT') {
-        response = await http.put(uri, headers: headers, body: body);
+        response = await http.put(uri, headers: headers, body: body).timeout(const Duration(seconds: 15));
       } else if (method == 'DELETE') {
-        response = await http.delete(uri, headers: headers, body: body);
+        response = await http.delete(uri, headers: headers, body: body).timeout(const Duration(seconds: 15));
       } else {
-        response = await http.get(uri, headers: headers);
+        response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       }
+
+      if (!mounted) return;
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         setState(() {
-          _testingApi = false;
-          _apiTestSuccess = false;
-          _apiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
+          _testingGridApi = false;
+          _gridApiTestSuccess = false;
+          _gridApiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
         });
         return;
       }
@@ -1515,45 +1541,32 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         'gridApiSampleData': rows,
         'dataSource': 'api',
       };
-      final updated = field.copy()
-        ..dropdownApiUrl = urlText
-        ..dropdownApiMethod = method
-        ..dropdownApiHeaders = headers
-        ..dropdownApiBody = body
-        ..dropdownListKey = config['gridApiListKey']?.toString()
-        ..dropdowndata = rows
-        ..componentConfig = updatedConfig;
+      final updated = field.copyWith()..componentConfig = updatedConfig;
       ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
 
       setState(() {
-        _testingApi = false;
-        _apiTestSuccess = true;
-        _apiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${rows.length} grid row(s) and saved sample data.";
+        _testingGridApi = false;
+        _gridApiTestSuccess = true;
+        _gridApiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${rows.length} grid row(s) and saved sample data.";
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _testingApi = false;
-        _apiTestSuccess = false;
-        _apiTestResult = "Grid API test failed: ${e.toString()}";
+        _testingGridApi = false;
+        _gridApiTestSuccess = false;
+        _gridApiTestResult = "Grid API test failed: ${e.toString()}";
       });
     }
   }
 
   void _submitGridApiConfig(JourneyField field, String activeStepId) {
-    final config = _componentConfig(field);
-    final sampleData = config['gridApiSampleData'];
-    final updated = field.copy()
-      ..dropdownApiUrl = config['gridApiUrl']?.toString()
-      ..dropdownApiMethod = config['gridApiMethod']?.toString()
-      ..dropdownApiHeaders = _gridApiHeaders(config['gridApiHeaders'])
-      ..dropdownApiBody = config['gridApiBody']?.toString()
-      ..dropdownListKey = config['gridApiListKey']?.toString()
-      ..dropdowndata = sampleData
-      ..componentConfig = {...config, 'dataSource': 'api'};
+    final config = field.componentConfig ?? {};
+    final updatedConfig = {...config, 'dataSource': 'api'};
+    final updated = field.copyWith()..componentConfig = updatedConfig;
     ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
     setState(() {
-      _apiTestSuccess = true;
-      _apiTestResult = "Grid API config submitted and saved for code generation.";
+      _gridApiTestSuccess = true;
+      _gridApiTestResult = "Grid API config submitted and saved for code generation.";
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Grid API config for '${field.label}' submitted."), backgroundColor: RevoTheme.secondary),
@@ -1881,8 +1894,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  onPressed: _testingApi ? null : () => _testGridApiConnection(field, activeStepId),
-                  icon: _testingApi
+                      onPressed: _testingGridApi ? null : () => _testGridApiConnection(field, activeStepId),
+                      icon: _testingGridApi
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.bolt_rounded, size: 14),
                   label: Text("Test Connection", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1904,21 +1917,21 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               ),
             ],
           ),
-          if (_apiTestResult != null) ...[
+          if (_gridApiTestResult != null) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _apiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.08) : Colors.redAccent.withValues(alpha: 0.08),
+                color: _gridApiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.08) : Colors.redAccent.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: _apiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.25) : Colors.redAccent.withValues(alpha: 0.25),
+                  color: _gridApiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.25) : Colors.redAccent.withValues(alpha: 0.25),
                 ),
               ),
               child: Text(
-                _apiTestResult!,
-                style: GoogleFonts.inter(fontSize: 10, color: _apiTestSuccess ? Colors.greenAccent : Colors.redAccent),
+                _gridApiTestResult!,
+                style: GoogleFonts.inter(fontSize: 10, color: _gridApiTestSuccess ? Colors.greenAccent : Colors.redAccent),
               ),
             ),
           ],
@@ -2522,7 +2535,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Expanded(
             child: InkWell(
               onTap: () {
-                final updated = field.copy()..useStaticOptions = true;
+                final updated = field.copyWith()..useStaticOptions = true;
                 ref.read(journeyConfigProvider.notifier)
                     .updateFieldInStep(activeStepId, field.id, updated);
               },
@@ -2552,7 +2565,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Expanded(
             child: InkWell(
               onTap: () {
-                final updated = field.copy()..useStaticOptions = false;
+                final updated = field.copyWith()..useStaticOptions = false;
                 ref.read(journeyConfigProvider.notifier)
                     .updateFieldInStep(activeStepId, field.id, updated);
               },
@@ -2612,7 +2625,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     onChanged: (newKey) {
                       final updatedList = List<Map<String, String>>.from(options);
                       updatedList[index] = {'key': newKey.trim(), 'value': valStr};
-                      final updated = field.copy()..staticOptions = updatedList;
+                      final updated = field.copyWith()..staticOptions = updatedList;
                       ref.read(journeyConfigProvider.notifier)
                           .updateFieldInStep(activeStepId, field.id, updated);
                     },
@@ -2627,7 +2640,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     onChanged: (newVal) {
                       final updatedList = List<Map<String, String>>.from(options);
                       updatedList[index] = {'key': keyStr, 'value': newVal};
-                      final updated = field.copy()..staticOptions = updatedList;
+                      final updated = field.copyWith()..staticOptions = updatedList;
                       ref.read(journeyConfigProvider.notifier)
                           .updateFieldInStep(activeStepId, field.id, updated);
                     },
@@ -2640,7 +2653,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
                     onPressed: () {
                       final updatedList = List<Map<String, String>>.from(options)..removeAt(index);
-                      final updated = field.copy()..staticOptions = updatedList;
+                      final updated = field.copyWith()..staticOptions = updatedList;
                       ref.read(journeyConfigProvider.notifier)
                           .updateFieldInStep(activeStepId, field.id, updated);
                     },
@@ -2666,7 +2679,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             final updatedList = List<Map<String, String>>.from(options);
             final newIdx = updatedList.length + 1;
             updatedList.add({'key': newIdx.toString(), 'value': 'Option $newIdx'});
-            final updated = field.copy()..staticOptions = updatedList;
+            final updated = field.copyWith()..staticOptions = updatedList;
             ref.read(journeyConfigProvider.notifier)
                 .updateFieldInStep(activeStepId, field.id, updated);
           },
@@ -2743,7 +2756,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 padding: const EdgeInsets.symmetric(horizontal: 2.0),
                 child: InkWell(
                   onTap: () {
-                    final updated = field.copy()..dropdownApiMethod = method;
+                    final updated = field.copyWith()..dropdownApiMethod = method;
                     ref.read(journeyConfigProvider.notifier)
                         .updateFieldInStep(activeStepId, field.id, updated);
                   },

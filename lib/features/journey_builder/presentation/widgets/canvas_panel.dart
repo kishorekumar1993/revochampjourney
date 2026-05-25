@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/theme.dart';
 import '../../data/models.dart';
 import '../providers/journey_provider.dart';
@@ -22,6 +24,63 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   int? _testingStepApiIndex;
   String? _stepApiTestResult;
   bool _stepApiTestSuccess = false;
+
+  late final Map<String, Widget Function(JourneyField, String)> _previewRegistry;
+  late final Map<String, Widget Function(JourneyField, Map<String, dynamic>)> _mockupRegistry;
+
+  @override
+  void initState() {
+    super.initState();
+    _previewRegistry = {
+      'dropdown': _previewDropdown,
+      'api_dropdown': _previewDropdown,
+      'radio': _previewRadio,
+      'checkbox': _previewCheckbox,
+      'switch': _previewSwitch,
+      'date': _previewDate,
+      'time': _previewDate,
+      'datetime': _previewDate,
+      'file': _previewFile,
+      'image': _previewFile,
+      'textarea': _previewTextarea,
+      'number': _previewNumber,
+      'table_grid': (f, _) => _buildTableGridPreview(f),
+      'repeater': (f, _) => _buildRepeaterPreview(f),
+      'timeline': (f, _) => _buildTimelinePreview(f),
+      'section': (f, sid) => _buildNestedCanvasPreview(f, Icons.view_agenda_outlined, sid),
+      'card': (f, sid) => _buildNestedCanvasPreview(f, Icons.crop_square_rounded, sid),
+      'tabs': (f, sid) => _buildNestedTabsCanvasPreview(f, sid),
+      'accordion': (f, sid) => _buildNestedCanvasPreview(f, Icons.unfold_more_rounded, sid),
+      'row': (f, sid) => _buildNestedRowCanvasPreview(f, sid),
+      'formula': (f, _) => _buildPreviewBox(child: Text(f.formula ?? f.defaultValue ?? 'Calculated value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.primaryLight))),
+      'divider': (f, _) => Divider(color: RevoTheme.cardBorder),
+    };
+
+    _mockupRegistry = {
+      'divider': (f, _) => Divider(color: RevoTheme.cardBorder),
+      'dropdown': _mockupDropdown,
+      'api_dropdown': _mockupApiDropdown,
+      'radio': _mockupRadio,
+      'checkbox': _mockupCheckbox,
+      'switch': _mockupSwitch,
+      'date': _mockupDate,
+      'time': _mockupDate,
+      'datetime': _mockupDate,
+      'file': _mockupFile,
+      'image': _mockupFile,
+      'otp': _mockupOtp,
+      'phone': _mockupPhone,
+      'table_grid': (f, _) => _buildCompactTablePreview(f),
+      'repeater': (f, _) => _buildCompactRepeaterPreview(f),
+      'timeline': (f, _) => _buildCompactTimelinePreview(f),
+      'section': (f, values) => _buildCompactNestedPreview(f, Icons.view_agenda_outlined, values),
+      'card': (f, values) => _buildCompactNestedPreview(f, Icons.crop_square_rounded, values),
+      'tabs': (f, values) => _buildCompactNestedTabsPreview(f, values),
+      'accordion': (f, values) => _buildCompactNestedPreview(f, Icons.unfold_more_rounded, values),
+      'row': (f, values) => _buildCompactNestedRowPreview(f, values),
+      'formula': (f, _) => _buildCompactComponentShell(Icons.functions_rounded, f.formula ?? "Calculated value"),
+    };
+  }
 
   final List<Map<String, dynamic>> _componentGroups = [
     {
@@ -145,7 +204,10 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   void _duplicateField(JourneyField field) {
     final activeStepId = ref.read(activeStepIdProvider);
     final newFieldId = "field_${DateTime.now().millisecondsSinceEpoch}";
-    final duplicated = field.copy()..id = newFieldId..label = "${field.label} (Copy)";
+    final duplicated = field.copyWith(
+      id: newFieldId,
+      label: "${field.label} (Copy)",
+    );
     ref.read(journeyConfigProvider.notifier).addFieldToStep(activeStepId, duplicated);
     ref.read(selectedFieldIdProvider.notifier).state = newFieldId;
   }
@@ -153,11 +215,27 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeModeProvider);
-    final config = ref.watch(journeyConfigProvider);
     final activeStepId = ref.watch(activeStepIdProvider);
-    final activeStepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
+    
+    final step = ref.watch(journeyConfigProvider.select((config) =>
+        config.steps.firstWhereOrNull((s) => s.id == activeStepId)
+    ));
+    
+    final activeStepIndex = ref.watch(journeyConfigProvider.select((config) =>
+        config.steps.indexWhere((s) => s.id == activeStepId)
+    ));
+    
+    final previousStepId = ref.watch(journeyConfigProvider.select((config) {
+      final idx = config.steps.indexWhere((s) => s.id == activeStepId);
+      return (idx > 0) ? config.steps[idx - 1].id : null;
+    }));
+    
+    final nextStepId = ref.watch(journeyConfigProvider.select((config) {
+      final idx = config.steps.indexWhere((s) => s.id == activeStepId);
+      return (idx >= 0 && idx < config.steps.length - 1) ? config.steps[idx + 1].id : null;
+    }));
 
-    if (activeStepIndex == -1) {
+    if (step == null || activeStepIndex == -1) {
       return Expanded(
         child: Center(
           child: Text(
@@ -168,7 +246,6 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
       );
     }
 
-    final step = config.steps[activeStepIndex];
     final selectedFieldId = ref.watch(selectedFieldIdProvider);
     final formValues = ref.watch(formValuesProvider);
 
@@ -178,7 +255,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
         child: Column(
           children: [
             // Panel Header
-            _buildHeader(context, config, step, activeStepIndex),
+            _buildHeader(context, step, activeStepIndex, previousStepId, nextStepId),
 
             // Tabs sub-bar
             _buildTabBar(step),
@@ -188,26 +265,30 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
               child: Row(
                 children: [
                   // 1. ToolBox Palette
-                  _buildToolbox(),
+                  _CanvasToolbox(
+                    componentGroups: _componentGroups,
+                    onAddField: _addField,
+                  ),
 
                   // 2. Editor Canvas
                   _buildCanvas(step, selectedFieldId),
 
                   // 3. Mobile/Desktop Live simulator view
-                  if (_showPreview) _buildLivePreview(step, formValues, config),
+                  if (_showPreview)
+                    _buildLivePreview(step, formValues, previousStepId, nextStepId),
                 ],
               ),
             ),
 
             // Step Configurations (bottom bar)
-            _buildBottomStats(step),
+            _CanvasBottomStats(step: step),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, JourneyConfig config, JourneyStep step, int index) {
+  Widget _buildHeader(BuildContext context, JourneyStep step, int index, String? previousStepId, String? nextStepId) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
@@ -287,8 +368,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                   const SizedBox(width: 16),
                   // Navigation buttons
                   OutlinedButton(
-                    onPressed: index > 0 ? () {
-                      ref.read(activeStepIdProvider.notifier).state = config.steps[index - 1].id;
+                    onPressed: previousStepId != null ? () {
+                      ref.read(activeStepIdProvider.notifier).state = previousStepId;
                       ref.read(selectedFieldIdProvider.notifier).state = null;
                     } : null,
                     style: OutlinedButton.styleFrom(
@@ -298,8 +379,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: index < config.steps.length - 1 ? () {
-                      ref.read(activeStepIdProvider.notifier).state = config.steps[index + 1].id;
+                    onPressed: nextStepId != null ? () {
+                      ref.read(activeStepIdProvider.notifier).state = nextStepId;
                       ref.read(selectedFieldIdProvider.notifier).state = null;
                     } : null,
                     style: ElevatedButton.styleFrom(
@@ -401,98 +482,6 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             );
           }).toList(),
         ),
-      ),
-    );
-  }
-
-  Widget _buildToolbox() {
-    return Container(
-      width: 132,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: RevoTheme.cardBorder, width: 1),
-        ),
-      ),
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: _componentGroups.expand<Widget>((group) {
-          final items = group['items'] as List<Map<String, dynamic>>;
-          return [
-            Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 8),
-              child: Text(
-                group['title'] as String,
-                style: GoogleFonts.inter(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: RevoTheme.textSecondary,
-                ),
-              ),
-            ),
-            ...items.map((item) {
-              final type = item['type'] as String;
-              return Draggable<String>(
-                data: type,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    width: 112,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: RevoTheme.primary.withValues(alpha:0.8),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: RevoTheme.primaryLight),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(item['icon'] as IconData, size: 14, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            item['label'] as String,
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: RevoTheme.cardBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: RevoTheme.cardBorder),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => _addField(type),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                      child: Row(
-                        children: [
-                          Icon(item['icon'] as IconData, size: 16, color: RevoTheme.textSecondary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item['label'] as String,
-                              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 8),
-          ];
-        }).toList(),
       ),
     );
   }
@@ -698,113 +687,20 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   }
 
   Widget _buildCanvasComponentPreview(JourneyField field, String stepId) {
-    switch (field.type.toLowerCase()) {
-      case 'dropdown':
-      case 'api_dropdown':
-        return _buildPreviewBox(
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  field.placeholder ?? 'Select an option',
-                  style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Icon(
-                field.type == 'api_dropdown' ? Icons.cloud_sync_outlined : Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: RevoTheme.textSecondary,
-              ),
-            ],
-          ),
-        );
-      case 'radio':
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: (field.getResolvedOptions().isEmpty ? ['Option 1', 'Option 2'] : field.getResolvedOptions())
-              .map((option) => Chip(
-                    label: Text(option, style: GoogleFonts.inter(fontSize: 11)),
-                    avatar: Icon(Icons.radio_button_unchecked_rounded, size: 14, color: RevoTheme.primaryLight),
-                    backgroundColor: RevoTheme.background,
-                    side: BorderSide(color: RevoTheme.cardBorder),
-                  ))
-              .toList(),
-        );
-      case 'checkbox':
-        return Row(
-          children: [
-            Icon(Icons.check_box_outline_blank_rounded, size: 18, color: RevoTheme.textSecondary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
-          ],
-        );
-      case 'switch':
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
-            Switch(value: field.defaultValue == 'true', onChanged: null),
-          ],
-        );
-      case 'date':
-      case 'time':
-      case 'datetime':
-        return _buildPreviewBox(
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  field.placeholder ?? (field.type == 'time' ? 'HH:MM' : 'DD/MM/YYYY'),
-                  style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
-                ),
-              ),
-              Icon(Icons.calendar_today_rounded, size: 16, color: RevoTheme.textSecondary),
-            ],
-          ),
-        );
-      case 'file':
-      case 'image':
-        return _buildPreviewBox(
-          height: 68,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 20, color: RevoTheme.primaryLight),
-              const SizedBox(height: 4),
-              Text(field.placeholder ?? 'Upload file', style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary)),
-            ],
-          ),
-        );
-      case 'textarea':
-        return _buildPreviewBox(height: 72, child: Align(alignment: Alignment.topLeft, child: Text(field.placeholder ?? 'Enter details', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))));
-      case 'number':
-        return _buildPreviewBox(child: Text(field.placeholder ?? 'Enter number', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
-      case 'table_grid':
-        return _buildTableGridPreview(field);
-      case 'repeater':
-        return _buildRepeaterPreview(field);
-      case 'timeline':
-        return _buildTimelinePreview(field);
-      case 'section':
-        return _buildNestedCanvasPreview(field, Icons.view_agenda_outlined, stepId);
-      case 'card':
-        return _buildNestedCanvasPreview(field, Icons.crop_square_rounded, stepId);
-      case 'tabs':
-        return _buildNestedTabsCanvasPreview(field, stepId);
-      case 'accordion':
-        return _buildNestedCanvasPreview(field, Icons.unfold_more_rounded, stepId);
-      case 'row':
-        return _buildNestedRowCanvasPreview(field, stepId);
-      case 'formula':
-        return _buildPreviewBox(child: Text(field.formula ?? field.defaultValue ?? 'Calculated value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.primaryLight)));
-      case 'divider':
-        return Divider(color: RevoTheme.cardBorder);
-      default:
-        return _buildPreviewBox(child: Text(field.placeholder ?? 'Enter value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
-    }
+    final builder = _previewRegistry[field.type.toLowerCase()];
+    if (builder != null) return builder(field, stepId);
+    return _previewDefault(field, stepId);
   }
+
+  Widget _previewDefault(JourneyField field, String stepId) => _buildPreviewBox(child: Text(field.placeholder ?? 'Enter value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
+  Widget _previewTextarea(JourneyField field, String stepId) => _buildPreviewBox(height: 72, child: Align(alignment: Alignment.topLeft, child: Text(field.placeholder ?? 'Enter details', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))));
+  Widget _previewNumber(JourneyField field, String stepId) => _buildPreviewBox(child: Text(field.placeholder ?? 'Enter number', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)));
+  Widget _previewDate(JourneyField field, String stepId) => _buildPreviewBox(child: Row(children: [Expanded(child: Text(field.placeholder ?? (field.type == 'time' ? 'HH:MM' : 'DD/MM/YYYY'), style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))), Icon(Icons.calendar_today_rounded, size: 16, color: RevoTheme.textSecondary)]));
+  Widget _previewFile(JourneyField field, String stepId) => _buildPreviewBox(height: 68, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 20, color: RevoTheme.primaryLight), const SizedBox(height: 4), Text(field.placeholder ?? 'Upload file', style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary))]));
+  Widget _previewCheckbox(JourneyField field, String stepId) => Row(children: [Icon(Icons.check_box_outline_blank_rounded, size: 18, color: RevoTheme.textSecondary), const SizedBox(width: 8), Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)))]);
+  Widget _previewSwitch(JourneyField field, String stepId) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))), Switch(value: field.defaultValue == 'true', onChanged: null)]);
+  Widget _previewDropdown(JourneyField field, String stepId) => _buildPreviewBox(child: Row(children: [Expanded(child: Text(field.placeholder ?? 'Select an option', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary), overflow: TextOverflow.ellipsis)), Icon(field.type == 'api_dropdown' ? Icons.cloud_sync_outlined : Icons.keyboard_arrow_down_rounded, size: 16, color: RevoTheme.textSecondary)]));
+  Widget _previewRadio(JourneyField field, String stepId) => Wrap(spacing: 8, runSpacing: 8, children: (field.getResolvedOptions().isEmpty ? ['Option 1', 'Option 2'] : field.getResolvedOptions()).map((option) => Chip(label: Text(option, style: GoogleFonts.inter(fontSize: 11)), avatar: Icon(Icons.radio_button_unchecked_rounded, size: 14, color: RevoTheme.primaryLight), backgroundColor: RevoTheme.background, side: BorderSide(color: RevoTheme.cardBorder))).toList());
 
   Widget _buildPreviewBox({required Widget child, double height = 42}) {
     return Container(
@@ -1165,8 +1061,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   }
 
   Widget _buildRulesTab(JourneyStep step) {
-    final allFields = ref.watch(journeyConfigProvider).steps.expand((s) => s.fields).toList();
-    final allSteps = ref.watch(journeyConfigProvider).steps;
+    final allFields = ref.watch(journeyConfigProvider.select((config) => config.steps.expand((s) => s.fields).toList()));
+    final allSteps = ref.watch(journeyConfigProvider.select((config) => config.steps));
     
     return Expanded(
       flex: 3,
@@ -1206,8 +1102,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       operator: "equals",
                       value: "",
                     );
-                    final updated = step.copy()..conditions = [...step.conditions, newCondition];
-                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                    ref.read(journeyConfigProvider.notifier).addConditionToStep(step.id, newCondition);
                   },
                   icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
                   label: const Text("Add Rule"),
@@ -1255,9 +1150,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
                                     onPressed: () {
-                                      final newConditions = List<StepCondition>.from(step.conditions)..removeAt(index);
-                                      final updated = step.copy()..conditions = newConditions;
-                                      ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                      ref.read(journeyConfigProvider.notifier).removeConditionFromStep(step.id, index);
                                     },
                                     constraints: const BoxConstraints(),
                                     padding: EdgeInsets.zero,
@@ -1276,10 +1169,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: allFields.map((f) => f.id).toList(),
                                       fallback: "Select Field",
                                       onChanged: (val) {
-                                        final newConds = List<StepCondition>.from(step.conditions);
-                                        newConds[index] = condition.copy()..field = val;
-                                        final updated = step.copy()..conditions = newConds;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateConditionInStep(step.id, index, condition.copyWith(field: val));
                                       },
                                     ),
                                   ),
@@ -1293,10 +1184,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["visibleIf", "showIf", "enableIf", "nextStepIf"],
                                       fallback: "visibleIf",
                                       onChanged: (val) {
-                                        final newConds = List<StepCondition>.from(step.conditions);
-                                        newConds[index] = condition.copy()..type = val;
-                                        final updated = step.copy()..conditions = newConds;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateConditionInStep(step.id, index, condition.copyWith(type: val));
                                       },
                                     ),
                                   ),
@@ -1310,10 +1199,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["equals", "notEquals", "contains"],
                                       fallback: "equals",
                                       onChanged: (val) {
-                                        final newConds = List<StepCondition>.from(step.conditions);
-                                        newConds[index] = condition.copy()..operator = val;
-                                        final updated = step.copy()..conditions = newConds;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateConditionInStep(step.id, index, condition.copyWith(operator: val));
                                       },
                                     ),
                                   ),
@@ -1325,10 +1212,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       label: "Value",
                                       initialValue: condition.value,
                                       onChanged: (val) {
-                                        final newConds = List<StepCondition>.from(step.conditions);
-                                        newConds[index] = condition.copy()..value = val.trim();
-                                        final updated = step.copy()..conditions = newConds;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateConditionInStep(step.id, index, condition.copyWith(value: val.trim()));
                                       },
                                     ),
                                   ),
@@ -1342,10 +1227,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   items: allSteps.map((s) => s.id).toList(),
                                   fallback: "Select Target Step",
                                   onChanged: (val) {
-                                    final newConds = List<StepCondition>.from(step.conditions);
-                                    newConds[index] = condition.copy()..targetStep = val;
-                                    final updated = step.copy()..conditions = newConds;
-                                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                    ref.read(journeyConfigProvider.notifier)
+                                        .updateConditionInStep(step.id, index, condition.copyWith(targetStep: val));
                                   },
                                 ),
                               ],
@@ -1401,8 +1284,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       field: defaultField,
                       message: "This field is required",
                     );
-                    final updated = step.copy()..validations = [...step.validations, newValidation];
-                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                    ref.read(journeyConfigProvider.notifier).addValidationToStep(step.id, newValidation);
                   },
                   icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
                   label: const Text("Add Validation"),
@@ -1450,9 +1332,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
                                     onPressed: () {
-                                      final newValidations = List<StepValidation>.from(step.validations)..removeAt(index);
-                                      final updated = step.copy()..validations = newValidations;
-                                      ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                      ref.read(journeyConfigProvider.notifier).removeValidationFromStep(step.id, index);
                                     },
                                     constraints: const BoxConstraints(),
                                     padding: EdgeInsets.zero,
@@ -1471,10 +1351,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: allFields.map((f) => f.id).toList(),
                                       fallback: "Select Field",
                                       onChanged: (val) {
-                                        final newVals = List<StepValidation>.from(step.validations);
-                                        newVals[index] = validation.copy()..field = val;
-                                        final updated = step.copy()..validations = newVals;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateValidationInStep(step.id, index, validation.copyWith(field: val));
                                       },
                                     ),
                                   ),
@@ -1488,10 +1366,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["required", "regex", "async", "dependency"],
                                       fallback: "required",
                                       onChanged: (val) {
-                                        final newVals = List<StepValidation>.from(step.validations);
-                                        newVals[index] = validation.copy()..type = val;
-                                        final updated = step.copy()..validations = newVals;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateValidationInStep(step.id, index, validation.copyWith(type: val));
                                       },
                                     ),
                                   ),
@@ -1503,10 +1379,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       label: "Error Message",
                                       initialValue: validation.message,
                                       onChanged: (val) {
-                                        final newVals = List<StepValidation>.from(step.validations);
-                                        newVals[index] = validation.copy()..message = val.trim();
-                                        final updated = step.copy()..validations = newVals;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateValidationInStep(step.id, index, validation.copyWith(message: val.trim()));
                                       },
                                     ),
                                   ),
@@ -1519,10 +1393,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   initialValue: validation.regexPattern ?? "",
                                   hint: "e.g. ^[a-zA-Z]+\$ or ^[0-9]{6}\$",
                                   onChanged: (val) {
-                                    final newVals = List<StepValidation>.from(step.validations);
-                                    newVals[index] = validation.copy()..regexPattern = val.trim().isEmpty ? null : val.trim();
-                                    final updated = step.copy()..validations = newVals;
-                                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                    ref.read(journeyConfigProvider.notifier)
+                                        .updateValidationInStep(step.id, index, validation.copyWith(regexPattern: val.trim().isEmpty ? null : val.trim()));
                                   },
                                 ),
                               ] else if (validation.type == 'async') ...[
@@ -1532,10 +1404,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   initialValue: validation.validationUrl ?? "",
                                   hint: "e.g. /api/v1/validate/pan-number or https://api.val.com/check",
                                   onChanged: (val) {
-                                    final newVals = List<StepValidation>.from(step.validations);
-                                    newVals[index] = validation.copy()..validationUrl = val.trim().isEmpty ? null : val.trim();
-                                    final updated = step.copy()..validations = newVals;
-                                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                    ref.read(journeyConfigProvider.notifier)
+                                        .updateValidationInStep(step.id, index, validation.copyWith(validationUrl: val.trim().isEmpty ? null : val.trim()));
                                   },
                                 ),
                               ] else if (validation.type == 'dependency') ...[
@@ -1549,10 +1419,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                         items: allFields.map((f) => f.id).where((id) => id != validation.field).toList(),
                                         fallback: "Select Dependent Field",
                                         onChanged: (val) {
-                                          final newVals = List<StepValidation>.from(step.validations);
-                                          newVals[index] = validation.copy()..dependentField = val.isEmpty ? null : val;
-                                          final updated = step.copy()..validations = newVals;
-                                          ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                          ref.read(journeyConfigProvider.notifier)
+                                              .updateValidationInStep(step.id, index, validation.copyWith(dependentField: val.isEmpty ? null : val));
                                         },
                                       ),
                                     ),
@@ -1563,10 +1431,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                         initialValue: validation.dependentValue ?? "",
                                         hint: "e.g. Married or Yes",
                                         onChanged: (val) {
-                                          final newVals = List<StepValidation>.from(step.validations);
-                                          newVals[index] = validation.copy()..dependentValue = val.trim().isEmpty ? null : val.trim();
-                                          final updated = step.copy()..validations = newVals;
-                                          ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                          ref.read(journeyConfigProvider.notifier)
+                                              .updateValidationInStep(step.id, index, validation.copyWith(dependentValue: val.trim().isEmpty ? null : val.trim()));
                                         },
                                       ),
                                     ),
@@ -1622,8 +1488,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       url: "",
                       description: "New Step API Call",
                     );
-                    final updated = step.copy()..apiCalls = [...step.apiCalls, newApi];
-                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                    ref.read(journeyConfigProvider.notifier).addApiCallToStep(step.id, newApi);
                   },
                   icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
                   label: const Text("Add API Call"),
@@ -1672,9 +1537,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
                                     onPressed: () {
-                                      final newApiCalls = List<StepAPI>.from(step.apiCalls)..removeAt(index);
-                                      final updated = step.copy()..apiCalls = newApiCalls;
-                                      ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                      ref.read(journeyConfigProvider.notifier).removeApiCallFromStep(step.id, index);
                                     },
                                     constraints: const BoxConstraints(),
                                     padding: EdgeInsets.zero,
@@ -1693,10 +1556,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["GET", "POST", "PUT", "DELETE"],
                                       fallback: "GET",
                                       onChanged: (val) {
-                                        final newApiCalls = List<StepAPI>.from(step.apiCalls);
-                                        newApiCalls[index] = api.copy()..method = val;
-                                        final updated = step.copy()..apiCalls = newApiCalls;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateApiCallInStep(step.id, index, api.copyWith(method: val));
                                       },
                                     ),
                                   ),
@@ -1709,10 +1570,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       initialValue: api.url,
                                       hint: "e.g. /api/v1/user/details or https://api.endpoint.com",
                                       onChanged: (val) {
-                                        final newApiCalls = List<StepAPI>.from(step.apiCalls);
-                                        newApiCalls[index] = api.copy()..url = val.trim();
-                                        final updated = step.copy()..apiCalls = newApiCalls;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateApiCallInStep(step.id, index, api.copyWith(url: val.trim()));
                                       },
                                     ),
                                   ),
@@ -1725,10 +1584,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       initialValue: api.description,
                                       hint: "e.g. Fetch user balance",
                                       onChanged: (val) {
-                                        final newApiCalls = List<StepAPI>.from(step.apiCalls);
-                                        newApiCalls[index] = api.copy()..description = val.trim();
-                                        final updated = step.copy()..apiCalls = newApiCalls;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateApiCallInStep(step.id, index, api.copyWith(description: val.trim()));
                                       },
                                     ),
                                   ),
@@ -1744,17 +1601,15 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       hint: 'e.g. {"Authorization": "Bearer ..."}',
                                       onChanged: (val) {
                                         try {
-                                          final newApiCalls = List<StepAPI>.from(step.apiCalls);
+                                          Map<String, dynamic>? newHeaders;
                                           if (val.trim().isEmpty) {
-                                            newApiCalls[index] = api.copy()..headers = null;
+                                            newHeaders = null;
                                           } else {
                                             final decoded = json.decode(val);
-                                            if (decoded is Map) {
-                                              newApiCalls[index] = api.copy()..headers = Map<String, dynamic>.from(decoded);
-                                            }
+                                            if (decoded is Map) newHeaders = Map<String, dynamic>.from(decoded);
                                           }
-                                          final updated = step.copy()..apiCalls = newApiCalls;
-                                          ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                          ref.read(journeyConfigProvider.notifier)
+                                              .updateApiCallInStep(step.id, index, api.copyWith(headers: newHeaders));
                                         } catch (_) {}
                                       },
                                     ),
@@ -1766,10 +1621,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       initialValue: api.body ?? "",
                                       hint: 'e.g. {"userId": 123}',
                                       onChanged: (val) {
-                                        final newApiCalls = List<StepAPI>.from(step.apiCalls);
-                                        newApiCalls[index] = api.copy()..body = val.trim().isEmpty ? null : val.trim();
-                                        final updated = step.copy()..apiCalls = newApiCalls;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateApiCallInStep(step.id, index, api.copyWith(body: val.trim().isEmpty ? null : val.trim()));
                                       },
                                     ),
                                   ),
@@ -1792,7 +1645,6 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                         _testingStepApiIndex = index;
                                         _stepApiTestResult = null;
                                       });
-                                      await Future.delayed(const Duration(milliseconds: 1200));
                                       
                                       if (api.url.isEmpty) {
                                         setState(() {
@@ -1803,11 +1655,38 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                         return;
                                       }
                                       
-                                      setState(() {
-                                        _testingStepApi = false;
-                                        _stepApiTestSuccess = true;
-                                        _stepApiTestResult = "Connection successful!\nEndpoint: ${api.url}\nStatus: 200 OK\nPayload returned successfully.";
-                                      });
+                                      try {
+                                        final headersStr = api.headers?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? <String, String>{};
+                                        final method = api.method.toUpperCase();
+                                        final uri = Uri.parse(api.url);
+                                        
+                                        http.Response response;
+                                        if (method == 'POST') {
+                                          response = await http.post(uri, headers: headersStr, body: api.body);
+                                        } else if (method == 'PUT') {
+                                          response = await http.put(uri, headers: headersStr, body: api.body);
+                                        } else if (method == 'DELETE') {
+                                          response = await http.delete(uri, headers: headersStr, body: api.body);
+                                        } else {
+                                          response = await http.get(uri, headers: headersStr);
+                                        }
+                                        
+                                        final responseBody = response.body.length > 200 
+                                            ? '${response.body.substring(0, 200)}...' 
+                                            : response.body;
+                                        
+                                        setState(() {
+                                          _testingStepApi = false;
+                                          _stepApiTestSuccess = response.statusCode >= 200 && response.statusCode < 300;
+                                          _stepApiTestResult = "Status: ${response.statusCode} ${response.reasonPhrase}\nResponse:\n$responseBody";
+                                        });
+                                      } catch (e) {
+                                        setState(() {
+                                          _testingStepApi = false;
+                                          _stepApiTestSuccess = false;
+                                          _stepApiTestResult = "Error: Failed to connect.\n${e.toString()}";
+                                        });
+                                      }
                                     },
                                     icon: isTestingThis
                                         ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -1872,7 +1751,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   }
 
   Widget _buildSettingsTab(JourneyStep step) {
-    final allSteps = ref.watch(journeyConfigProvider).steps;
+    final allSteps = ref.watch(journeyConfigProvider.select((config) => config.steps));
     final otherStepIds = allSteps.map((s) => s.id).where((id) => id != step.id).toList();
     
     return Expanded(
@@ -1920,7 +1799,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                           return;
                         }
                         
-                        final updated = step.copy()..id = clean;
+                        final updated = step.copyWith(id: clean);
                         ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
                         ref.read(activeStepIdProvider.notifier).state = clean;
                       },
@@ -1930,7 +1809,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       label: "Step Title",
                       initialValue: step.title,
                       onChanged: (val) {
-                        final updated = step.copy()..title = val.trim();
+                        final updated = step.copyWith(title: val.trim());
                         ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
                       },
                     ),
@@ -1940,7 +1819,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       initialValue: step.description,
                       maxLines: 3,
                       onChanged: (val) {
-                        final updated = step.copy()..description = val.trim();
+                        final updated = step.copyWith(description: val.trim());
                         ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
                       },
                     ),
@@ -1951,7 +1830,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       items: otherStepIds,
                       fallback: "None (End of Journey)",
                       onChanged: (val) {
-                        final updated = step.copy()..nextStep = val.isEmpty ? null : val;
+                        final updated = step.copyWith(nextStep: val.isEmpty ? null : val);
                         ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
                       },
                     ),
@@ -2002,8 +1881,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       actionType: "showBanner",
                       details: "Action details here",
                     );
-                    final updated = step.copy()..actions = [...step.actions, newAction];
-                    ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                    ref.read(journeyConfigProvider.notifier).addActionToStep(step.id, newAction);
                   },
                   icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
                   label: const Text("Add Action"),
@@ -2051,9 +1929,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
                                     onPressed: () {
-                                      final newActions = List<StepAction>.from(step.actions)..removeAt(index);
-                                      final updated = step.copy()..actions = newActions;
-                                      ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                      ref.read(journeyConfigProvider.notifier).removeActionFromStep(step.id, index);
                                     },
                                     constraints: const BoxConstraints(),
                                     padding: EdgeInsets.zero,
@@ -2071,10 +1947,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["onSubmit", "onFieldChange"],
                                       fallback: "onSubmit",
                                       onChanged: (val) {
-                                        final newActions = List<StepAction>.from(step.actions);
-                                        newActions[index] = action.copy()..trigger = val;
-                                        final updated = step.copy()..actions = newActions;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateActionInStep(step.id, index, action.copyWith(trigger: val));
                                       },
                                     ),
                                   ),
@@ -2087,10 +1961,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       items: const ["apiCall", "navigate", "showBanner"],
                                       fallback: "showBanner",
                                       onChanged: (val) {
-                                        final newActions = List<StepAction>.from(step.actions);
-                                        newActions[index] = action.copy()..actionType = val;
-                                        final updated = step.copy()..actions = newActions;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateActionInStep(step.id, index, action.copyWith(actionType: val));
                                       },
                                     ),
                                   ),
@@ -2102,10 +1974,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       initialValue: action.details,
                                       hint: "e.g. Save details or stepId",
                                       onChanged: (val) {
-                                        final newActions = List<StepAction>.from(step.actions);
-                                        newActions[index] = action.copy()..details = val.trim();
-                                        final updated = step.copy()..actions = newActions;
-                                        ref.read(journeyConfigProvider.notifier).updateStep(step.id, updated);
+                                        ref.read(journeyConfigProvider.notifier)
+                                            .updateActionInStep(step.id, index, action.copyWith(details: val.trim()));
                                       },
                                     ),
                                   ),
@@ -2123,10 +1993,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildLivePreview(JourneyStep step, Map<String, dynamic> formValues, JourneyConfig config) {
-    final activeStepId = ref.read(activeStepIdProvider);
-    final activeStepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
-
+  Widget _buildLivePreview(JourneyStep step, Map<String, dynamic> formValues, String? previousStepId, String? nextStepId) {
     if (!_isMobilePreview) {
       // Laptop / Desktop Preview
       return Expanded(
@@ -2293,10 +2160,10 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          if (activeStepIndex > 0)
+                                          if (previousStepId != null)
                                             OutlinedButton(
                                               onPressed: () {
-                                                ref.read(activeStepIdProvider.notifier).state = config.steps[activeStepIndex - 1].id;
+                                                ref.read(activeStepIdProvider.notifier).state = previousStepId;
                                                 ref.read(selectedFieldIdProvider.notifier).state = null;
                                               },
                                               style: OutlinedButton.styleFrom(
@@ -2310,8 +2177,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                             const SizedBox.shrink(),
                                           ElevatedButton(
                                             onPressed: () {
-                                              if (activeStepIndex < config.steps.length - 1) {
-                                                ref.read(activeStepIdProvider.notifier).state = config.steps[activeStepIndex + 1].id;
+                                              if (nextStepId != null) {
+                                                ref.read(activeStepIdProvider.notifier).state = nextStepId;
                                                 ref.read(selectedFieldIdProvider.notifier).state = null;
                                               }
                                             },
@@ -2321,7 +2188,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                             ),
                                             child: Text(
-                                              activeStepIndex == config.steps.length - 1 ? "Submit" : "Next",
+                                              nextStepId == null ? "Submit" : "Next",
                                               style: const TextStyle(fontSize: 9),
                                             ),
                                           ),
@@ -2506,10 +2373,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Navigate next step if possible
-                          final index = config.steps.indexWhere((s) => s.id == activeStepId);
-                          if (index != -1 && index < config.steps.length - 1) {
-                            ref.read(activeStepIdProvider.notifier).state = config.steps[index + 1].id;
+                          if (nextStepId != null) {
+                            ref.read(activeStepIdProvider.notifier).state = nextStepId;
                             ref.read(selectedFieldIdProvider.notifier).state = null;
                           }
                         },
@@ -2518,7 +2383,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: Text(
-                          activeStepIndex == config.steps.length - 1 ? "Submit" : "Next",
+                          nextStepId == null ? "Submit" : "Next",
                           style: GoogleFonts.inter(fontSize: 12),
                         ),
                       ),
@@ -2534,321 +2399,21 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   }
 
   Widget _buildMobileFieldMockup(JourneyField field, Map<String, dynamic> formValues) {
-    final value = formValues[field.id]?.toString() ?? '';
-
-    switch (field.type.toLowerCase()) {
-      case 'divider':
-        return Divider(color: RevoTheme.cardBorder);
-      
-      case 'dropdown':
-        final options = field.getResolvedOptions();
-        final displayOptions = options.isEmpty ? ["Option 1", "Option 2"] : options;
-        return Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: RevoTheme.background,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: RevoTheme.cardBorder),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: displayOptions.contains(value) ? value : null,
-              hint: Text(field.placeholder ?? field.hintText ?? "Select", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5))),
-              isExpanded: true,
-              dropdownColor: RevoTheme.cardBg,
-              style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary),
-              items: displayOptions.map((opt) {
-                return DropdownMenuItem(
-                  value: opt,
-                  child: Text(opt, style: const TextStyle(fontSize: 10)),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  ref.read(formValuesProvider.notifier).updateValue(field.id, val);
-                }
-              },
-            ),
-          ),
-        );
-
-      case 'api_dropdown':
-        return Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: RevoTheme.background,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: RevoTheme.cardBorder),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  field.dropdownApiUrl != null && field.dropdownApiUrl!.isNotEmpty 
-                      ? "API: ${field.dropdownApiUrl}" 
-                      : (field.placeholder ?? field.hintText ?? "Select (API Loaded)"),
-                  style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha:0.5), overflow: TextOverflow.ellipsis),
-                ),
-              ),
-              Icon(Icons.cloud_sync_outlined, size: 12, color: RevoTheme.primaryLight),
-            ],
-          ),
-        );
-
-      case 'radio':
-        final options = field.getResolvedOptions();
-        final displayOptions = options.isEmpty ? ["Option 1", "Option 2"] : options;
-        return Wrap(
-          spacing: 6,
-          children: displayOptions.map((opt) {
-            final isSelected = value == opt;
-            return InkWell(
-              onTap: () {
-                ref.read(formValuesProvider.notifier).updateValue(field.id, opt);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isSelected ? RevoTheme.primary : RevoTheme.background,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: isSelected ? RevoTheme.primaryLight : RevoTheme.cardBorder),
-                ),
-                child: Text(
-                  opt,
-                  style: TextStyle(fontSize: 8, color: isSelected ? Colors.white : RevoTheme.textSecondary, fontWeight: FontWeight.bold),
-                ),
-              ),
-            );
-          }).toList(),
-        );
-
-      case 'checkbox':
-        final isChecked = value == 'true';
-        return InkWell(
-          onTap: () {
-            ref.read(formValuesProvider.notifier).updateValue(field.id, (!isChecked).toString());
-          },
-          child: Row(
-            children: [
-              Icon(
-                isChecked ? Icons.check_box : Icons.check_box_outline_blank,
-                size: 14,
-                color: isChecked ? RevoTheme.primaryLight : RevoTheme.textSecondary.withValues(alpha:0.5),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  field.label,
-                  style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary),
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case 'switch':
-        final isSwitched = value == 'true';
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(field.label, style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)),
-            Transform.scale(
-              scale: 0.6,
-              child: Switch(
-                value: isSwitched,
-                onChanged: (val) {
-                  ref.read(formValuesProvider.notifier).updateValue(field.id, val.toString());
-                },
-              ),
-            ),
-          ],
-        );
-
-      case 'date':
-      case 'time':
-      case 'datetime':
-        return InkWell(
-          onTap: () async {
-            if (field.type == 'time') {
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.now(),
-              );
-              if (picked != null) {
-                ref.read(formValuesProvider.notifier).updateValue(field.id, picked.format(context));
-              }
-              return;
-            }
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(1900),
-              lastDate: DateTime(2100),
-            );
-            if (picked != null) {
-              final formatted = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
-              ref.read(formValuesProvider.notifier).updateValue(field.id, formatted);
-            }
-          },
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: RevoTheme.background,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: RevoTheme.cardBorder),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value.isNotEmpty ? value : (field.placeholder ?? (field.type == 'time' ? "HH:MM" : "DD/MM/YYYY")),
-                  style: TextStyle(fontSize: 10, color: value.isNotEmpty ? RevoTheme.textPrimary : RevoTheme.textSecondary.withValues(alpha:0.5)),
-                ),
-                Icon(Icons.calendar_today_rounded, size: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
-              ],
-            ),
-          ),
-        );
-
-      case 'file':
-      case 'image':
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: RevoTheme.background,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: RevoTheme.cardBorder),
-          ),
-          child: Column(
-            children: [
-              Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 18, color: RevoTheme.primaryLight),
-              const SizedBox(height: 4),
-              Text(field.placeholder ?? 'Upload file', style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)),
-            ],
-          ),
-        );
-
-      case 'otp':
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(6, (_) {
-            return Container(
-              width: 28,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: RevoTheme.background,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: RevoTheme.cardBorder),
-              ),
-              child: Text("-", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha: 0.6))),
-            );
-          }),
-        );
-
-      case 'table_grid':
-        return _buildCompactTablePreview(field);
-
-      case 'repeater':
-        return _buildCompactRepeaterPreview(field);
-
-      case 'timeline':
-        return _buildCompactTimelinePreview(field);
-
-      case 'section':
-        return _buildCompactNestedPreview(field, Icons.view_agenda_outlined);
-
-      case 'card':
-        return _buildCompactNestedPreview(field, Icons.crop_square_rounded);
-
-      case 'tabs':
-        return _buildCompactNestedTabsPreview(field);
-
-      case 'accordion':
-        return _buildCompactNestedPreview(field, Icons.unfold_more_rounded);
-
-      case 'row':
-        return _buildCompactNestedRowPreview(field);
-
-      case 'formula':
-        return _buildCompactComponentShell(Icons.functions_rounded, field.formula ?? "Calculated value");
-
-      case 'phone':
-        return Row(
-          children: [
-            Container(
-              height: 32,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: BoxDecoration(
-                color: RevoTheme.background,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: RevoTheme.cardBorder),
-              ),
-              alignment: Alignment.center,
-              child: Text("🇮🇳 +91", style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: SizedBox(
-                height: 32,
-                child: TextField(
-                  style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    hintText: field.placeholder ?? "Enter mobile",
-                    hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
-                    fillColor: RevoTheme.background,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: RevoTheme.cardBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: RevoTheme.primaryLight),
-                    ),
-                  ),
-                  onChanged: (val) {
-                    ref.read(formValuesProvider.notifier).updateValue(field.id, val);
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-
-      default:
-        // text, textarea, etc.
-        return SizedBox(
-          height: field.type == 'textarea' ? 60 : 32,
-          child: TextField(
-            maxLines: field.type == 'textarea' ? 3 : 1,
-            style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              hintText: field.placeholder ?? "Enter value",
-              hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
-              fillColor: RevoTheme.background,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: RevoTheme.cardBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: RevoTheme.primaryLight),
-              ),
-            ),
-            onChanged: (val) {
-              ref.read(formValuesProvider.notifier).updateValue(field.id, val);
-            },
-          ),
-        );
-    }
+    final builder = _mockupRegistry[field.type.toLowerCase()];
+    if (builder != null) return builder(field, formValues);
+    return _mockupDefault(field, formValues);
   }
+
+  Widget _mockupDefault(JourneyField field, Map<String, dynamic> formValues) => SizedBox(height: field.type == 'textarea' ? 60 : 32, child: TextField(maxLines: field.type == 'textarea' ? 3 : 1, style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), hintText: field.placeholder ?? "Enter value", hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)), fillColor: RevoTheme.background, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: RevoTheme.cardBorder)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: RevoTheme.primaryLight))), onChanged: (val) => ref.read(formValuesProvider.notifier).updateValue(field.id, val)));
+  Widget _mockupPhone(JourneyField field, Map<String, dynamic> formValues) => Row(children: [Container(height: 32, padding: const EdgeInsets.symmetric(horizontal: 6), decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), alignment: Alignment.center, child: Text("🇮🇳 +91", style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary))), const SizedBox(width: 4), Expanded(child: SizedBox(height: 32, child: TextField(style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), hintText: field.placeholder ?? "Enter mobile", hintStyle: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)), fillColor: RevoTheme.background, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: RevoTheme.cardBorder)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: RevoTheme.primaryLight))), onChanged: (val) => ref.read(formValuesProvider.notifier).updateValue(field.id, val))))]);
+  Widget _mockupOtp(JourneyField field, Map<String, dynamic> formValues) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(6, (_) => Container(width: 28, height: 32, alignment: Alignment.center, decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), child: Text("-", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha: 0.6))))));
+  Widget _mockupFile(JourneyField field, Map<String, dynamic> formValues) => Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), child: Column(children: [Icon(field.type == 'image' ? Icons.image_outlined : Icons.cloud_upload_outlined, size: 18, color: RevoTheme.primaryLight), const SizedBox(height: 4), Text(field.placeholder ?? 'Upload file', style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary))]));
+  Widget _mockupDate(JourneyField field, Map<String, dynamic> formValues) { final value = formValues[field.id]?.toString() ?? ''; return InkWell(onTap: () async { if (field.type == 'time') { final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now()); if (picked != null) ref.read(formValuesProvider.notifier).updateValue(field.id, picked.format(context)); return; } final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime(2100)); if (picked != null) { final formatted = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}"; ref.read(formValuesProvider.notifier).updateValue(field.id, formatted); } }, child: Container(height: 32, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(value.isNotEmpty ? value : (field.placeholder ?? (field.type == 'time' ? "HH:MM" : "DD/MM/YYYY")), style: TextStyle(fontSize: 10, color: value.isNotEmpty ? RevoTheme.textPrimary : RevoTheme.textSecondary.withValues(alpha:0.5))), Icon(Icons.calendar_today_rounded, size: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5))]))); }
+  Widget _mockupSwitch(JourneyField field, Map<String, dynamic> formValues) { final value = formValues[field.id]?.toString() ?? ''; final isSwitched = value == 'true'; return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(field.label, style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)), Transform.scale(scale: 0.6, child: Switch(value: isSwitched, onChanged: (val) => ref.read(formValuesProvider.notifier).updateValue(field.id, val.toString())))]); }
+  Widget _mockupCheckbox(JourneyField field, Map<String, dynamic> formValues) { final value = formValues[field.id]?.toString() ?? ''; final isChecked = value == 'true'; return InkWell(onTap: () => ref.read(formValuesProvider.notifier).updateValue(field.id, (!isChecked).toString()), child: Row(children: [Icon(isChecked ? Icons.check_box : Icons.check_box_outline_blank, size: 14, color: isChecked ? RevoTheme.primaryLight : RevoTheme.textSecondary.withValues(alpha:0.5)), const SizedBox(width: 6), Expanded(child: Text(field.label, style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary)))])); }
+  Widget _mockupRadio(JourneyField field, Map<String, dynamic> formValues) { final value = formValues[field.id]?.toString() ?? ''; final options = field.getResolvedOptions(); final displayOptions = options.isEmpty ? ["Option 1", "Option 2"] : options; return Wrap(spacing: 6, children: displayOptions.map((opt) { final isSelected = value == opt; return InkWell(onTap: () => ref.read(formValuesProvider.notifier).updateValue(field.id, opt), child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: isSelected ? RevoTheme.primary : RevoTheme.background, borderRadius: BorderRadius.circular(4), border: Border.all(color: isSelected ? RevoTheme.primaryLight : RevoTheme.cardBorder)), child: Text(opt, style: TextStyle(fontSize: 8, color: isSelected ? Colors.white : RevoTheme.textSecondary, fontWeight: FontWeight.bold)))); }).toList()); }
+  Widget _mockupApiDropdown(JourneyField field, Map<String, dynamic> formValues) => Container(height: 32, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Expanded(child: Text(field.dropdownApiUrl != null && field.dropdownApiUrl!.isNotEmpty ? "API: ${field.dropdownApiUrl}" : (field.placeholder ?? field.hintText ?? "Select (API Loaded)"), style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha:0.5), overflow: TextOverflow.ellipsis))), Icon(Icons.cloud_sync_outlined, size: 12, color: RevoTheme.primaryLight)]));
+  Widget _mockupDropdown(JourneyField field, Map<String, dynamic> formValues) { final value = formValues[field.id]?.toString() ?? ''; final options = field.getResolvedOptions(); final displayOptions = options.isEmpty ? ["Option 1", "Option 2"] : options; return Container(height: 32, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: RevoTheme.background, borderRadius: BorderRadius.circular(6), border: Border.all(color: RevoTheme.cardBorder)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: displayOptions.contains(value) ? value : null, hint: Text(field.placeholder ?? field.hintText ?? "Select", style: TextStyle(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5))), isExpanded: true, dropdownColor: RevoTheme.cardBg, style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary), items: displayOptions.map((opt) => DropdownMenuItem(value: opt, child: Text(opt, style: const TextStyle(fontSize: 10)))).toList(), onChanged: (val) { if (val != null) ref.read(formValuesProvider.notifier).updateValue(field.id, val); }))); }
 
   Widget _buildCompactComponentShell(IconData icon, String label) {
     return Container(
@@ -2875,7 +2440,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildCompactNestedPreview(JourneyField field, IconData icon) {
+  Widget _buildCompactNestedPreview(JourneyField field, IconData icon, Map<String, dynamic> formValues) {
     final children = field.nestedFields ?? const <JourneyField>[];
     return Container(
       width: double.infinity,
@@ -2899,7 +2464,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             const SizedBox(height: 8),
             ...children.take(3).map((child) => Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: _buildMobileFieldMockup(child, const {}),
+                  child: _buildMobileFieldMockup(child, formValues),
                 )),
           ],
         ],
@@ -2907,18 +2472,18 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildCompactNestedRowPreview(JourneyField field) {
+  Widget _buildCompactNestedRowPreview(JourneyField field, Map<String, dynamic> formValues) {
     final children = field.nestedFields ?? const <JourneyField>[];
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: children.take(3).map((child) {
-        return SizedBox(width: 120, child: _buildMobileFieldMockup(child, const {}));
+        return SizedBox(width: 120, child: _buildMobileFieldMockup(child, formValues));
       }).toList(),
     );
   }
 
-  Widget _buildCompactNestedTabsPreview(JourneyField field) {
+  Widget _buildCompactNestedTabsPreview(JourneyField field, Map<String, dynamic> formValues) {
     final tabs = field.nestedFields ?? const <JourneyField>[];
     final labels = tabs.isEmpty ? ['Tab 1', 'Tab 2'] : tabs.map((tab) => tab.label).toList();
     return Wrap(
@@ -3063,7 +2628,119 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildBottomStats(JourneyStep step) {
+}
+
+class _CanvasToolbox extends StatelessWidget {
+  final List<Map<String, dynamic>> componentGroups;
+  final ValueChanged<String> onAddField;
+
+  const _CanvasToolbox({
+    Key? key,
+    required this.componentGroups,
+    required this.onAddField,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 132,
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(color: RevoTheme.cardBorder, width: 1),
+        ),
+      ),
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: componentGroups.expand<Widget>((group) {
+          final items = group['items'] as List<Map<String, dynamic>>;
+          return [
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                group['title'] as String,
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: RevoTheme.textSecondary,
+                ),
+              ),
+            ),
+            ...items.map((item) {
+              final type = item['type'] as String;
+              return Draggable<String>(
+                data: type,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 112,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: RevoTheme.primary.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: RevoTheme.primaryLight),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(item['icon'] as IconData, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            item['label'] as String,
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: RevoTheme.cardBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: RevoTheme.cardBorder),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => onAddField(type),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(item['icon'] as IconData, size: 16, color: RevoTheme.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item['label'] as String,
+                              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+          ];
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _CanvasBottomStats extends StatelessWidget {
+  final JourneyStep step;
+
+  const _CanvasBottomStats({Key? key, required this.step}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     final stats = [
       {'label': 'Validations', 'val': '${step.validations.length} Rules', 'icon': Icons.gpp_maybe_rounded, 'color': RevoTheme.warning},
       {'label': 'Conditions', 'val': '${step.conditions.length} Rules', 'icon': Icons.rule_rounded, 'color': RevoTheme.primaryLight},

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
@@ -237,12 +238,21 @@ class HistoryState {
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier(JourneyConfig initial)
+  final Ref _ref;
+  static const int maxHistoryLength = 50;
+  bool _isUndoing = false;
+
+  HistoryNotifier(this._ref, JourneyConfig initial)
       : super(HistoryState(past: [], present: initial, future: []));
 
   void push(JourneyConfig nextConfig) {
+    if (_isUndoing) return;
+    var newPast = [...state.past, state.present.copyWith()];
+    if (newPast.length > maxHistoryLength) {
+      newPast = newPast.sublist(newPast.length - maxHistoryLength);
+    }
     state = HistoryState(
-      past: [...state.past, state.present.copyWith()],
+      past: newPast,
       present: nextConfig,
       future: [],
     );
@@ -257,6 +267,7 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       present: previous,
       future: [state.present.copyWith(), ...state.future],
     );
+    _applyToConfig(state.present);
   }
 
   void redo() {
@@ -268,10 +279,12 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       present: next,
       future: newFuture,
     );
+    _applyToConfig(state.present);
   }
 
   void reset(JourneyConfig config) {
     state = HistoryState(past: [], present: config, future: []);
+    _applyToConfig(config);
   }
 
   void rollbackTo(int pastIndex) {
@@ -288,11 +301,22 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       present: target,
       future: newFuture,
     );
+    _applyToConfig(state.present);
+  }
+
+  void _applyToConfig(JourneyConfig config) {
+    _isUndoing = true;
+    _ref.read(journeyConfigProvider.notifier).syncWithHistory(config);
+    _isUndoing = false;
   }
 }
 
 final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
-  return HistoryNotifier(getInitialJourney());
+  final notifier = HistoryNotifier(ref, getInitialJourney());
+  ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
+    notifier.push(next);
+  });
+  return notifier;
 });
 
 // Journey Config Provider
@@ -308,8 +332,8 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
       final newConfig = JourneyConfig.fromJson(decoded);
       state = newConfig;
       
-      // Update history
-      _ref.read(historyProvider.notifier).push(newConfig);
+      // Clear the history stack when a new JSON is completely loaded
+      _ref.read(historyProvider.notifier).reset(newConfig);
 
       // Reset active step to first step of the loaded configuration
       if (newConfig.steps.isNotEmpty) {
@@ -322,61 +346,154 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 
   void updateJourneyName(String name) {
-    final updated = state.copyWith(journeyName: name);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(journeyName: name);
   }
 
   void updateJourneyVersion(String ver) {
-    final updated = state.copyWith(version: ver);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(version: ver);
   }
 
   void updateJourneyDescription(String desc) {
-    final updated = state.copyWith(description: desc);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(description: desc);
   }
 
   void updateJourneyCategory(String cat) {
-    final updated = state.copyWith(category: cat);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(category: cat);
   }
 
   void updateJourneyLocale(String loc) {
-    final updated = state.copyWith(locale: loc);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(locale: loc);
   }
 
   void updateJourneyPlatform(String plat) {
-    final updated = state.copyWith(platform: plat);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(platform: plat);
   }
 
   // Steps operations
   void addStep(JourneyStep step) {
     final updatedSteps = [...state.steps, step];
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
+  }
+
+  void _checkAndClearSelectedField(List<JourneyField> removedFields) {
+    final selectedId = _ref.read(selectedFieldIdProvider);
+    if (selectedId == null) return;
+    final flattened = EngineHelper.flattenFields(removedFields);
+    if (flattened.any((f) => f.id == selectedId)) {
+      _ref.read(selectedFieldIdProvider.notifier).state = null;
+    }
   }
 
   void removeStep(String stepId) {
+    final stepToRemove = state.steps.firstWhere((s) => s.id == stepId);
+    _checkAndClearSelectedField(stepToRemove.fields);
+
     final updatedSteps = state.steps.where((s) => s.id != stepId).toList();
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
   }
 
   void updateStep(String stepId, JourneyStep updatedStep) {
+    updatedStep.invalidateCache();
     final updatedSteps = state.steps.map((s) => s.id == stepId ? updatedStep : s).toList();
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
+  }
+
+  // --- Step Collection Helpers (Conditions, Validations, APIs, Actions) ---
+
+  void addConditionToStep(String stepId, StepCondition condition) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    updateStep(stepId, step.copyWith(conditions: [...step.conditions, condition]));
+  }
+
+  void updateConditionInStep(String stepId, int index, StepCondition condition) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newConds = List<StepCondition>.from(step.conditions);
+    newConds[index] = condition;
+    updateStep(stepId, step.copyWith(conditions: newConds));
+  }
+
+  void removeConditionFromStep(String stepId, int index) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newConds = List<StepCondition>.from(step.conditions)..removeAt(index);
+    updateStep(stepId, step.copyWith(conditions: newConds));
+  }
+
+  void addValidationToStep(String stepId, StepValidation validation) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    updateStep(stepId, step.copyWith(validations: [...step.validations, validation]));
+  }
+
+  void updateValidationInStep(String stepId, int index, StepValidation validation) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newVals = List<StepValidation>.from(step.validations);
+    newVals[index] = validation;
+    updateStep(stepId, step.copyWith(validations: newVals));
+  }
+
+  void removeValidationFromStep(String stepId, int index) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newVals = List<StepValidation>.from(step.validations)..removeAt(index);
+    updateStep(stepId, step.copyWith(validations: newVals));
+  }
+
+  void addApiCallToStep(String stepId, StepAPI api) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    updateStep(stepId, step.copyWith(apiCalls: [...step.apiCalls, api]));
+  }
+
+  void updateApiCallInStep(String stepId, int index, StepAPI api) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newApis = List<StepAPI>.from(step.apiCalls);
+    newApis[index] = api;
+    updateStep(stepId, step.copyWith(apiCalls: newApis));
+  }
+
+  void removeApiCallFromStep(String stepId, int index) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newApis = List<StepAPI>.from(step.apiCalls)..removeAt(index);
+    updateStep(stepId, step.copyWith(apiCalls: newApis));
+  }
+
+  void addActionToStep(String stepId, StepAction action) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    updateStep(stepId, step.copyWith(actions: [...step.actions, action]));
+  }
+
+  void updateActionInStep(String stepId, int index, StepAction action) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newActions = List<StepAction>.from(step.actions);
+    newActions[index] = action;
+    updateStep(stepId, step.copyWith(actions: newActions));
+  }
+
+  void removeActionFromStep(String stepId, int index) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final newActions = List<StepAction>.from(step.actions)..removeAt(index);
+    updateStep(stepId, step.copyWith(actions: newActions));
   }
 
   void reorderSteps(int oldIndex, int newIndex) {
@@ -387,9 +504,7 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     final step = updatedSteps.removeAt(oldIndex);
     updatedSteps.insert(newIndex, step);
     
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
   }
 
   // Fields operations (mutating specific step fields)
@@ -405,13 +520,12 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
       updatedFields.add(field);
     }
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
   }
 
   void removeFieldFromStep(String stepId, String fieldId) {
@@ -419,19 +533,17 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
+    final fieldsToRemove = step.fields.where((f) => f.id == fieldId).toList();
+    _checkAndClearSelectedField(fieldsToRemove);
+
     final updatedFields = step.fields.where((f) => f.id != fieldId).toList();
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
-
-    if (_ref.read(selectedFieldIdProvider) == fieldId) {
-      _ref.read(selectedFieldIdProvider.notifier).state = null;
-    }
+    state = state.copyWith(steps: updatedSteps);
   }
 
   void updateFieldInStep(String stepId, String fieldId, JourneyField updatedField) {
@@ -439,27 +551,14 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
-    final updatedFields = _updateFieldRecursive(step.fields, fieldId, updatedField);
+    final updatedFields = EngineHelper.updateFieldRecursive(step.fields, fieldId, updatedField);
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
-  }
-
-  List<JourneyField> _updateFieldRecursive(List<JourneyField> fields, String fieldId, JourneyField updatedField) {
-    return fields.map((field) {
-      if (field.id == fieldId) return updatedField;
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        final copy = field.copy();
-        copy.nestedFields = _updateFieldRecursive(field.nestedFields!, fieldId, updatedField);
-        return copy;
-      }
-      return field;
-    }).toList();
+    state = state.copyWith(steps: updatedSteps);
   }
 
   void reorderFieldsInStep(String stepId, int oldIndex, int newIndex) {
@@ -474,13 +573,12 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     final field = updatedFields.removeAt(oldIndex);
     updatedFields.insert(newIndex, field);
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
+    state = state.copyWith(steps: updatedSteps);
   }
 
   // Add a field into the nestedFields of a container field (section/card/tabs/accordion/repeater)
@@ -489,32 +587,20 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
-    final updatedFields = _addFieldToParent(step.fields, parentFieldId, newField);
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final flatFields = step.flattenedFields;
+    if (!flatFields.any((f) => f.id == parentFieldId)) {
+      return; // Parent not found, avoid making a stale tree
+    }
+
+    final updatedFields = EngineHelper.addFieldToParent(step.fields, parentFieldId, newField);
+
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
-  }
-
-  List<JourneyField> _addFieldToParent(List<JourneyField> fields, String parentId, JourneyField newField) {
-    return fields.map((field) {
-      if (field.id == parentId) {
-        final nested = List<JourneyField>.from(field.nestedFields ?? [])..add(newField);
-        final copy = field.copy();
-        copy.nestedFields = nested;
-        return copy;
-      }
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        final copy = field.copy();
-        copy.nestedFields = _addFieldToParent(field.nestedFields!, parentId, newField);
-        return copy;
-      }
-      return field;
-    }).toList();
+    state = state.copyWith(steps: updatedSteps);
   }
 
   // Remove a field from any nested container recursively
@@ -523,30 +609,20 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
-    final updatedFields = _removeFieldRecursive(step.fields, fieldId);
 
-    final updatedStep = step.copy()..fields = updatedFields;
+    final fieldsToRemove = step.flattenedFields.where((f) => f.id == fieldId).toList();
+    if (fieldsToRemove.isEmpty) return; // Field not found, safely return
+
+    _checkAndClearSelectedField(fieldsToRemove);
+
+    final updatedFields = EngineHelper.removeFieldRecursive(step.fields, fieldId);
+
+    final updatedStep = step.copyWith(fields: updatedFields);
+    updatedStep.invalidateCache();
     final updatedSteps = List<JourneyStep>.from(state.steps);
     updatedSteps[stepIndex] = updatedStep;
 
-    final updated = state.copyWith(steps: updatedSteps);
-    state = updated;
-    _ref.read(historyProvider.notifier).push(updated);
-
-    if (_ref.read(selectedFieldIdProvider) == fieldId) {
-      _ref.read(selectedFieldIdProvider.notifier).state = null;
-    }
-  }
-
-  List<JourneyField> _removeFieldRecursive(List<JourneyField> fields, String fieldId) {
-    return fields.where((f) => f.id != fieldId).map((field) {
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        final copy = field.copy();
-        copy.nestedFields = _removeFieldRecursive(field.nestedFields!, fieldId);
-        return copy;
-      }
-      return field;
-    }).toList();
+    state = state.copyWith(steps: updatedSteps);
   }
 
   void syncWithHistory(JourneyConfig config) {
@@ -555,12 +631,7 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
 }
 
 final journeyConfigProvider = StateNotifierProvider<JourneyConfigNotifier, JourneyConfig>((ref) {
-  // Sync wrapper to watch history notifier
-  final notifier = JourneyConfigNotifier(ref, getInitialJourney());
-  ref.listen<HistoryState>(historyProvider, (prev, next) {
-    notifier.syncWithHistory(next.present);
-  });
-  return notifier;
+  return JourneyConfigNotifier(ref, getInitialJourney());
 });
 
 // Centralized dynamic form state mapping provider (Step Values)
@@ -569,7 +640,7 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
   FormValuesNotifier() : super({});
 
   void updateValue(String fieldId, dynamic value) {
-    state = {...state, fieldId: value};
+    state = Map<String, dynamic>.of(state)..[fieldId] = value;
   }
 
   void updateValueByPath(List<dynamic> path, dynamic value) {
@@ -619,9 +690,9 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
     state = {};
   }
 
-  void resetWithDefaults(List<JourneyField> fields) {
+  void resetWithDefaults(JourneyStep step) {
     final defaults = <String, dynamic>{};
-    for (var f in EngineHelper.flattenFields(fields)) {
+    for (var f in step.flattenedFields) {
       if (f.defaultValue != null) {
         defaults[f.id] = f.defaultValue!;
       }
@@ -645,6 +716,44 @@ class EngineHelper {
       }
     }
     return flattened;
+  }
+
+  static List<JourneyField> updateFieldRecursive(List<JourneyField> fields, String fieldId, JourneyField updatedField) {
+    return fields.map((field) {
+      if (field.id == fieldId) return updatedField;
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        return field.copyWith(
+          nestedFields: updateFieldRecursive(field.nestedFields!, fieldId, updatedField),
+        );
+      }
+      return field;
+    }).toList();
+  }
+
+  static List<JourneyField> addFieldToParent(List<JourneyField> fields, String parentId, JourneyField newField) {
+    return fields.map((field) {
+      if (field.id == parentId) {
+        final nested = List<JourneyField>.from(field.nestedFields ?? [])..add(newField);
+        return field.copyWith(nestedFields: nested);
+      }
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        return field.copyWith(
+          nestedFields: addFieldToParent(field.nestedFields!, parentId, newField),
+        );
+      }
+      return field;
+    }).toList();
+  }
+
+  static List<JourneyField> removeFieldRecursive(List<JourneyField> fields, String fieldId) {
+    return fields.where((f) => f.id != fieldId).map((field) {
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        return field.copyWith(
+          nestedFields: removeFieldRecursive(field.nestedFields!, fieldId),
+        );
+      }
+      return field;
+    }).toList();
   }
 
   static bool evaluateCondition(StepCondition cond, Map<String, dynamic> values) {
@@ -715,8 +824,15 @@ final journeysListProvider = StateNotifierProvider<JourneysListNotifier, List<Jo
   final notifier = JourneysListNotifier([
     getInitialJourney(),
   ]);
+  Timer? debounceTimer;
   ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
-    notifier.saveJourney(next);
+    debounceTimer?.cancel();
+    debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      notifier.saveJourney(next);
+    });
+  });
+  ref.onDispose(() {
+    debounceTimer?.cancel();
   });
   return notifier;
 });

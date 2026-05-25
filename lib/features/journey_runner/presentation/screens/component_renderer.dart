@@ -146,7 +146,7 @@ class ComponentRenderer extends ConsumerWidget {
     final opts = options.getResolvedOptions();
     final displayOptions = opts.isEmpty ? ["Select"] : opts;
     return DropdownButtonFormField<String>(
-      value: displayOptions.contains(currentVal) ? currentVal : null,
+      initialValue: displayOptions.contains(currentVal) ? currentVal : null,
       decoration: InputDecoration(
         labelText: options.label,
         errorText: hasError ? errorMsg : null,

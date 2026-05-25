@@ -1,3 +1,5 @@
+// ignore_for_file: curly_braces_in_flow_control_structures
+
 import 'dart:convert';
 
 enum ComponentType {
@@ -64,7 +66,7 @@ class JourneyConfig {
       category: category ?? this.category,
       locale: locale ?? this.locale,
       platform: platform ?? this.platform,
-      steps: steps ?? this.steps.map((s) => s.copy()).toList(),
+      steps: steps ?? this.steps.map((s) => s.copyWith()).toList(),
     );
   }
 }
@@ -79,6 +81,7 @@ class JourneyStep {
   List<StepCondition> conditions;
   List<StepAPI> apiCalls;
   List<StepAction> actions;
+  List<JourneyField>? _flattenedCache;
 
   JourneyStep({
     required this.id,
@@ -91,6 +94,26 @@ class JourneyStep {
     this.apiCalls = const [],
     this.actions = const [],
   });
+
+  List<JourneyField> get flattenedFields {
+    _flattenedCache ??= _flattenFields(fields);
+    return _flattenedCache!;
+  }
+
+  List<JourneyField> _flattenFields(List<JourneyField> fieldList) {
+    final flattened = <JourneyField>[];
+    for (final field in fieldList) {
+      flattened.add(field);
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        flattened.addAll(_flattenFields(field.nestedFields!));
+      }
+    }
+    return flattened;
+  }
+
+  void invalidateCache() {
+    _flattenedCache = null;
+  }
 
   factory JourneyStep.fromJson(Map<String, dynamic> json) {
     var fieldsList = json['fields'] as List? ?? [];
@@ -126,17 +149,27 @@ class JourneyStep {
     };
   }
 
-  JourneyStep copy() {
+  JourneyStep copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? nextStep,
+    List<JourneyField>? fields,
+    List<StepValidation>? validations,
+    List<StepCondition>? conditions,
+    List<StepAPI>? apiCalls,
+    List<StepAction>? actions,
+  }) {
     return JourneyStep(
-      id: id,
-      title: title,
-      description: description,
-      nextStep: nextStep,
-      fields: fields.map((f) => f.copy()).toList(),
-      validations: validations.map((v) => v.copy()).toList(),
-      conditions: conditions.map((c) => c.copy()).toList(),
-      apiCalls: apiCalls.map((a) => a.copy()).toList(),
-      actions: actions.map((a) => a.copy()).toList(),
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      nextStep: nextStep ?? this.nextStep,
+      fields: fields ?? this.fields.map((f) => f.copyWith()).toList(),
+      validations: validations ?? this.validations.map((v) => v.copyWith()).toList(),
+      conditions: conditions ?? this.conditions.map((c) => c.copyWith()).toList(),
+      apiCalls: apiCalls ?? this.apiCalls.map((a) => a.copyWith()).toList(),
+      actions: actions ?? this.actions.map((a) => a.copyWith()).toList(),
     );
   }
 }
@@ -320,8 +353,34 @@ abstract class JourneyField {
     };
   }
 
-  JourneyField copy() {
-    return JourneyField.fromJson(toJson());
+  JourneyField copyWith({
+    String? id,
+    String? label,
+    String? type,
+    bool? required,
+    bool? visible,
+    bool? readOnly,
+    String? placeholder,
+    String? hintText,
+    String? errorMessage,
+    bool? disable,
+    bool? hidden,
+    List<JourneyField>? nestedFields,
+  }) {
+    final map = toJson();
+    if (id != null) map['id'] = id;
+    if (label != null) map['label'] = label;
+    if (type != null) map['type'] = type;
+    if (required != null) map['required'] = required;
+    if (visible != null) map['visible'] = visible;
+    if (readOnly != null) map['readOnly'] = readOnly;
+    if (placeholder != null) map['placeholder'] = placeholder;
+    if (hintText != null) map['hintText'] = hintText;
+    if (errorMessage != null) map['errorMessage'] = errorMessage;
+    if (disable != null) map['disable'] = disable;
+    if (hidden != null) map['hidden'] = hidden;
+    if (nestedFields != null) map['nestedFields'] = nestedFields.map((f) => f.toJson()).toList();
+    return JourneyField.fromJson(map);
   }
 
   factory JourneyField.fromJson(Map<String, dynamic> json) {
@@ -614,7 +673,31 @@ class StepValidation {
     'dependentValue': dependentValue, 'condition': condition, 'request': request, 'expression': expression,
   };
 
-  StepValidation copy() => StepValidation.fromJson(toJson());
+  StepValidation copyWith({
+    String? type,
+    String? field,
+    String? message,
+    String? regexPattern,
+    String? validationUrl,
+    String? dependentField,
+    String? dependentValue,
+    Map<String, dynamic>? condition,
+    Map<String, dynamic>? request,
+    String? expression,
+  }) {
+    return StepValidation(
+      type: type ?? this.type,
+      field: field ?? this.field,
+      message: message ?? this.message,
+      regexPattern: regexPattern ?? this.regexPattern,
+      validationUrl: validationUrl ?? this.validationUrl,
+      dependentField: dependentField ?? this.dependentField,
+      dependentValue: dependentValue ?? this.dependentValue,
+      condition: condition ?? this.condition,
+      request: request ?? this.request,
+      expression: expression ?? this.expression,
+    );
+  }
 }
 
 class StepCondition {
@@ -638,7 +721,21 @@ class StepCondition {
     'type': type, 'field': field, 'operator': operator, 'value': value, 'targetStep': targetStep,
   };
 
-  StepCondition copy() => StepCondition.fromJson(toJson());
+  StepCondition copyWith({
+    String? type,
+    String? field,
+    String? operator,
+    String? value,
+    String? targetStep,
+  }) {
+    return StepCondition(
+      type: type ?? this.type,
+      field: field ?? this.field,
+      operator: operator ?? this.operator,
+      value: value ?? this.value,
+      targetStep: targetStep ?? this.targetStep,
+    );
+  }
 }
 
 class StepAPI {
@@ -657,7 +754,21 @@ class StepAPI {
     'method': method, 'url': url, 'description': description, 'headers': headers, 'body': body,
   };
 
-  StepAPI copy() => StepAPI.fromJson(toJson());
+  StepAPI copyWith({
+    String? method,
+    String? url,
+    String? description,
+    Map<String, dynamic>? headers,
+    String? body,
+  }) {
+    return StepAPI(
+      method: method ?? this.method,
+      url: url ?? this.url,
+      description: description ?? this.description,
+      headers: headers ?? this.headers,
+      body: body ?? this.body,
+    );
+  }
 }
 
 class StepAction {
@@ -673,7 +784,17 @@ class StepAction {
     'trigger': trigger, 'actionType': actionType, 'details': details,
   };
 
-  StepAction copy() => StepAction.fromJson(toJson());
+  StepAction copyWith({
+    String? trigger,
+    String? actionType,
+    String? details,
+  }) {
+    return StepAction(
+      trigger: trigger ?? this.trigger,
+      actionType: actionType ?? this.actionType,
+      details: details ?? this.details,
+    );
+  }
 }
 
 // Parsers

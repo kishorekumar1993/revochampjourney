@@ -41,7 +41,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         setState(() {
           _runnerStepId = config.steps.first.id;
         });
-        ref.read(formValuesProvider.notifier).resetWithDefaults(config.steps.first.fields);
+        ref.read(formValuesProvider.notifier).resetWithDefaults(config.steps.first);
       }
     });
   }
@@ -93,7 +93,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         setState(() {
           _runnerStepId = nextId;
         });
-        ref.read(formValuesProvider.notifier).resetWithDefaults(allSteps[nextStepIndex].fields);
+        ref.read(formValuesProvider.notifier).resetWithDefaults(allSteps[nextStepIndex]);
       }
     } else {
       // Record the run simulation log dynamically
@@ -211,7 +211,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                                       setState(() {
                                         _runnerStepId = prevStep.id;
                                       });
-                                      ref.read(formValuesProvider.notifier).resetWithDefaults(prevStep.fields);
+                                      ref.read(formValuesProvider.notifier).resetWithDefaults(prevStep);
                                     },
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -466,7 +466,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
         return SwitchListTile(
           title: Text(field.label, style: GoogleFonts.inter(fontSize: 12)),
           value: currentVal,
-          activeColor: RevoTheme.primaryLight,
+          activeThumbColor: RevoTheme.primaryLight,
           contentPadding: EdgeInsets.zero,
           onChanged: (val) {
             ref.read(formValuesProvider.notifier).updateValue(field.id, val.toString());
@@ -494,6 +494,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                 initialTime: TimeOfDay.now(),
               );
               if (picked != null) {
+                if (!context.mounted) return;
                 ref.read(formValuesProvider.notifier).updateValue(field.id, picked.format(context));
               }
               return;
@@ -1234,21 +1235,6 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     return value.contains(',') || value.contains('"') || value.contains('\n') ? '"$escaped"' : escaped;
   }
 
-  Widget _tableCell(String text, {bool isHeader = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Text(
-        text,
-        style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: isHeader ? FontWeight.w700 : FontWeight.w400,
-          color: isHeader ? RevoTheme.textPrimary : RevoTheme.textSecondary,
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
   Widget _buildRepeaterRunner(JourneyField field) {
     final config = _componentConfig(field);
     final nestedFields = field.nestedFields ?? const <JourneyField>[];
@@ -1363,7 +1349,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
       case 'dropdown':
         final opts = cellField.getResolvedOptions();
         return DropdownButtonFormField<String>(
-          value: opts.contains(currentVal) ? currentVal : null,
+          initialValue: opts.contains(currentVal) ? currentVal : null,
           decoration: InputDecoration(labelText: cellField.label, isDense: true),
           dropdownColor: RevoTheme.cardBg,
           items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
