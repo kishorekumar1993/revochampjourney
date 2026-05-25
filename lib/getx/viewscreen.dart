@@ -1,3 +1,4 @@
+
 String generateviewClass(
   String className,
   List<Map<String, dynamic>> fields,
@@ -8,30 +9,30 @@ String generateviewClass(
   // ─── Helper to recursively flatten fields ─────────────
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
-    
+
     if (source is List) {
       for (final item in source) {
         flattenFields(item, result);
       }
       return;
     }
-    
+
     if (source is! Map<String, dynamic>) return;
-    
+
     if (source.containsKey('steps')) {
       flattenFields(source['steps'], result);
       return;
     }
-    
+
     if (source.containsKey('fields')) {
       flattenFields(source['fields'], result);
       return;
     }
-    
+
     if (source.containsKey('type')) {
       result.add(source);
       flattenFields(source['nestedFields'], result);
-      
+
       final config = source['componentConfig'];
       if (config is Map) {
         flattenFields(config['fields'], result);
@@ -64,14 +65,28 @@ String generateviewClass(
   }
 
   // ─── Collect dynamic dropdown model imports ────────────────────
+  // ✅ FIX 1: iterate flatFields (not fields) so nested dropdowns are included
+  // ✅ FIX 2: use label first; also skip if it's an API dropdown (has dropdownApiUrl)
   final dropdownModels = <String>{};
-  for (final field in fields) {
+  for (final field in flatFields) {
     final type = (field['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown') {
+    if (type == 'dropdown' || type == 'api_dropdown') {
+      final useStatic = field['useStaticOptions'] == true;
+      final hasApiUrl = field['dropdownApiUrl'] != null;
       final staticOpts = (field['options'] as List<dynamic>?) ??
           (field['staticOptions'] as List<dynamic>?);
-      if (staticOpts == null || staticOpts.isEmpty) {
-        final label = (field['label'] ?? '').toString().trim();
+      // Only emit a model import when it's truly an API dropdown
+      if (!useStatic && hasApiUrl) {
+        final label =
+            (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
+                .toString()
+                .trim();
+        dropdownModels.add(label);
+      } else if (staticOpts == null || staticOpts.isEmpty) {
+        final label =
+            (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
+                .toString()
+                .trim();
         dropdownModels.add(label);
       }
     }
@@ -109,855 +124,432 @@ String generateviewClass(
     for (final rawField in currentFields) {
       if (rawField is! Map<String, dynamic>) continue;
       final field = rawField;
-      final rawId = (field['id'] ?? field['fieldId'] ?? field['label'] ?? 'field').toString().trim();
-      final rawLabel = (field['label'] ?? rawId).toString().trim();
+
+      // ✅ FIX 3: label first for rawId/name/capitalLabel everywhere
+      final rawId =
+          (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
+              .toString()
+              .trim();
+      final rawLabel = rawId; // label IS the display name now
       final name = camelCaseName(rawId);
       final capitalLabel = pascalCaseName(rawId);
-    final type = (field['type'] ?? '').toString().toLowerCase().trim();
-    final hint =
-        (field['placeholder'] ?? field['hintText'] ?? '').toString();
-    final isRequired = field['required'] == true;
-    final isPassword = field['obscureText'] == true;
-    final isReadOnly = field['readOnly'] == true;
-    final rawKeyboard =
-        (field['keyboardType'] ?? 'text').toString().toLowerCase();
-    final keyboardType = _mapKeyboardType(rawKeyboard);
-    final isNumber = rawKeyboard == 'number';
-    final textInputAction =
-        (field['textInputAction'] ?? 'done').toString().toLowerCase();
-    final textCapitalization =
-        (field['textCapitalization'] ?? 'none').toString().toLowerCase();
-    final minLength = int.tryParse(field['minLength']?.toString() ?? '') ?? 0;
-    final maxLength = int.tryParse(field['maxLength']?.toString() ?? '') ?? 0;
-    final pattern = (field['validationPattern'] ?? '')
-        .toString()
-        .replaceAll(r'\', r'\\');
-    final errorMessage =
-        (field['errorMessage'] ?? 'Invalid format').toString();
-    final staticOpts = (field['options'] as List<dynamic>?) ??
-        (field['staticOptions'] as List<dynamic>?);
 
-    // ══════════════════════════════════════════════
-    //  text | textfield
-    // ══════════════════════════════════════════════
-    if (type == 'text' || type == 'textfield') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: isPassword,
-        isReadOnly: isReadOnly,
-        keyboardType: keyboardType,
-        isNumber: isNumber,
-        textInputAction: textInputAction,
-        textCapitalization: textCapitalization,
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern,
-        errorMessage: errorMessage,
-      );
+      final type = (field['type'] ?? '').toString().toLowerCase().trim();
+      final hint =
+          (field['placeholder'] ?? field['hintText'] ?? '').toString();
+      final isRequired = field['required'] == true;
+      final isPassword = field['obscureText'] == true;
+      final isReadOnly = field['readOnly'] == true;
+      final rawKeyboard =
+          (field['keyboardType'] ?? 'text').toString().toLowerCase();
+      final keyboardType = _mapKeyboardType(rawKeyboard);
+      final isNumber = rawKeyboard == 'number';
+      final textInputAction =
+          (field['textInputAction'] ?? 'done').toString().toLowerCase();
+      final textCapitalization =
+          (field['textCapitalization'] ?? 'none').toString().toLowerCase();
+      final minLength =
+          int.tryParse(field['minLength']?.toString() ?? '') ?? 0;
+      final maxLength =
+          int.tryParse(field['maxLength']?.toString() ?? '') ?? 0;
+      final pattern = (field['validationPattern'] ?? '')
+          .toString()
+          .replaceAll(r'\', r'\\');
+      final errorMessage =
+          (field['errorMessage'] ?? 'Invalid format').toString();
+      final staticOpts = (field['options'] as List<dynamic>?) ??
+          (field['staticOptions'] as List<dynamic>?);
 
-    // ══════════════════════════════════════════════
-    //  phone
-    // ══════════════════════════════════════════════
-    } else if (type == 'phone') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: false,
-        isReadOnly: isReadOnly,
-        keyboardType: 'phone',
-        isNumber: true,
-        textInputAction: textInputAction,
-        textCapitalization: 'none',
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern.isNotEmpty ? pattern : r'^\+?[0-9]{7,15}$',
-        errorMessage: errorMessage.isNotEmpty
-            ? errorMessage
-            : 'Enter a valid phone number',
-      );
+      // ✅ FIX 4: compute isApiDropdown here (same logic as controller)
+      final useStatic = field['useStaticOptions'] == true;
+      final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+          !useStatic &&
+          field['dropdownApiUrl'] != null;
 
-    // ══════════════════════════════════════════════
-    //  date
-    // ══════════════════════════════════════════════
-    } else if (type == 'date') {
-      buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-          "                  controller: controller.${name}Controller,");
-      buffer.writeln("                  isDatePicker: true,");
-      buffer.writeln("                  readOnly: $isReadOnly,");
-      buffer.writeln("                  validator: (value) {");
-      buffer.writeln("                    try {");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      if (pattern.isNotEmpty) {
-        buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
-      }
-      buffer.writeln("                      return null;");
-      buffer.writeln("                    } catch (e) {");
-      buffer.writeln("                      return 'Invalid input';");
-      buffer.writeln("                    }");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
+      // ══════════════════════════════════════════════
+      //  text | textfield
+      // ══════════════════════════════════════════════
+      if (type == 'text' || type == 'textfield') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: isPassword,
+          isReadOnly: isReadOnly,
+          keyboardType: keyboardType,
+          isNumber: isNumber,
+          textInputAction: textInputAction,
+          textCapitalization: textCapitalization,
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern,
+          errorMessage: errorMessage,
+        );
 
-    // ══════════════════════════════════════════════
-    //  datetime / date time
-    // ══════════════════════════════════════════════
-    } else if (type == 'datetime' || type == 'date time') {
-      buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-          "                  controller: controller.${name}Controller,");
-      buffer.writeln("                  isDateTimePicker: true,");
-      buffer.writeln("                  readOnly: $isReadOnly,");
-      buffer.writeln("                  validator: (value) {");
-      buffer.writeln("                    try {");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      if (pattern.isNotEmpty) {
-        buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
-      }
-      buffer.writeln("                      return null;");
-      buffer.writeln("                    } catch (e) {");
-      buffer.writeln("                      return 'Invalid input';");
-      buffer.writeln("                    }");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
+        // ══════════════════════════════════════════════
+        //  phone
+        // ══════════════════════════════════════════════
+      } else if (type == 'phone') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'phone',
+          isNumber: true,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern.isNotEmpty ? pattern : r'^\+?[0-9]{7,15}$',
+          errorMessage: errorMessage.isNotEmpty
+              ? errorMessage
+              : 'Enter a valid phone number',
+        );
 
-    // ══════════════════════════════════════════════
-    //  textarea
-    // ══════════════════════════════════════════════
-    } else if (type == 'textarea') {
-      buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-          "                  controller: controller.${name}Controller,");
-      buffer.writeln("                  maxLines: 4,");
-      if (maxLength > 0) {
-        buffer.writeln("                  maxLength: $maxLength,");
-      }
-      buffer.writeln("                  readOnly: $isReadOnly,");
-      buffer.writeln(
-          "                  keyboardType: TextInputType.multiline,");
-      buffer.writeln(
-          "                  textInputAction: TextInputAction.newline,");
-      buffer.writeln("                  validator: (value) {");
-      buffer.writeln("                    try {");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      if (minLength > 0) {
-        buffer.writeln(
-            "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';");
-      }
-      if (maxLength > 0) {
-        buffer.writeln(
-            "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';");
-      }
-      if (pattern.isNotEmpty) {
-        buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
-      }
-      buffer.writeln("                      return null;");
-      buffer.writeln("                    } catch (e) {");
-      buffer.writeln("                      return 'Invalid input';");
-      buffer.writeln("                    }");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  dropdown
-    // ══════════════════════════════════════════════
-    } else if (type == 'dropdown' || type == 'api_dropdown') {
-      if (staticOpts != null && staticOpts.isNotEmpty) {
-        final optionsList = staticOpts.map((o) {
-          final val = o.toString().replaceAll("'", "\\'");
-          return "DropdownItem(key: '$val', value: '$val')";
-        }).join(', ');
-
-        buffer.writeln(
-            "                Obx(() => DropdownSearch<DropdownItem>(");
-        buffer.writeln("                  hint: '$rawLabel',");
+        // ══════════════════════════════════════════════
+        //  date
+        // ══════════════════════════════════════════════
+      } else if (type == 'date') {
+        buffer.writeln("                CustomTextFormField(");
         buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  hint: '$hint',");
         buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln("                  labelType: LabelType.top,");
         buffer.writeln(
-            "                  itemAsString: (item) => item.value,");
-        buffer.writeln("                  items: [$optionsList],");
-        buffer.writeln(
-            "                  value: controller.selected$capitalLabel.value,");
-        buffer.writeln(
-            "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+            "                  controller: controller.${name}Controller,");
+        buffer.writeln("                  isDatePicker: true,");
+        buffer.writeln("                  readOnly: $isReadOnly,");
+        buffer.writeln("                  validator: (value) {");
+        buffer.writeln("                    try {");
         if (isRequired) {
-          buffer.writeln("                  validator: (value) {");
           buffer.writeln(
-              "                    if (value == null) return '$rawLabel is required';");
-          buffer.writeln("                    return null;");
-          buffer.writeln("                  },");
+              "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
         }
-        buffer.writeln("                )),");
-      } else {
-        final dropdownKey =
-            (field['dropdownValue'] ?? 'name').toString();
-        String? dropdownmodel = (field['modelName']?.toString());
-        if (dropdownmodel == null || dropdownmodel.isEmpty) {
-          final apidata = field['dropdowndata'];
-          if (apidata is Map<String, dynamic>) {
-            for (final entry in apidata.entries) {
-              final v = entry.value;
-              if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-                dropdownmodel = capitalize(entry.key);
-                break;
+        if (pattern.isNotEmpty) {
+          buffer.writeln(
+              "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
+        }
+        buffer.writeln("                      return null;");
+        buffer.writeln("                    } catch (e) {");
+        buffer.writeln("                      return 'Invalid input';");
+        buffer.writeln("                    }");
+        buffer.writeln("                  },");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  datetime / date time
+        // ══════════════════════════════════════════════
+      } else if (type == 'datetime' || type == 'date time') {
+        buffer.writeln("                CustomTextFormField(");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  hint: '$hint',");
+        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln(
+            "                  controller: controller.${name}Controller,");
+        buffer.writeln("                  isDateTimePicker: true,");
+        buffer.writeln("                  readOnly: $isReadOnly,");
+        buffer.writeln("                  validator: (value) {");
+        buffer.writeln("                    try {");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        if (pattern.isNotEmpty) {
+          buffer.writeln(
+              "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
+        }
+        buffer.writeln("                      return null;");
+        buffer.writeln("                    } catch (e) {");
+        buffer.writeln("                      return 'Invalid input';");
+        buffer.writeln("                    }");
+        buffer.writeln("                  },");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  textarea
+        // ══════════════════════════════════════════════
+      } else if (type == 'textarea') {
+        buffer.writeln("                CustomTextFormField(");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  hint: '$hint',");
+        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln(
+            "                  controller: controller.${name}Controller,");
+        buffer.writeln("                  maxLines: 4,");
+        if (maxLength > 0) {
+          buffer.writeln("                  maxLength: $maxLength,");
+        }
+        buffer.writeln("                  readOnly: $isReadOnly,");
+        buffer.writeln(
+            "                  keyboardType: TextInputType.multiline,");
+        buffer.writeln(
+            "                  textInputAction: TextInputAction.newline,");
+        buffer.writeln("                  validator: (value) {");
+        buffer.writeln("                    try {");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        if (minLength > 0) {
+          buffer.writeln(
+              "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';");
+        }
+        if (maxLength > 0) {
+          buffer.writeln(
+              "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';");
+        }
+        if (pattern.isNotEmpty) {
+          buffer.writeln(
+              "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
+        }
+        buffer.writeln("                      return null;");
+        buffer.writeln("                    } catch (e) {");
+        buffer.writeln("                      return 'Invalid input';");
+        buffer.writeln("                    }");
+        buffer.writeln("                  },");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  dropdown  ✅ FIXED: isApiDropdown check first
+        // ══════════════════════════════════════════════
+      } else if (type == 'dropdown' || type == 'api_dropdown') {
+        if (isApiDropdown) {
+          // ── API dropdown ──────────────────────────
+          final dropdownKey =
+              (field['dropdownValue'] ?? 'name').toString();
+          String? dropdownmodel = (field['modelName']?.toString());
+          if (dropdownmodel == null || dropdownmodel.isEmpty) {
+            final apidata = field['dropdowndata'];
+            if (apidata is Map<String, dynamic>) {
+              for (final entry in apidata.entries) {
+                final v = entry.value;
+                if (v is List &&
+                    v.isNotEmpty &&
+                    v.first is Map<String, dynamic>) {
+                  dropdownmodel =
+                      '${capitalize(singularize(entry.key))}Model';
+                  break;
+                }
               }
             }
           }
+          dropdownmodel ??= '${capitalLabel}Model';
+
+          buffer.writeln(
+              "                Obx(() => DropdownSearch<$dropdownmodel>(");
+          buffer.writeln("                  hint: '$rawLabel',");
+          buffer.writeln("                  label: '$rawLabel',");
+          buffer.writeln("                  isMandatory: $isRequired,");
+          buffer.writeln("                  labelType: LabelType.top,");
+          buffer.writeln(
+              "                  itemAsString: (item) => item?.$dropdownKey ?? '',");
+          buffer.writeln(
+              "                  items: controller.${name}Options,");
+          buffer.writeln(
+              "                  value: controller.selected$capitalLabel.value,");
+          buffer.writeln(
+              "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+          if (isRequired) {
+            buffer.writeln("                  validator: (value) {");
+            buffer.writeln(
+                "                    if (value == null) return '$rawLabel is required';");
+            buffer.writeln("                    return null;");
+            buffer.writeln("                  },");
+          }
+          buffer.writeln("                )),");
+        } else if (staticOpts != null && staticOpts.isNotEmpty) {
+          // ── Static dropdown ───────────────────────
+          final optionsList = staticOpts.map((o) {
+            if (o is Map) {
+              final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
+                  .toString()
+                  .replaceAll("'", "\\'");
+              final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
+                  .toString()
+                  .replaceAll("'", "\\'");
+              return "DropdownItem(key: '$k', value: '$v')";
+            }
+            final val = o.toString().replaceAll("'", "\\'");
+            return "DropdownItem(key: '$val', value: '$val')";
+          }).join(', ');
+
+          buffer.writeln(
+              "                Obx(() => DropdownSearch<DropdownItem>(");
+          buffer.writeln("                  hint: '$rawLabel',");
+          buffer.writeln("                  label: '$rawLabel',");
+          buffer.writeln("                  isMandatory: $isRequired,");
+          buffer.writeln("                  labelType: LabelType.top,");
+          buffer.writeln(
+              "                  itemAsString: (item) => item.value,");
+          buffer.writeln("                  items: [$optionsList],");
+          buffer.writeln(
+              "                  value: controller.selected$capitalLabel.value,");
+          buffer.writeln(
+              "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+          if (isRequired) {
+            buffer.writeln("                  validator: (value) {");
+            buffer.writeln(
+                "                    if (value == null) return '$rawLabel is required';");
+            buffer.writeln("                    return null;");
+            buffer.writeln("                  },");
+          }
+          buffer.writeln("                )),");
         }
-        dropdownmodel ??= '${capitalLabel}Model';
+
+        // ══════════════════════════════════════════════
+        //  radio | radio buttons
+        // ══════════════════════════════════════════════
+      } else if (type == 'radio' || type == 'radio buttons') {
+        final optionsList = staticOpts != null
+            ? staticOpts.map((o) {
+                final val = o.toString().replaceAll("'", "\\'");
+                return "RadioOption<String>(value: '$val', label: '$val')";
+              }).join(', ')
+            : '';
 
         buffer.writeln(
-            "                Obx(() => DropdownSearch<$dropdownmodel>(");
-        buffer.writeln("                  hint: '$rawLabel',");
+            "                Obx(() => CustomRadioGroup<String>(");
         buffer.writeln("                  label: '$rawLabel',");
         buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln("                  labelType: LabelType.top,");
         buffer.writeln(
-            "                  itemAsString: (item) => item?.$dropdownKey ?? '',");
+            "                  selectedValue: controller.selected$capitalLabel.value,");
         buffer.writeln(
-            "                  items: controller.${name}Options,");
-        buffer.writeln(
-            "                  value: controller.selected$capitalLabel.value,");
-        buffer.writeln(
-            "                  onChanged: (val) => controller.selected$capitalLabel.value = val,");
+            "                  onChanged: (value) => controller.selected$capitalLabel.value = value!,");
+        if (optionsList.isNotEmpty) {
+          buffer.writeln(
+              "                  options: [$optionsList],");
+        } else {
+          buffer.writeln(
+              "                  options: controller.${name}Options,");
+        }
         if (isRequired) {
           buffer.writeln("                  validator: (value) {");
           buffer.writeln(
-              "                    if (value == null) return '$rawLabel is required';");
+              "                    if (value == null || value.isEmpty) return '$rawLabel is required';");
           buffer.writeln("                    return null;");
           buffer.writeln("                  },");
         }
         buffer.writeln("                )),");
-      }
 
-    // ══════════════════════════════════════════════
-    //  radio | radio buttons  ✅ FIXED
-    // ══════════════════════════════════════════════
-    } else if (type == 'radio' || type == 'radio buttons') {
-      // ✅ Wrap each string in RadioOption<String> — NOT raw strings
-      final optionsList = staticOpts != null
-          ? staticOpts.map((o) {
-              final val = o.toString().replaceAll("'", "\\'");
-              return "RadioOption<String>(value: '$val', label: '$val')";
-            }).join(', ')
-          : '';
-
-      buffer.writeln(
-          "                Obx(() => CustomRadioGroup<String>(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-          "                  selectedValue: controller.selected$capitalLabel.value,");
-      buffer.writeln(
-          "                  onChanged: (value) => controller.selected$capitalLabel.value = value!,");
-      if (optionsList.isNotEmpty) {
-        buffer.writeln(
-            "                  options: [$optionsList],");
-      } else {
-        buffer.writeln(
-            "                  options: controller.${name}Options,");
-      }
-      if (isRequired) {
+        // ══════════════════════════════════════════════
+        //  switch
+        // ══════════════════════════════════════════════
+      } else if (type == 'switch') {
+        buffer.writeln("                Obx(() => FormField<bool>(");
+        buffer.writeln("                  initialValue: false,");
         buffer.writeln("                  validator: (value) {");
-        buffer.writeln(
-            "                    if (value == null || value.isEmpty) return '$rawLabel is required';");
+        if (isRequired) {
+          buffer.writeln(
+              "                    if (value != true) return '$rawLabel';");
+        }
         buffer.writeln("                    return null;");
         buffer.writeln("                  },");
-      }
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  switch
-    // ══════════════════════════════════════════════
-    } else if (type == 'switch') {
-      buffer.writeln("                Obx(() => FormField<bool>(");
-      buffer.writeln("                  initialValue: false,");
-      buffer.writeln("                  validator: (value) {");
-      if (isRequired) {
         buffer.writeln(
-            "                    if (value != true) return '$rawLabel';");
-      }
-      buffer.writeln("                    return null;");
-      buffer.writeln("                  },");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      SwitchListTile(");
-      buffer.writeln(
-          "                        title: const Text('$rawLabel'),");
-      buffer.writeln(
-          "                        value: controller.${name}Value.value,");
-      buffer.writeln("                        onChanged: (val) {");
-      buffer.writeln(
-          "                          controller.${name}Value.value = val;");
-      buffer.writeln(
-          "                          formState.didChange(val);");
-      buffer.writeln("                        },");
-      buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,");
-      buffer.writeln("                      ),");
-      if (isRequired) {
+            "                  builder: (formState) => Column(");
         buffer.writeln(
-            "                      if (formState.hasError)");
-        buffer.writeln("                        Padding(");
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      SwitchListTile(");
         buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
-        buffer.writeln("                          child: Text(");
+            "                        title: const Text('$rawLabel'),");
         buffer.writeln(
-            "                            formState.errorText ?? '',");
+            "                        value: controller.${name}Value.value,");
+        buffer.writeln("                        onChanged: (val) {");
         buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ),");
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  file
-    // ══════════════════════════════════════════════
-    } else if (type == 'file') {
-      buffer.writeln("                Obx(() => FormField<String>(");
-      buffer.writeln(
-          "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty");
-      buffer.writeln(
-          "                      ? '$rawLabel is required' : null,");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      Text(");
-      buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      buffer.writeln("                      GestureDetector(");
-      buffer.writeln("                        onTap: () async {");
-      buffer.writeln(
-          "                          await controller.pick${capitalLabel}File();");
-      buffer.writeln(
-          "                          formState.didChange(controller.${name}FileName.value);");
-      buffer.writeln("                        },");
-      buffer.writeln("                        child: Container(");
-      buffer.writeln(
-          "                          width: double.infinity,");
-      buffer.writeln(
-          "                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),");
-      buffer.writeln(
-          "                          decoration: BoxDecoration(");
-      buffer.writeln(
-          "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),");
-      buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),");
-      buffer.writeln("                          ),");
-      buffer.writeln("                          child: Row(");
-      buffer.writeln("                            children: [");
-      buffer.writeln(
-          "                              const Icon(Icons.upload_file, color: Colors.grey),");
-      buffer.writeln(
-          "                              const SizedBox(width: 8),");
-      buffer.writeln("                              Expanded(");
-      buffer.writeln("                                child: Text(");
-      buffer.writeln(
-          "                                  controller.${name}FileName.value.isEmpty");
-      buffer.writeln(
-          "                                      ? 'Tap to upload $rawLabel'");
-      buffer.writeln(
-          "                                      : controller.${name}FileName.value,");
-      buffer.writeln(
-          "                                  style: TextStyle(color: Colors.grey[700]),");
-      buffer.writeln(
-          "                                  overflow: TextOverflow.ellipsis,");
-      buffer.writeln("                                ),");
-      buffer.writeln("                              ),");
-      buffer.writeln("                            ],");
-      buffer.writeln("                          ),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      ),");
-      buffer.writeln(
-          "                      if (formState.hasError)");
-      buffer.writeln("                        Padding(");
-      buffer.writeln(
-          "                          padding: const EdgeInsets.only(top: 6, left: 4),");
-      buffer.writeln("                          child: Text(");
-      buffer.writeln(
-          "                            formState.errorText ?? '',");
-      buffer.writeln(
-          "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
-      buffer.writeln("                          ),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  otp  ✅ FIXED: removed maxLength (not a param)
-    // ══════════════════════════════════════════════
-    } else if (type == 'otp') {
-      buffer.writeln("                Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln("                    Text(");
-      buffer.writeln(
-          "                      '$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
-      buffer.writeln("                    ),");
-      buffer.writeln("                    const SizedBox(height: 8),");
-      buffer.writeln("                    CustomTextFormField(");
-      buffer.writeln("                      label: '',");
-      buffer.writeln("                      hint: '$hint',");
-      buffer.writeln("                      isMandatory: $isRequired,");
-      buffer.writeln(
-          "                      controller: controller.${name}Controller,");
-      buffer.writeln(
-          "                      keyboardType: TextInputType.number,");
-      buffer.writeln(
-          "                      maxLines: 1,"); // ✅ maxLength removed
-      buffer.writeln("                      validator: (value) {");
-      buffer.writeln("                        try {");
-      if (isRequired) {
+            "                          controller.${name}Value.value = val;");
         buffer.writeln(
-            "                          if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      if (minLength > 0 || maxLength > 0) {
-        if (minLength > 0) {
-          buffer.writeln("                          if (value != null && value.length < $minLength) return 'Minimum $minLength digits';");
+            "                          formState.didChange(val);");
+        buffer.writeln("                        },");
+        buffer.writeln(
+            "                        contentPadding: EdgeInsets.zero,");
+        buffer.writeln("                      ),");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (formState.hasError)");
+          buffer.writeln("                        Padding(");
+          buffer.writeln(
+              "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
+          buffer.writeln("                          child: Text(");
+          buffer.writeln(
+              "                            formState.errorText ?? '',");
+          buffer.writeln(
+              "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+          buffer.writeln("                          ),");
+          buffer.writeln("                        ),");
         }
-        if (maxLength > 0) {
-          buffer.writeln("                          if (value != null && value.length > $maxLength) return 'Maximum $maxLength digits';");
-        }
-      } else {
-        buffer.writeln(
-            "                          if (value != null && value.length != 6) return 'Enter a valid 6-digit code';");
-      }
-      if (pattern.isNotEmpty) {
-        buffer.writeln(
-            "                          if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
-      }
-      buffer.writeln("                          return null;");
-      buffer.writeln("                        } catch (e) {");
-      buffer.writeln("                          return 'Invalid input';");
-      buffer.writeln("                        }");
-      buffer.writeln("                      },");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                ),");
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
 
-    // ══════════════════════════════════════════════
-    //  divider
-    // ══════════════════════════════════════════════
-    } else if (type == 'divider') {
-      buffer.writeln("                Padding(");
-      buffer.writeln(
-          "                  padding: const EdgeInsets.symmetric(vertical: 12.0),");
-      buffer.writeln("                  child: Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      Text(");
-      buffer.writeln("                        '$rawLabel',");
-      buffer.writeln(
-          "                        style: Theme.of(context).textTheme.bodyMedium,");
-      buffer.writeln("                      ),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      buffer.writeln("                      const Divider(),");
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  checkbox
-    // ══════════════════════════════════════════════
-    } else if (type == 'checkbox') {
-      buffer.writeln("                Obx(() => FormField<bool>(");
-      buffer.writeln("                  initialValue: false,");
-      buffer.writeln("                  validator: (value) {");
-      if (isRequired) {
+        // ══════════════════════════════════════════════
+        //  file
+        // ══════════════════════════════════════════════
+      } else if (type == 'file') {
+        buffer.writeln("                Obx(() => FormField<String>(");
         buffer.writeln(
-            "                    if (value != true) return '$rawLabel is required';");
-      }
-      buffer.writeln("                    return null;");
-      buffer.writeln("                  },");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      CheckboxListTile(");
-      buffer.writeln(
-          "                        title: Text('$rawLabel${isRequired ? ' *' : ''}'),");
-      buffer.writeln(
-          "                        value: controller.${name}Value.value,");
-      buffer.writeln("                        onChanged: (val) {");
-      buffer.writeln(
-          "                          controller.${name}Value.value = val ?? false;");
-      buffer.writeln(
-          "                          formState.didChange(val ?? false);");
-      buffer.writeln("                        },");
-      buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,");
-      buffer.writeln(
-          "                        controlAffinity: ListTileControlAffinity.leading,");
-      buffer.writeln("                      ),");
-      if (isRequired) {
+            "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty");
         buffer.writeln(
-            "                      if (formState.hasError)");
-        buffer.writeln("                        Padding(");
+            "                      ? '$rawLabel is required' : null,");
         buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
-        buffer.writeln("                          child: Text(");
+            "                  builder: (formState) => Column(");
         buffer.writeln(
-            "                            formState.errorText ?? '',");
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      Text(");
         buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+            "                        '$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        buffer.writeln("                      GestureDetector(");
+        buffer.writeln("                        onTap: () async {");
+        buffer.writeln(
+            "                          await controller.pick${capitalLabel}File();");
+        buffer.writeln(
+            "                          formState.didChange(controller.${name}FileName.value);");
+        buffer.writeln("                        },");
+        buffer.writeln("                        child: Container(");
+        buffer.writeln(
+            "                          width: double.infinity,");
+        buffer.writeln(
+            "                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),");
+        buffer.writeln(
+            "                          decoration: BoxDecoration(");
+        buffer.writeln(
+            "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),");
+        buffer.writeln(
+            "                            borderRadius: BorderRadius.circular(8),");
+        buffer.writeln("                          ),");
+        buffer.writeln("                          child: Row(");
+        buffer.writeln("                            children: [");
+        buffer.writeln(
+            "                              const Icon(Icons.upload_file, color: Colors.grey),");
+        buffer.writeln(
+            "                              const SizedBox(width: 8),");
+        buffer.writeln("                              Expanded(");
+        buffer.writeln("                                child: Text(");
+        buffer.writeln(
+            "                                  controller.${name}FileName.value.isEmpty");
+        buffer.writeln(
+            "                                      ? 'Tap to upload $rawLabel'");
+        buffer.writeln(
+            "                                      : controller.${name}FileName.value,");
+        buffer.writeln(
+            "                                  style: TextStyle(color: Colors.grey[700]),");
+        buffer.writeln(
+            "                                  overflow: TextOverflow.ellipsis,");
+        buffer.writeln("                                ),");
+        buffer.writeln("                              ),");
+        buffer.writeln("                            ],");
         buffer.writeln("                          ),");
         buffer.writeln("                        ),");
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  number
-    // ══════════════════════════════════════════════
-    } else if (type == 'number' || type == 'integer' || type == 'int') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: false,
-        isReadOnly: isReadOnly,
-        keyboardType: 'number',
-        isNumber: true,
-        textInputAction: textInputAction,
-        textCapitalization: 'none',
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern,
-        errorMessage: errorMessage,
-      );
-
-    // ══════════════════════════════════════════════
-    //  decimal / double / float
-    // ══════════════════════════════════════════════
-    } else if (type == 'decimal' || type == 'double' || type == 'float') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: false,
-        isReadOnly: isReadOnly,
-        keyboardType: 'decimalPad',
-        isNumber: true,
-        textInputAction: textInputAction,
-        textCapitalization: 'none',
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern,
-        errorMessage: errorMessage,
-      );
-
-    // ══════════════════════════════════════════════
-    //  email
-    // ══════════════════════════════════════════════
-    } else if (type == 'email') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: false,
-        isReadOnly: isReadOnly,
-        keyboardType: 'emailAddress',
-        isNumber: false,
-        textInputAction: textInputAction,
-        textCapitalization: 'none',
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern.isNotEmpty ? pattern : r'^[\w\.-]+@[\w\.-]+\.\w+$',
-        errorMessage:
-            errorMessage.isNotEmpty ? errorMessage : 'Enter a valid email',
-      );
-
-    // ══════════════════════════════════════════════
-    //  password
-    // ══════════════════════════════════════════════
-    } else if (type == 'password') {
-      _writeTextFormField(
-        buffer,
-        label: rawLabel,
-        name: name,
-        hint: hint,
-        isRequired: isRequired,
-        isPassword: true,
-        isReadOnly: isReadOnly,
-        keyboardType: 'text',
-        isNumber: false,
-        textInputAction: textInputAction,
-        textCapitalization: 'none',
-        minLength: minLength,
-        maxLength: maxLength,
-        pattern: pattern,
-        errorMessage: errorMessage,
-      );
-
-    // ══════════════════════════════════════════════
-    //  time
-    // ══════════════════════════════════════════════
-    } else if (type == 'time') {
-      buffer.writeln("                CustomTextFormField(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: $isRequired,");
-      buffer.writeln(
-          "                  controller: controller.${name}Controller,");
-      buffer.writeln("                  isTimePicker: true,");
-      buffer.writeln("                  readOnly: $isReadOnly,");
-      buffer.writeln("                  validator: (value) {");
-      buffer.writeln("                    try {");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      buffer.writeln("                      return null;");
-      buffer.writeln("                    } catch (e) {");
-      buffer.writeln("                      return 'Invalid input';");
-      buffer.writeln("                    }");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  multiselect
-    // ══════════════════════════════════════════════
-    } else if (type == 'multiselect' || type == 'multi select') {
-      final optionsList = staticOpts != null && staticOpts.isNotEmpty
-          ? staticOpts.map((o) {
-              final val = o.toString().replaceAll("'", "\\'");
-              return "'$val'";
-            }).join(', ')
-          : '';
-
-      buffer.writeln("                Obx(() => FormField<List<String>>(");
-      buffer.writeln("                  initialValue: const [],");
-      buffer.writeln("                  validator: (value) {");
-      if (isRequired) {
-        buffer.writeln(
-            "                    if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      buffer.writeln("                    return null;");
-      buffer.writeln("                  },");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      Text(");
-      buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      if (optionsList.isNotEmpty) {
-        buffer.writeln(
-            "                      ...[$optionsList].map((option) => CheckboxListTile(");
-      } else {
-        buffer.writeln(
-            "                      ...controller.${name}Options.map((option) => CheckboxListTile(");
-      }
-      buffer.writeln("                        title: Text(option),");
-      buffer.writeln(
-          "                        value: controller.${name}Selected.contains(option),");
-      buffer.writeln("                        onChanged: (val) {");
-      buffer.writeln("                          if (val == true) {");
-      buffer.writeln(
-          "                            controller.${name}Selected.add(option);");
-      buffer.writeln("                          } else {");
-      buffer.writeln(
-          "                            controller.${name}Selected.remove(option);");
-      buffer.writeln("                          }");
-      buffer.writeln(
-          "                          formState.didChange(controller.${name}Selected.toList());");
-      buffer.writeln("                        },");
-      buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,");
-      buffer.writeln(
-          "                        controlAffinity: ListTileControlAffinity.leading,");
-      buffer.writeln("                      )).toList(),");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (formState.hasError)");
-        buffer.writeln("                        Padding(");
-        buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
-        buffer.writeln("                          child: Text(");
-        buffer.writeln(
-            "                            formState.errorText ?? '',");
-        buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ),");
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  slider
-    // ══════════════════════════════════════════════
-    } else if (type == 'slider' || type == 'range slider') {
-      final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
-      final maxVal = (field['maxValue'] as num?)?.toDouble() ?? 100.0;
-
-      buffer.writeln("                Obx(() => Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln("                    Row(");
-      buffer.writeln(
-          "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
-      buffer.writeln("                      children: [");
-      buffer.writeln(
-          "                        Text('$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
-      buffer.writeln(
-          "                        Text('\${controller.${name}Value.value.toStringAsFixed(0)}',");
-      buffer.writeln(
-          "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),");
-      buffer.writeln("                      ],");
-      buffer.writeln("                    ),");
-      buffer.writeln("                    Slider(");
-      buffer.writeln(
-          "                      value: controller.${name}Value.value,");
-      buffer.writeln("                      min: $minVal,");
-      buffer.writeln("                      max: $maxVal,");
-      buffer.writeln(
-          "                      onChanged: (val) => controller.${name}Value.value = val,");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  label
-    // ══════════════════════════════════════════════
-    } else if (type == 'label') {
-      buffer.writeln("                Padding(");
-      buffer.writeln(
-          "                  padding: const EdgeInsets.symmetric(vertical: 4.0),");
-      buffer.writeln("                  child: Text(");
-      buffer.writeln("                    '$rawLabel',");
-      buffer.writeln(
-          "                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),");
-      buffer.writeln("                  ),");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  hidden  — no UI rendered
-    // ══════════════════════════════════════════════
-    } else if (type == 'hidden') {
-      continue;
-
-    // ══════════════════════════════════════════════
-    //  image
-    // ══════════════════════════════════════════════
-    } else if (type == 'image') {
-      buffer.writeln("                Obx(() => FormField<String>(");
-      buffer.writeln(
-          "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty");
-      buffer.writeln(
-          "                      ? '$rawLabel is required' : null,");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      Text(");
-      buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      buffer.writeln("                      GestureDetector(");
-      buffer.writeln("                        onTap: () async {");
-      buffer.writeln(
-          "                          await controller.pick${capitalLabel}Image();");
-      buffer.writeln(
-          "                          formState.didChange(controller.${name}FileName.value);");
-      buffer.writeln("                        },");
-      buffer.writeln("                        child: Container(");
-      buffer.writeln(
-          "                          width: double.infinity,");
-      buffer.writeln("                          height: 120,");
-      buffer.writeln(
-          "                          decoration: BoxDecoration(");
-      buffer.writeln(
-          "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),");
-      buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),");
-      buffer.writeln("                          ),");
-      buffer.writeln(
-          "                          child: controller.${name}FileName.value.isEmpty");
-      buffer.writeln(
-          "                              ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [");
-      buffer.writeln(
-          "                                  const Icon(Icons.add_photo_alternate_outlined, size: 36, color: Colors.grey),");
-      buffer.writeln("                                  const SizedBox(height: 8),");
-      buffer.writeln(
-          "                                  Text('Tap to select $rawLabel', style: TextStyle(color: Colors.grey[600])),");
-      buffer.writeln("                                ])");
-      buffer.writeln(
-          "                              : ClipRRect(");
-      buffer.writeln(
-          "                                  borderRadius: BorderRadius.circular(8),");
-      buffer.writeln(
-          "                                  child: Image.network(controller.${name}FileName.value, fit: BoxFit.cover, width: double.infinity),");
-      buffer.writeln("                                ),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      ),");
-      if (isRequired) {
+        buffer.writeln("                      ),");
         buffer.writeln(
             "                      if (formState.hasError)");
         buffer.writeln("                        Padding(");
@@ -970,550 +562,1032 @@ String generateviewClass(
             "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
         buffer.writeln("                          ),");
         buffer.writeln("                        ),");
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
 
-    // ══════════════════════════════════════════════
-    //  star rating
-    // ══════════════════════════════════════════════
-    } else if (type == 'starrating' ||
-        type == 'rating' ||
-        type == 'star rating') {
-      final maxStars = (field['maxValue'] as num?)?.toInt() ?? 5;
-
-      buffer.writeln("                Obx(() => Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln(
-          "                    Text('$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
-      buffer.writeln("                    const SizedBox(height: 8),");
-      buffer.writeln("                    Row(");
-      buffer.writeln(
-          "                      children: List.generate($maxStars, (index) {");
-      buffer.writeln("                        final star = index + 1;");
-      buffer.writeln("                        return GestureDetector(");
-      buffer.writeln(
-          "                          onTap: () => controller.${name}Value.value = star.toDouble(),");
-      buffer.writeln("                          child: Icon(");
-      buffer.writeln(
-          "                            star <= controller.${name}Value.value.round() ? Icons.star : Icons.star_border,");
-      buffer.writeln("                            color: Colors.amber,");
-      buffer.writeln("                            size: 32,");
-      buffer.writeln("                          ),");
-      buffer.writeln("                        );");
-      buffer.writeln("                      }),");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  section  (layout)
-    // ══════════════════════════════════════════════
-    } else if (type == 'section') {
-      buffer.writeln("                Padding(");
-      buffer.writeln(
-          "                  padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),");
-      buffer.writeln("                  child: Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln("                      Text(");
-      buffer.writeln("                        '$rawLabel',");
-      buffer.writeln(
-          "                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                      const SizedBox(height: 4),");
-      buffer.writeln(
-          "                      const Divider(thickness: 1.5),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      final nested = field['nestedFields'] as List<dynamic>? ?? [];
-      if (nested.isNotEmpty) {
-        buildWidgets(nested);
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  card  (layout)
-    // ══════════════════════════════════════════════
-    } else if (type == 'card') {
-      buffer.writeln("                Card(");
-      buffer.writeln("                  elevation: 2,");
-      buffer.writeln(
-          "                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),");
-      buffer.writeln("                  child: Padding(");
-      buffer.writeln(
-          "                    padding: const EdgeInsets.all(16.0),");
-      buffer.writeln("                    child: Column(");
-      buffer.writeln(
-          "                      crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                      children: [");
-      buffer.writeln("                        Text(");
-      buffer.writeln("                          '$rawLabel',");
-      buffer.writeln(
-          "                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                        const SizedBox(height: 12),");
-      final nested = field['nestedFields'] as List<dynamic>? ?? [];
-      if (nested.isNotEmpty) {
-        buildWidgets(nested);
-      } else {
+        // ══════════════════════════════════════════════
+        //  otp
+        // ══════════════════════════════════════════════
+      } else if (type == 'otp') {
+        buffer.writeln("                Column(");
         buffer.writeln(
-            "                        // No child fields defined");
-      }
-      buffer.writeln("                      ],");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ),");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  tabs  (layout)
-    // ══════════════════════════════════════════════
-    } else if (type == 'tabs') {
-      final nested = field['nestedFields'] as List<dynamic>? ?? [];
-      final tabOptions = nested.isNotEmpty
-          ? nested.map((t) => ((t as Map)['label'] ?? 'Tab').toString()).toList()
-          : (staticOpts != null && staticOpts.isNotEmpty
-              ? staticOpts.map((o) => o.toString()).toList()
-              : ['Tab 1', 'Tab 2']);
-      final tabLength = tabOptions.length;
-      final tabItems = tabOptions
-          .map((t) => "Tab(text: '${t.replaceAll("'", "\\'")}')")
-          .join(', ');
-
-      buffer.writeln("                DefaultTabController(");
-      buffer.writeln("                  length: $tabLength,");
-      buffer.writeln("                  child: Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      if (rawLabel.isNotEmpty) {
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln("                    Text(");
         buffer.writeln(
-            "                      Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-      }
-      buffer.writeln(
-          "                      const TabBar(tabs: [$tabItems]),");
-      buffer.writeln("                      SizedBox(");
-      buffer.writeln("                        height: 200,");
-      buffer.writeln(
-          "                        child: TabBarView(children: [");
-      for (int i = 0; i < tabLength; i++) {
-        buffer.writeln("                          SingleChildScrollView(");
-        buffer.writeln("                            padding: const EdgeInsets.all(16.0),");
-        buffer.writeln("                            child: Column(");
-        buffer.writeln("                              crossAxisAlignment: CrossAxisAlignment.start,");
-        buffer.writeln("                              children: [");
-        if (nested.isNotEmpty && i < nested.length) {
-          final tabNested = (nested[i] as Map)['nestedFields'] as List<dynamic>? ?? [];
-          if (tabNested.isNotEmpty) buildWidgets(tabNested);
-        } else {
-          buffer.writeln("                                const Center(child: Text('// No content')),");
-        }
-        buffer.writeln("                              ],");
-        buffer.writeln("                            ),");
-        buffer.writeln("                          ),");
-      }
-      buffer.writeln("                        ]),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  accordion  (layout)
-    // ══════════════════════════════════════════════
-    } else if (type == 'accordion') {
-      buffer.writeln("                ExpansionTile(");
-      buffer.writeln(
-          "                  title: Text('$rawLabel', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),");
-      buffer.writeln("                  shape: RoundedRectangleBorder(");
-      buffer.writeln(
-          "                    side: BorderSide(color: Colors.grey.shade300),");
-      buffer.writeln(
-          "                    borderRadius: BorderRadius.circular(8),");
-      buffer.writeln("                  ),");
-      buffer.writeln(
-          "                  collapsedShape: RoundedRectangleBorder(");
-      buffer.writeln(
-          "                    side: BorderSide(color: Colors.grey.shade300),");
-      buffer.writeln(
-          "                    borderRadius: BorderRadius.circular(8),");
-      buffer.writeln("                  ),");
-      buffer.writeln("                  children: const [");
-      buffer.writeln("                    Padding(");
-      buffer.writeln(
-          "                      padding: EdgeInsets.all(16.0),");
-      buffer.writeln(
-          "                      child: Column(");
-      buffer.writeln("                        crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                        children: [");
-      final nested = field['nestedFields'] as List<dynamic>? ?? [];
-      if (nested.isNotEmpty) buildWidgets(nested);
-      buffer.writeln("                        ],");
-      buffer.writeln("                      ),");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  grid / table / table-grid  (data component)
-    // ══════════════════════════════════════════════
-    } else if (type == 'grid' ||
-        type == 'table' ||
-        type == 'table/grid' ||
-        type == 'table grid' ||
-        type == 'table_grid') {
-      final columns = (field['columns'] as List<dynamic>?) ?? [];
-      final hasColumns = columns.isNotEmpty;
-
-      buffer.writeln("                Obx(() => Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln("                    Row(");
-      buffer.writeln(
-          "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
-      buffer.writeln("                      children: [");
-      buffer.writeln(
-          "                        Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
-      buffer.writeln("                        ElevatedButton.icon(");
-      buffer.writeln(
-          "                          onPressed: () => controller.add${capitalLabel}Row(),");
-      buffer.writeln(
-          "                          icon: const Icon(Icons.add, size: 18),");
-      buffer.writeln(
-          "                          label: const Text('Add Row'),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      ],");
-      buffer.writeln("                    ),");
-      buffer.writeln("                    const SizedBox(height: 8),");
-      buffer.writeln("                    SingleChildScrollView(");
-      buffer.writeln(
-          "                      scrollDirection: Axis.horizontal,");
-      buffer.writeln("                      child: DataTable(");
-
-      // DataColumns
-      buffer.write("                        columns: [");
-      if (hasColumns) {
-        for (final col in columns) {
-          final colLabel = col is Map
-              ? (col['label'] ?? col['id'] ?? col['fieldId'] ?? 'Column').toString()
-              : col.toString();
-          buffer.write(
-              "DataColumn(label: Text('${colLabel.replaceAll("'", "\\'")}')), ");
-        }
-      } else {
-        buffer.write(
-            "const DataColumn(label: Text('#')), const DataColumn(label: Text('Value')), const DataColumn(label: Text('Actions')), ");
-      }
-      buffer.writeln("],");
-
-      // DataRows
-      buffer.writeln(
-          "                        rows: controller.${name}Rows.asMap().entries.map((entry) {");
-      buffer.writeln("                          final i = entry.key;");
-      buffer.writeln("                          final row = entry.value;");
-      buffer.writeln("                          return DataRow(cells: [");
-      if (hasColumns) {
-        for (final col in columns) {
-          final fieldId = col is Map
-              ? (col['fieldId'] ?? col['id'] ?? col['label'] ?? 'value').toString()
-              : col.toString();
+            "                      '$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+        buffer.writeln("                    ),");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln("                    CustomTextFormField(");
+        buffer.writeln("                      label: '',");
+        buffer.writeln("                      hint: '$hint',");
+        buffer.writeln("                      isMandatory: $isRequired,");
+        buffer.writeln(
+            "                      controller: controller.${name}Controller,");
+        buffer.writeln(
+            "                      keyboardType: TextInputType.number,");
+        buffer.writeln("                      maxLines: 1,");
+        buffer.writeln("                      validator: (value) {");
+        buffer.writeln("                        try {");
+        if (isRequired) {
           buffer.writeln(
-              "                            DataCell(");
+              "                          if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        if (minLength > 0 || maxLength > 0) {
+          if (minLength > 0) {
+            buffer.writeln(
+                "                          if (value != null && value.length < $minLength) return 'Minimum $minLength digits';");
+          }
+          if (maxLength > 0) {
+            buffer.writeln(
+                "                          if (value != null && value.length > $maxLength) return 'Maximum $maxLength digits';");
+          }
+        } else {
+          buffer.writeln(
+              "                          if (value != null && value.length != 6) return 'Enter a valid 6-digit code';");
+        }
+        if (pattern.isNotEmpty) {
+          buffer.writeln(
+              "                          if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';");
+        }
+        buffer.writeln("                          return null;");
+        buffer.writeln("                        } catch (e) {");
+        buffer.writeln("                          return 'Invalid input';");
+        buffer.writeln("                        }");
+        buffer.writeln("                      },");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  divider
+        // ══════════════════════════════════════════════
+      } else if (type == 'divider') {
+        buffer.writeln("                Padding(");
+        buffer.writeln(
+            "                  padding: const EdgeInsets.symmetric(vertical: 12.0),");
+        buffer.writeln("                  child: Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      Text(");
+        buffer.writeln("                        '$rawLabel',");
+        buffer.writeln(
+            "                        style: Theme.of(context).textTheme.bodyMedium,");
+        buffer.writeln("                      ),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        buffer.writeln("                      const Divider(),");
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  checkbox
+        // ══════════════════════════════════════════════
+      } else if (type == 'checkbox') {
+        buffer.writeln("                Obx(() => FormField<bool>(");
+        buffer.writeln("                  initialValue: false,");
+        buffer.writeln("                  validator: (value) {");
+        if (isRequired) {
+          buffer.writeln(
+              "                    if (value != true) return '$rawLabel is required';");
+        }
+        buffer.writeln("                    return null;");
+        buffer.writeln("                  },");
+        buffer.writeln(
+            "                  builder: (formState) => Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      CheckboxListTile(");
+        buffer.writeln(
+            "                        title: Text('$rawLabel${isRequired ? ' *' : ''}'),");
+        buffer.writeln(
+            "                        value: controller.${name}Value.value,");
+        buffer.writeln("                        onChanged: (val) {");
+        buffer.writeln(
+            "                          controller.${name}Value.value = val ?? false;");
+        buffer.writeln(
+            "                          formState.didChange(val ?? false);");
+        buffer.writeln("                        },");
+        buffer.writeln(
+            "                        contentPadding: EdgeInsets.zero,");
+        buffer.writeln(
+            "                        controlAffinity: ListTileControlAffinity.leading,");
+        buffer.writeln("                      ),");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (formState.hasError)");
+          buffer.writeln("                        Padding(");
+          buffer.writeln(
+              "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
+          buffer.writeln("                          child: Text(");
+          buffer.writeln(
+              "                            formState.errorText ?? '',");
+          buffer.writeln(
+              "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+          buffer.writeln("                          ),");
+          buffer.writeln("                        ),");
+        }
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  number
+        // ══════════════════════════════════════════════
+      } else if (type == 'number' || type == 'integer' || type == 'int') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'number',
+          isNumber: true,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern,
+          errorMessage: errorMessage,
+        );
+
+        // ══════════════════════════════════════════════
+        //  decimal / double / float
+        // ══════════════════════════════════════════════
+      } else if (type == 'decimal' || type == 'double' || type == 'float') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'decimalPad',
+          isNumber: true,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern,
+          errorMessage: errorMessage,
+        );
+
+        // ══════════════════════════════════════════════
+        //  email
+        // ══════════════════════════════════════════════
+      } else if (type == 'email') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'emailAddress',
+          isNumber: false,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern:
+              pattern.isNotEmpty ? pattern : r'^[\w\.-]+@[\w\.-]+\.\w+$',
+          errorMessage:
+              errorMessage.isNotEmpty ? errorMessage : 'Enter a valid email',
+        );
+
+        // ══════════════════════════════════════════════
+        //  password
+        // ══════════════════════════════════════════════
+      } else if (type == 'password') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: true,
+          isReadOnly: isReadOnly,
+          keyboardType: 'text',
+          isNumber: false,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern,
+          errorMessage: errorMessage,
+        );
+
+        // ══════════════════════════════════════════════
+        //  time
+        // ══════════════════════════════════════════════
+      } else if (type == 'time') {
+        buffer.writeln("                CustomTextFormField(");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  hint: '$hint',");
+        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln(
+            "                  controller: controller.${name}Controller,");
+        buffer.writeln("                  isTimePicker: true,");
+        buffer.writeln("                  readOnly: $isReadOnly,");
+        buffer.writeln("                  validator: (value) {");
+        buffer.writeln("                    try {");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        buffer.writeln("                      return null;");
+        buffer.writeln("                    } catch (e) {");
+        buffer.writeln("                      return 'Invalid input';");
+        buffer.writeln("                    }");
+        buffer.writeln("                  },");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  multiselect
+        // ══════════════════════════════════════════════
+      } else if (type == 'multiselect' ||
+          type == 'multi select' ||
+          type == 'multi_select') {
+        final optionsList = staticOpts != null && staticOpts.isNotEmpty
+            ? staticOpts.map((o) {
+                final val = o.toString().replaceAll("'", "\\'");
+                return "'$val'";
+              }).join(', ')
+            : '';
+
+        buffer.writeln("                Obx(() => FormField<List<String>>(");
+        buffer.writeln("                  initialValue: const [],");
+        buffer.writeln("                  validator: (value) {");
+        if (isRequired) {
+          buffer.writeln(
+              "                    if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        buffer.writeln("                    return null;");
+        buffer.writeln("                  },");
+        buffer.writeln(
+            "                  builder: (formState) => Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      Text(");
+        buffer.writeln(
+            "                        '$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        if (optionsList.isNotEmpty) {
+          buffer.writeln(
+              "                      ...[$optionsList].map((option) => CheckboxListTile(");
+        } else {
+          buffer.writeln(
+              "                      ...controller.${name}Options.map((option) => CheckboxListTile(");
+        }
+        buffer.writeln("                        title: Text(option),");
+        buffer.writeln(
+            "                        value: controller.${name}Selected.contains(option),");
+        buffer.writeln("                        onChanged: (val) {");
+        buffer.writeln("                          if (val == true) {");
+        buffer.writeln(
+            "                            controller.${name}Selected.add(option);");
+        buffer.writeln("                          } else {");
+        buffer.writeln(
+            "                            controller.${name}Selected.remove(option);");
+        buffer.writeln("                          }");
+        buffer.writeln(
+            "                          formState.didChange(controller.${name}Selected.toList());");
+        buffer.writeln("                        },");
+        buffer.writeln(
+            "                        contentPadding: EdgeInsets.zero,");
+        buffer.writeln(
+            "                        controlAffinity: ListTileControlAffinity.leading,");
+        buffer.writeln("                      )).toList(),");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (formState.hasError)");
+          buffer.writeln("                        Padding(");
+          buffer.writeln(
+              "                          padding: const EdgeInsets.only(left: 4, bottom: 4),");
+          buffer.writeln("                          child: Text(");
+          buffer.writeln(
+              "                            formState.errorText ?? '',");
+          buffer.writeln(
+              "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+          buffer.writeln("                          ),");
+          buffer.writeln("                        ),");
+        }
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  slider
+        // ══════════════════════════════════════════════
+      } else if (type == 'slider' || type == 'range slider') {
+        final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
+        final maxVal = (field['maxValue'] as num?)?.toDouble() ?? 100.0;
+
+        buffer.writeln("                Obx(() => Column(");
+        buffer.writeln(
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln("                    Row(");
+        buffer.writeln(
+            "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
+        buffer.writeln("                      children: [");
+        buffer.writeln(
+            "                        Text('$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
+        buffer.writeln(
+            "                        Text('\${controller.${name}Value.value.toStringAsFixed(0)}',");
+        buffer.writeln(
+            "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),");
+        buffer.writeln("                      ],");
+        buffer.writeln("                    ),");
+        buffer.writeln("                    Slider(");
+        buffer.writeln(
+            "                      value: controller.${name}Value.value,");
+        buffer.writeln("                      min: $minVal,");
+        buffer.writeln("                      max: $maxVal,");
+        buffer.writeln(
+            "                      onChanged: (val) => controller.${name}Value.value = val,");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  label
+        // ══════════════════════════════════════════════
+      } else if (type == 'label') {
+        buffer.writeln("                Padding(");
+        buffer.writeln(
+            "                  padding: const EdgeInsets.symmetric(vertical: 4.0),");
+        buffer.writeln("                  child: Text(");
+        buffer.writeln("                    '$rawLabel',");
+        buffer.writeln(
+            "                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),");
+        buffer.writeln("                  ),");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  hidden
+        // ══════════════════════════════════════════════
+      } else if (type == 'hidden') {
+        continue;
+
+        // ══════════════════════════════════════════════
+        //  image
+        // ══════════════════════════════════════════════
+      } else if (type == 'image') {
+        buffer.writeln("                Obx(() => FormField<String>(");
+        buffer.writeln(
+            "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty");
+        buffer.writeln(
+            "                      ? '$rawLabel is required' : null,");
+        buffer.writeln(
+            "                  builder: (formState) => Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      Text(");
+        buffer.writeln(
+            "                        '$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        buffer.writeln("                      GestureDetector(");
+        buffer.writeln("                        onTap: () async {");
+        buffer.writeln(
+            "                          await controller.pick${capitalLabel}Image();");
+        buffer.writeln(
+            "                          formState.didChange(controller.${name}FileName.value);");
+        buffer.writeln("                        },");
+        buffer.writeln("                        child: Container(");
+        buffer.writeln(
+            "                          width: double.infinity,");
+        buffer.writeln("                          height: 120,");
+        buffer.writeln(
+            "                          decoration: BoxDecoration(");
+        buffer.writeln(
+            "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),");
+        buffer.writeln(
+            "                            borderRadius: BorderRadius.circular(8),");
+        buffer.writeln("                          ),");
+        buffer.writeln(
+            "                          child: controller.${name}FileName.value.isEmpty");
+        buffer.writeln(
+            "                              ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [");
+        buffer.writeln(
+            "                                  const Icon(Icons.add_photo_alternate_outlined, size: 36, color: Colors.grey),");
+        buffer.writeln(
+            "                                  const SizedBox(height: 8),");
+        buffer.writeln(
+            "                                  Text('Tap to select $rawLabel', style: TextStyle(color: Colors.grey[600])),");
+        buffer.writeln("                                ])");
+        buffer.writeln(
+            "                              : ClipRRect(");
+        buffer.writeln(
+            "                                  borderRadius: BorderRadius.circular(8),");
+        buffer.writeln(
+            "                                  child: Image.network(controller.${name}FileName.value, fit: BoxFit.cover, width: double.infinity),");
+        buffer.writeln("                                ),");
+        buffer.writeln("                        ),");
+        buffer.writeln("                      ),");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (formState.hasError)");
+          buffer.writeln("                        Padding(");
+          buffer.writeln(
+              "                          padding: const EdgeInsets.only(top: 6, left: 4),");
+          buffer.writeln("                          child: Text(");
+          buffer.writeln(
+              "                            formState.errorText ?? '',");
+          buffer.writeln(
+              "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+          buffer.writeln("                          ),");
+          buffer.writeln("                        ),");
+        }
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  star rating
+        // ══════════════════════════════════════════════
+      } else if (type == 'starrating' ||
+          type == 'rating' ||
+          type == 'star rating') {
+        final maxStars = (field['maxValue'] as num?)?.toInt() ?? 5;
+
+        buffer.writeln("                Obx(() => Column(");
+        buffer.writeln(
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln(
+            "                    Text('$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln("                    Row(");
+        buffer.writeln(
+            "                      children: List.generate($maxStars, (index) {");
+        buffer.writeln("                        final star = index + 1;");
+        buffer.writeln("                        return GestureDetector(");
+        buffer.writeln(
+            "                          onTap: () => controller.${name}Value.value = star.toDouble(),");
+        buffer.writeln("                          child: Icon(");
+        buffer.writeln(
+            "                            star <= controller.${name}Value.value.round() ? Icons.star : Icons.star_border,");
+        buffer.writeln("                            color: Colors.amber,");
+        buffer.writeln("                            size: 32,");
+        buffer.writeln("                          ),");
+        buffer.writeln("                        );");
+        buffer.writeln("                      }),");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  section
+        // ══════════════════════════════════════════════
+      } else if (type == 'section') {
+        buffer.writeln("                Padding(");
+        buffer.writeln(
+            "                  padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),");
+        buffer.writeln("                  child: Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln("                      Text(");
+        buffer.writeln("                        '$rawLabel',");
+        buffer.writeln(
+            "                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                      const SizedBox(height: 4),");
+        buffer.writeln(
+            "                      const Divider(thickness: 1.5),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        final nested = field['nestedFields'] as List<dynamic>? ?? [];
+        if (nested.isNotEmpty) {
+          buildWidgets(nested);
+        }
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  card
+        // ══════════════════════════════════════════════
+      } else if (type == 'card') {
+        buffer.writeln("                Card(");
+        buffer.writeln("                  elevation: 2,");
+        buffer.writeln(
+            "                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),");
+        buffer.writeln("                  child: Padding(");
+        buffer.writeln(
+            "                    padding: const EdgeInsets.all(16.0),");
+        buffer.writeln("                    child: Column(");
+        buffer.writeln(
+            "                      crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                      children: [");
+        buffer.writeln("                        Text(");
+        buffer.writeln("                          '$rawLabel',");
+        buffer.writeln(
+            "                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),");
+        buffer.writeln("                        ),");
+        buffer.writeln(
+            "                        const SizedBox(height: 12),");
+        final nested = field['nestedFields'] as List<dynamic>? ?? [];
+        if (nested.isNotEmpty) {
+          buildWidgets(nested);
+        } else {
+          buffer.writeln(
+              "                        // No child fields defined");
+        }
+        buffer.writeln("                      ],");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ),");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  tabs
+        // ══════════════════════════════════════════════
+      } else if (type == 'tabs') {
+        final nested = field['nestedFields'] as List<dynamic>? ?? [];
+        final tabOptions = nested.isNotEmpty
+            ? nested
+                .map((t) =>
+                    ((t as Map)['label'] ?? 'Tab').toString())
+                .toList()
+            : (staticOpts != null && staticOpts.isNotEmpty
+                ? staticOpts.map((o) => o.toString()).toList()
+                : ['Tab 1', 'Tab 2']);
+        final tabLength = tabOptions.length;
+        final tabItems = tabOptions
+            .map((t) => "Tab(text: '${t.replaceAll("'", "\\'")}')")
+            .join(', ');
+
+        buffer.writeln("                DefaultTabController(");
+        buffer.writeln("                  length: $tabLength,");
+        buffer.writeln("                  child: Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        if (rawLabel.isNotEmpty) {
+          buffer.writeln(
+              "                      Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
+          buffer.writeln("                      const SizedBox(height: 8),");
+        }
+        buffer.writeln(
+            "                      const TabBar(tabs: [$tabItems]),");
+        buffer.writeln("                      SizedBox(");
+        buffer.writeln("                        height: 200,");
+        buffer.writeln(
+            "                        child: TabBarView(children: [");
+        for (int i = 0; i < tabLength; i++) {
+          buffer.writeln(
+              "                          SingleChildScrollView(");
+          buffer.writeln(
+              "                            padding: const EdgeInsets.all(16.0),");
+          buffer.writeln("                            child: Column(");
+          buffer.writeln(
+              "                              crossAxisAlignment: CrossAxisAlignment.start,");
+          buffer.writeln("                              children: [");
+          if (nested.isNotEmpty && i < nested.length) {
+            final tabNested =
+                (nested[i] as Map)['nestedFields'] as List<dynamic>? ??
+                    [];
+            if (tabNested.isNotEmpty) buildWidgets(tabNested);
+          } else {
+            buffer.writeln(
+                "                                const Center(child: Text('// No content')),");
+          }
+          buffer.writeln("                              ],");
+          buffer.writeln("                            ),");
+          buffer.writeln("                          ),");
+        }
+        buffer.writeln("                        ]),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  accordion
+        // ══════════════════════════════════════════════
+      } else if (type == 'accordion') {
+        buffer.writeln("                ExpansionTile(");
+        buffer.writeln(
+            "                  title: Text('$rawLabel', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),");
+        buffer.writeln("                  shape: RoundedRectangleBorder(");
+        buffer.writeln(
+            "                    side: BorderSide(color: Colors.grey.shade300),");
+        buffer.writeln(
+            "                    borderRadius: BorderRadius.circular(8),");
+        buffer.writeln("                  ),");
+        buffer.writeln(
+            "                  collapsedShape: RoundedRectangleBorder(");
+        buffer.writeln(
+            "                    side: BorderSide(color: Colors.grey.shade300),");
+        buffer.writeln(
+            "                    borderRadius: BorderRadius.circular(8),");
+        buffer.writeln("                  ),");
+        buffer.writeln("                  children: const [");
+        buffer.writeln("                    Padding(");
+        buffer.writeln(
+            "                      padding: EdgeInsets.all(16.0),");
+        buffer.writeln(
+            "                      child: Column(");
+        buffer.writeln(
+            "                        crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                        children: [");
+        final nested = field['nestedFields'] as List<dynamic>? ?? [];
+        if (nested.isNotEmpty) buildWidgets(nested);
+        buffer.writeln("                        ],");
+        buffer.writeln("                      ),");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  grid / table
+        // ══════════════════════════════════════════════
+      } else if (type == 'grid' ||
+          type == 'table' ||
+          type == 'table/grid' ||
+          type == 'table grid' ||
+          type == 'table_grid') {
+        final config =
+            field['componentConfig'] as Map<String, dynamic>? ?? {};
+        final columns = (config['columns'] as List<dynamic>?) ??
+            (field['columns'] as List<dynamic>?) ??
+            [];
+        final hasColumns = columns.isNotEmpty;
+
+        buffer.writeln("                Obx(() => Column(");
+        buffer.writeln(
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln("                    Row(");
+        buffer.writeln(
+            "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
+        buffer.writeln("                      children: [");
+        buffer.writeln(
+            "                        Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
+        buffer.writeln("                        ElevatedButton.icon(");
+        buffer.writeln(
+            "                          onPressed: () => controller.add${capitalLabel}Row(),");
+        buffer.writeln(
+            "                          icon: const Icon(Icons.add, size: 18),");
+        buffer.writeln(
+            "                          label: const Text('Add Row'),");
+        buffer.writeln("                        ),");
+        buffer.writeln("                      ],");
+        buffer.writeln("                    ),");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln("                    SingleChildScrollView(");
+        buffer.writeln(
+            "                      scrollDirection: Axis.horizontal,");
+        buffer.writeln("                      child: DataTable(");
+        buffer.write("                        columns: [");
+        if (hasColumns) {
+          for (final col in columns) {
+            final colLabel = col is Map
+                ? (col['label'] ?? col['id'] ?? col['fieldId'] ?? 'Column')
+                    .toString()
+                : col.toString();
+            buffer.write(
+                "DataColumn(label: Text('${colLabel.replaceAll("'", "\\'")}')), ");
+          }
+        } else {
+          buffer.write(
+              "const DataColumn(label: Text('#')), const DataColumn(label: Text('Value')), const DataColumn(label: Text('Actions')), ");
+        }
+        buffer.writeln("],");
+        buffer.writeln(
+            "                        rows: controller.${name}Rows.asMap().entries.map((entry) {");
+        buffer.writeln("                          final i = entry.key;");
+        buffer.writeln("                          final row = entry.value;");
+        buffer.writeln("                          return DataRow(cells: [");
+        if (hasColumns) {
+          for (final col in columns) {
+            final fieldId = col is Map
+                ? (col['fieldId'] ?? col['id'] ?? col['label'] ?? 'value')
+                    .toString()
+                : col.toString();
+            buffer.writeln("                            DataCell(");
+            buffer.writeln("                              TextFormField(");
+            buffer.writeln(
+                "                                initialValue: row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '',");
+            buffer.writeln(
+                "                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
+            buffer.writeln(
+                "                                onChanged: (val) => controller.update${capitalLabel}Cell(i, '${fieldId.replaceAll("'", "\\'")}', val),");
+            buffer.writeln("                              ),");
+            buffer.writeln("                            ),");
+          }
+        } else {
+          buffer.writeln(
+              "                            DataCell(Text('\${i + 1}')),");
+          buffer.writeln("                            DataCell(");
           buffer.writeln("                              TextFormField(");
-          buffer.writeln("                                initialValue: row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '',");
-          buffer.writeln("                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
-          buffer.writeln("                                onChanged: (val) => controller.update${capitalLabel}Cell(i, '${fieldId.replaceAll("'", "\\'")}', val),");
+          buffer.writeln(
+              "                                initialValue: row.toString(),");
+          buffer.writeln(
+              "                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
+          buffer.writeln(
+              "                                onChanged: (val) => controller.update${capitalLabel}Cell(i, 'value', val),");
           buffer.writeln("                              ),");
           buffer.writeln("                            ),");
         }
-      } else {
+        buffer.writeln("                            DataCell(Row(children: [");
         buffer.writeln(
-            "                            DataCell(Text('\${i + 1}')),");
-        buffer.writeln("                            DataCell(");
-        buffer.writeln("                              TextFormField(");
-        buffer.writeln("                                initialValue: row.toString(),");
-        buffer.writeln("                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),");
-        buffer.writeln("                                onChanged: (val) => controller.update${capitalLabel}Cell(i, 'value', val),");
+            "                              IconButton(icon: const Icon(Icons.delete, size: 18, color: Colors.red), onPressed: () => controller.delete${capitalLabel}Row(i)),");
+        buffer.writeln("                            ])),");
+        buffer.writeln("                          ]);");
+        buffer.writeln("                        }).toList(),");
+        buffer.writeln("                      ),");
+        buffer.writeln("                    ),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  repeater
+        // ══════════════════════════════════════════════
+      } else if (type == 'repeater') {
+        buffer.writeln("                Obx(() => Column(");
+        buffer.writeln(
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln("                    Row(");
+        buffer.writeln(
+            "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
+        buffer.writeln("                      children: [");
+        buffer.writeln(
+            "                        Text('$rawLabel${isRequired ? ' *' : ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
+        buffer.writeln("                        ElevatedButton.icon(");
+        buffer.writeln(
+            "                          onPressed: () => controller.add${capitalLabel}Item(),");
+        buffer.writeln(
+            "                          icon: const Icon(Icons.add, size: 18),");
+        buffer.writeln(
+            "                          label: const Text('Add'),");
+        buffer.writeln("                        ),");
+        buffer.writeln("                      ],");
+        buffer.writeln("                    ),");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln(
+            "                    ...controller.${name}Items.asMap().entries.map((entry) {");
+        buffer.writeln("                      final i = entry.key;");
+        buffer.writeln("                      return Card(");
+        buffer.writeln(
+            "                        margin: const EdgeInsets.only(bottom: 8),");
+        buffer.writeln("                        child: ListTile(");
+        buffer.writeln(
+            "                          title: Text('$rawLabel \${i + 1}'),");
+        buffer.writeln("                          trailing: IconButton(");
+        buffer.writeln(
+            "                            icon: const Icon(Icons.delete, color: Colors.red),");
+        buffer.writeln(
+            "                            onPressed: () => controller.remove${capitalLabel}Item(i),");
+        buffer.writeln("                          ),");
+        buffer.writeln(
+            "                          // TODO: Add repeater item fields");
+        buffer.writeln("                        ),");
+        buffer.writeln("                      );");
+        buffer.writeln("                    }).toList(),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  timeline
+        // ══════════════════════════════════════════════
+      } else if (type == 'timeline') {
+        buffer.writeln("                Obx(() => Column(");
+        buffer.writeln(
+            "                  crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                  children: [");
+        buffer.writeln(
+            "                    Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln(
+            "                    ...controller.${name}Steps.asMap().entries.map((entry) {");
+        buffer.writeln("                      final i = entry.key;");
+        buffer.writeln("                      final step = entry.value;");
+        buffer.writeln(
+            "                      final isLast = i == controller.${name}Steps.length - 1;");
+        buffer.writeln("                      return IntrinsicHeight(");
+        buffer.writeln("                        child: Row(");
+        buffer.writeln(
+            "                          crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                          children: [");
+        buffer.writeln("                            Column(");
+        buffer.writeln("                              children: [");
+        buffer.writeln("                                Container(");
+        buffer.writeln("                                  width: 24, height: 24,");
+        buffer.writeln(
+            "                                  decoration: const BoxDecoration(");
+        buffer.writeln(
+            "                                    color: Color(0xFF6366F1),");
+        buffer.writeln(
+            "                                    shape: BoxShape.circle,");
+        buffer.writeln("                                  ),");
+        buffer.writeln(
+            "                                  child: Center(child: Text('\${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 12))),");
+        buffer.writeln("                                ),");
+        buffer.writeln(
+            "                                if (!isLast) Expanded(child: Container(width: 2, color: Colors.grey.shade300)),");
+        buffer.writeln("                              ],");
+        buffer.writeln("                            ),");
+        buffer.writeln(
+            "                            const SizedBox(width: 12),");
+        buffer.writeln("                            Expanded(");
+        buffer.writeln("                              child: Padding(");
+        buffer.writeln(
+            "                                padding: const EdgeInsets.only(bottom: 16.0),");
+        buffer.writeln(
+            "                                child: Text(step.toString(), style: const TextStyle(fontSize: 14)),");
         buffer.writeln("                              ),");
         buffer.writeln("                            ),");
-      }
-      buffer.writeln("                            DataCell(Row(children: [");
-      buffer.writeln(
-          "                              IconButton(icon: const Icon(Icons.delete, size: 18, color: Colors.red), onPressed: () => controller.delete${capitalLabel}Row(i)),");
-      buffer.writeln("                            ])),");
-      buffer.writeln("                          ]);");
-      buffer.writeln("                        }).toList(),");
-      buffer.writeln("                      ),");
-      buffer.writeln("                    ),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  repeater  (data component)
-    // ══════════════════════════════════════════════
-    } else if (type == 'repeater') {
-      buffer.writeln("                Obx(() => Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln("                    Row(");
-      buffer.writeln(
-          "                      mainAxisAlignment: MainAxisAlignment.spaceBetween,");
-      buffer.writeln("                      children: [");
-      buffer.writeln(
-          "                        Text('$rawLabel${isRequired ? ' *' : ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
-      buffer.writeln("                        ElevatedButton.icon(");
-      buffer.writeln(
-          "                          onPressed: () => controller.add${capitalLabel}Item(),");
-      buffer.writeln(
-          "                          icon: const Icon(Icons.add, size: 18),");
-      buffer.writeln(
-          "                          label: const Text('Add'),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      ],");
-      buffer.writeln("                    ),");
-      buffer.writeln("                    const SizedBox(height: 8),");
-      buffer.writeln(
-          "                    ...controller.${name}Items.asMap().entries.map((entry) {");
-      buffer.writeln("                      final i = entry.key;");
-      buffer.writeln("                      return Card(");
-      buffer.writeln(
-          "                        margin: const EdgeInsets.only(bottom: 8),");
-      buffer.writeln("                        child: ListTile(");
-      buffer.writeln(
-          "                          title: Text('$rawLabel \${i + 1}'),");
-      buffer.writeln("                          trailing: IconButton(");
-      buffer.writeln(
-          "                            icon: const Icon(Icons.delete, color: Colors.red),");
-      buffer.writeln(
-          "                            onPressed: () => controller.remove${capitalLabel}Item(i),");
-      buffer.writeln("                          ),");
-      buffer.writeln(
-          "                          // TODO: Add repeater item fields");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      );");
-      buffer.writeln("                    }).toList(),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  timeline  (data component)
-    // ══════════════════════════════════════════════
-    } else if (type == 'timeline') {
-      buffer.writeln("                Obx(() => Column(");
-      buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                  children: [");
-      buffer.writeln(
-          "                    Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),");
-      buffer.writeln("                    const SizedBox(height: 8),");
-      buffer.writeln(
-          "                    ...controller.${name}Steps.asMap().entries.map((entry) {");
-      buffer.writeln("                      final i = entry.key;");
-      buffer.writeln("                      final step = entry.value;");
-      buffer.writeln(
-          "                      final isLast = i == controller.${name}Steps.length - 1;");
-      buffer.writeln("                      return IntrinsicHeight(");
-      buffer.writeln("                        child: Row(");
-      buffer.writeln(
-          "                          crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                          children: [");
-      buffer.writeln("                            Column(");
-      buffer.writeln("                              children: [");
-      buffer.writeln("                                Container(");
-      buffer.writeln("                                  width: 24, height: 24,");
-      buffer.writeln(
-          "                                  decoration: const BoxDecoration(");
-      buffer.writeln(
-          "                                    color: Color(0xFF6366F1),");
-      buffer.writeln(
-          "                                    shape: BoxShape.circle,");
-      buffer.writeln("                                  ),");
-      buffer.writeln(
-          "                                  child: Center(child: Text('\${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 12))),");
-      buffer.writeln("                                ),");
-      buffer.writeln(
-          "                                if (!isLast) Expanded(child: Container(width: 2, color: Colors.grey.shade300)),");
-      buffer.writeln("                              ],");
-      buffer.writeln("                            ),");
-      buffer.writeln("                            const SizedBox(width: 12),");
-      buffer.writeln("                            Expanded(");
-      buffer.writeln("                              child: Padding(");
-      buffer.writeln(
-          "                                padding: const EdgeInsets.only(bottom: 16.0),");
-      buffer.writeln(
-          "                                child: Text(step.toString(), style: const TextStyle(fontSize: 14)),");
-      buffer.writeln("                              ),");
-      buffer.writeln("                            ),");
-      buffer.writeln("                          ],");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      );");
-      buffer.writeln("                    }).toList(),");
-      buffer.writeln("                  ],");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  autocomplete
-    // ══════════════════════════════════════════════
-    } else if (type == 'autocomplete') {
-      buffer.writeln("                Autocomplete<String>(");
-      buffer.writeln(
-          "                  optionsBuilder: (TextEditingValue textEditingValue) {");
-      buffer.writeln(
-          "                    if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();");
-      buffer.writeln(
-          "                    return controller.${name}Options.where((opt) =>");
-      buffer.writeln(
-          "                      opt.toLowerCase().contains(textEditingValue.text.toLowerCase()));");
-      buffer.writeln("                  },");
-      buffer.writeln(
-          "                  onSelected: (val) => controller.selected${capitalLabel}Text.value = val,");
-      buffer.writeln(
-          "                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {");
-      buffer.writeln("                    return CustomTextFormField(");
-      buffer.writeln("                      label: '$rawLabel',");
-      buffer.writeln("                      hint: '$hint',");
-      buffer.writeln("                      isMandatory: $isRequired,");
-      buffer.writeln("                      controller: textController,");
-      buffer.writeln("                      focusNode: focusNode,");
-      buffer.writeln("                      validator: (value) {");
-      if (isRequired) {
-        buffer.writeln(
-            "                        if (value == null || value.isEmpty) return '$rawLabel is required';");
-      }
-      buffer.writeln("                        return null;");
-      buffer.writeln("                      },");
-      buffer.writeln("                    );");
-      buffer.writeln("                  },");
-      buffer.writeln("                ),");
-
-    // ══════════════════════════════════════════════
-    //  signature
-    // ══════════════════════════════════════════════
-    } else if (type == 'signature') {
-      buffer.writeln("                Obx(() => FormField<bool>(");
-      buffer.writeln("                  initialValue: false,");
-      buffer.writeln("                  validator: (value) {");
-      if (isRequired) {
-        buffer.writeln(
-            "                    if (value != true) return '$rawLabel is required';");
-      }
-      buffer.writeln("                    return null;");
-      buffer.writeln("                  },");
-      buffer.writeln(
-          "                  builder: (formState) => Column(");
-      buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,");
-      buffer.writeln("                    children: [");
-      buffer.writeln(
-          "                      Text('$rawLabel${isRequired ? ' *' : ''}',");
-      buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
-      buffer.writeln("                      const SizedBox(height: 8),");
-      buffer.writeln("                      GestureDetector(");
-      buffer.writeln("                        onTap: () async {");
-      buffer.writeln(
-          "                          await controller.capture${capitalLabel}Signature();");
-      buffer.writeln(
-          "                          formState.didChange(controller.${name}Signed.value);");
-      buffer.writeln("                        },");
-      buffer.writeln("                        child: Container(");
-      buffer.writeln(
-          "                          width: double.infinity,");
-      buffer.writeln("                          height: 120,");
-      buffer.writeln(
-          "                          decoration: BoxDecoration(");
-      buffer.writeln("                            border: Border.all(");
-      buffer.writeln(
-          "                              color: formState.hasError ? Colors.red : Colors.grey.shade400,");
-      buffer.writeln("                            ),");
-      buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),");
-      buffer.writeln("                          ),");
-      buffer.writeln(
-          "                          child: controller.${name}Signed.value");
-      buffer.writeln(
-          "                              ? const Center(child: Icon(Icons.check_circle, color: Colors.green, size: 40))");
-      buffer.writeln(
-          "                              : const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [");
-      buffer.writeln(
-          "                                  Icon(Icons.draw, color: Colors.grey),");
-      buffer.writeln("                                  SizedBox(height: 4),");
-      buffer.writeln(
-          "                                  Text('Tap to sign', style: TextStyle(color: Colors.grey)),");
-      buffer.writeln("                                ])),");
-      buffer.writeln("                        ),");
-      buffer.writeln("                      ),");
-      if (isRequired) {
-        buffer.writeln(
-            "                      if (formState.hasError)");
-        buffer.writeln("                        Padding(");
-        buffer.writeln(
-            "                          padding: const EdgeInsets.only(top: 6, left: 4),");
-        buffer.writeln("                          child: Text(");
-        buffer.writeln(
-            "                            formState.errorText ?? '',");
-        buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
-        buffer.writeln("                          ),");
+        buffer.writeln("                          ],");
         buffer.writeln("                        ),");
-      }
-      buffer.writeln("                    ],");
-      buffer.writeln("                  ),");
-      buffer.writeln("                )),");
-
-    // ══════════════════════════════════════════════
-    //  row  (layout)
-    // ══════════════════════════════════════════════
-    } else if (type == 'row') {
-      buffer.writeln("                Wrap(");
-      buffer.writeln("                  spacing: 12, runSpacing: 12,");
-      buffer.writeln("                  children: [");
-      final nested = field['nestedFields'] as List<dynamic>? ?? [];
-      for (final child in nested) {
-        if (child is! Map) continue;
-        final colSpan = int.tryParse(child['componentConfig']?['colSpan']?.toString() ?? '') ?? 12;
-        buffer.writeln("                    LayoutBuilder(builder: (context, constraints) {");
-        buffer.writeln("                      final w = constraints.maxWidth;");
-        buffer.writeln("                      return SizedBox(width: w > 760 ? w * ($colSpan / 12) : double.infinity,");
-        buffer.writeln("                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [");
-        buildWidgets([child]);
-        buffer.writeln("                        ]),");
         buffer.writeln("                      );");
-        buffer.writeln("                    }),");
+        buffer.writeln("                    }).toList(),");
+        buffer.writeln("                  ],");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  autocomplete
+        // ══════════════════════════════════════════════
+      } else if (type == 'autocomplete') {
+        buffer.writeln("                Autocomplete<String>(");
+        buffer.writeln(
+            "                  optionsBuilder: (TextEditingValue textEditingValue) {");
+        buffer.writeln(
+            "                    if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();");
+        buffer.writeln(
+            "                    return controller.${name}Options.where((opt) =>");
+        buffer.writeln(
+            "                      opt.toLowerCase().contains(textEditingValue.text.toLowerCase()));");
+        buffer.writeln("                  },");
+        buffer.writeln(
+            "                  onSelected: (val) => controller.selected${capitalLabel}Text.value = val,");
+        buffer.writeln(
+            "                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {");
+        buffer.writeln("                    return CustomTextFormField(");
+        buffer.writeln("                      label: '$rawLabel',");
+        buffer.writeln("                      hint: '$hint',");
+        buffer.writeln("                      isMandatory: $isRequired,");
+        buffer.writeln("                      controller: textController,");
+        buffer.writeln("                      focusNode: focusNode,");
+        buffer.writeln("                      validator: (value) {");
+        if (isRequired) {
+          buffer.writeln(
+              "                        if (value == null || value.isEmpty) return '$rawLabel is required';");
+        }
+        buffer.writeln("                        return null;");
+        buffer.writeln("                      },");
+        buffer.writeln("                    );");
+        buffer.writeln("                  },");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  signature
+        // ══════════════════════════════════════════════
+      } else if (type == 'signature') {
+        buffer.writeln("                Obx(() => FormField<bool>(");
+        buffer.writeln("                  initialValue: false,");
+        buffer.writeln("                  validator: (value) {");
+        if (isRequired) {
+          buffer.writeln(
+              "                    if (value != true) return '$rawLabel is required';");
+        }
+        buffer.writeln("                    return null;");
+        buffer.writeln("                  },");
+        buffer.writeln(
+            "                  builder: (formState) => Column(");
+        buffer.writeln(
+            "                    crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                    children: [");
+        buffer.writeln(
+            "                      Text('$rawLabel${isRequired ? ' *' : ''}',");
+        buffer.writeln(
+            "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),");
+        buffer.writeln("                      const SizedBox(height: 8),");
+        buffer.writeln("                      GestureDetector(");
+        buffer.writeln("                        onTap: () async {");
+        buffer.writeln(
+            "                          await controller.capture${capitalLabel}Signature();");
+        buffer.writeln(
+            "                          formState.didChange(controller.${name}Signed.value);");
+        buffer.writeln("                        },");
+        buffer.writeln("                        child: Container(");
+        buffer.writeln(
+            "                          width: double.infinity,");
+        buffer.writeln("                          height: 120,");
+        buffer.writeln(
+            "                          decoration: BoxDecoration(");
+        buffer.writeln("                            border: Border.all(");
+        buffer.writeln(
+            "                              color: formState.hasError ? Colors.red : Colors.grey.shade400,");
+        buffer.writeln("                            ),");
+        buffer.writeln(
+            "                            borderRadius: BorderRadius.circular(8),");
+        buffer.writeln("                          ),");
+        buffer.writeln(
+            "                          child: controller.${name}Signed.value");
+        buffer.writeln(
+            "                              ? const Center(child: Icon(Icons.check_circle, color: Colors.green, size: 40))");
+        buffer.writeln(
+            "                              : const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [");
+        buffer.writeln(
+            "                                  Icon(Icons.draw, color: Colors.grey),");
+        buffer.writeln(
+            "                                  SizedBox(height: 4),");
+        buffer.writeln(
+            "                                  Text('Tap to sign', style: TextStyle(color: Colors.grey)),");
+        buffer.writeln("                                ])),");
+        buffer.writeln("                        ),");
+        buffer.writeln("                      ),");
+        if (isRequired) {
+          buffer.writeln(
+              "                      if (formState.hasError)");
+          buffer.writeln("                        Padding(");
+          buffer.writeln(
+              "                          padding: const EdgeInsets.only(top: 6, left: 4),");
+          buffer.writeln("                          child: Text(");
+          buffer.writeln(
+              "                            formState.errorText ?? '',");
+          buffer.writeln(
+              "                            style: const TextStyle(color: Colors.red, fontSize: 12),");
+          buffer.writeln("                          ),");
+          buffer.writeln("                        ),");
+        }
+        buffer.writeln("                    ],");
+        buffer.writeln("                  ),");
+        buffer.writeln("                )),");
+
+        // ══════════════════════════════════════════════
+        //  row
+        // ══════════════════════════════════════════════
+      } else if (type == 'row') {
+        buffer.writeln("                Wrap(");
+        buffer.writeln("                  spacing: 12, runSpacing: 12,");
+        buffer.writeln("                  children: [");
+        final nested = field['nestedFields'] as List<dynamic>? ?? [];
+        for (final child in nested) {
+          if (child is! Map) continue;
+          final colSpan = int.tryParse(
+                  child['componentConfig']?['colSpan']?.toString() ?? '') ??
+              12;
+          buffer.writeln(
+              "                    LayoutBuilder(builder: (context, constraints) {");
+          buffer.writeln(
+              "                      final w = constraints.maxWidth;");
+          buffer.writeln(
+              "                      return SizedBox(width: w > 760 ? w * ($colSpan / 12) : double.infinity,");
+          buffer.writeln(
+              "                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [");
+          buildWidgets([child]);
+          buffer.writeln("                        ]),");
+          buffer.writeln("                      );");
+          buffer.writeln("                    }),");
+        }
+        buffer.writeln("                  ],");
+        buffer.writeln("                ),");
+
+        // ══════════════════════════════════════════════
+        //  formula
+        // ══════════════════════════════════════════════
+      } else if (type == 'formula') {
+        buffer.writeln(
+            "                Obx(() => CustomTextFormField(");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  hint: '$hint',");
+        buffer.writeln("                  isMandatory: false,");
+        buffer.writeln(
+            "                  controller: TextEditingController(text: controller.$name.value),");
+        buffer.writeln("                  readOnly: true,");
+        buffer.writeln("                  validator: (value) => null,");
+        buffer.writeln("                )),");
+      } else {
+        buffer.writeln(
+            "                // TODO: unsupported field type '$type' for '$rawLabel'");
       }
-      buffer.writeln("                  ],");
-      buffer.writeln("                ),");
 
-    // ══════════════════════════════════════════════
-    //  formula
-    // ══════════════════════════════════════════════
-    } else if (type == 'formula') {
-      buffer.writeln("                Obx(() => CustomTextFormField(");
-      buffer.writeln("                  label: '$rawLabel',");
-      buffer.writeln("                  hint: '$hint',");
-      buffer.writeln("                  isMandatory: false,");
-      buffer.writeln("                  controller: TextEditingController(text: controller.$name.value),");
-      buffer.writeln("                  readOnly: true,");
-      buffer.writeln("                  validator: (value) => null,");
-      buffer.writeln("                )),");
-
-    } else {
-      buffer.writeln(
-          "                // TODO: unsupported field type '$type' for '$rawLabel'");
+      buffer.writeln("                const SizedBox(height: 16),");
     }
-
-    buffer.writeln("                const SizedBox(height: 16),");
-  }
   } // end buildWidgets
 
   buildWidgets(fields);
@@ -1635,6 +1709,16 @@ String _mapKeyboardType(String raw) {
 // ─── Helpers ─────────────────────────────────────────────────────
 String capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+String singularize(String text) {
+  if (text.endsWith('ies')) {
+    return '${text.substring(0, text.length - 3)}y';
+  }
+  if (text.endsWith('s') && text.length > 1) {
+    return text.substring(0, text.length - 1);
+  }
+  return text;
+}
 
 String normalizeLabel(String label) =>
     label.trim().replaceAll(RegExp(r'\s+'), '');

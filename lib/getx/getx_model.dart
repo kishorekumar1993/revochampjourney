@@ -78,7 +78,7 @@ String generateClass(
   json.forEach((key, value) {
     if (value is Map<String, dynamic>) {
       String nestedClass = generateClass(
-        '${pascalCaseName(key)}Model',
+        pascalCaseName(key),
         value,
         isNested: true,
         generatedClasses: generatedClasses,
@@ -88,7 +88,7 @@ String generateClass(
         value.isNotEmpty &&
         value.first is Map<String, dynamic>) {
       String nestedClass = generateClass(
-        '${pascalCaseName(singularize(key))}Model',
+        pascalCaseName(singularize(key)),
         value.first as Map<String, dynamic>,
         isNested: true,
         generatedClasses: generatedClasses,
@@ -107,12 +107,12 @@ String getType(dynamic value, String key) {
   if (value is bool) return 'bool';
   if (value is List) {
     if (value.isNotEmpty && value.first is Map<String, dynamic>) {
-      return 'List<${pascalCaseName(singularize(key))}Model>';
+      return 'List<${pascalCaseName(singularize(key))}>';
     }
     return 'List<dynamic>';
   }
   if (value is Map<String, dynamic>) {
-    return '${pascalCaseName(key)}Model';
+    return pascalCaseName(key);
   }
   return 'dynamic';
 }

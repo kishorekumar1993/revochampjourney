@@ -2,7 +2,7 @@ import 'dart:convert';
 // import 'package:revojourneytryone/colors.dart';
 import 'package:revojourneytryone/getx/binding.dart';
 import 'package:revojourneytryone/getx/controller.dart';
-import 'package:revojourneytryone/getx/getx_temp.dart';
+import 'package:revojourneytryone/getx/getx_model.dart';
 import 'dart:js' as js;
 
 import 'package:revojourneytryone/getx/repository.dart';
@@ -26,6 +26,26 @@ void saveRepositoryFile(
   List<Map<String, String>>? logicalFiles,
 ) {
   final fieldJson = fieldJsonRaw.map((e) => Map<String, dynamic>.from(e)).toList();
+
+  final flatFields = <Map<String, dynamic>>[];
+  void flatten(dynamic source) {
+    if (source == null) return;
+    if (source is List) {
+      for (final item in source) flatten(item);
+      return;
+    }
+    if (source is! Map<String, dynamic>) return;
+    if (source.containsKey('type')) {
+      flatFields.add(source);
+      flatten(source['nestedFields']);
+      final config = source['componentConfig'];
+      if (config is Map) {
+        flatten(config['fields']);
+        flatten(config['columns']);
+      }
+    }
+  }
+  flatten(fieldJson);
 
   String baseName = screenName ?? 'unknown';
   String safeModelName = modelName ?? '';
@@ -83,7 +103,7 @@ void saveRepositoryFile(
     });
   }
 
-  for (final item in fieldJson) {
+  for (final item in flatFields) {
     final textContent = item['dropdowndata'];
 
     // ✅ Skip if dropdowndata is null or empty
@@ -141,7 +161,7 @@ void saveRepositoryFile(
     });
   }
 
-  for (final item in fieldJson) {
+  for (final item in flatFields) {
     final textContent = item['dropdowndata'];
 
     // ✅ Skip if dropdowndata is null or empty
@@ -266,10 +286,10 @@ void saveRepositoryFile(
   );
 
   String riverpodApiservice;
-  riverpodApiservice = generateapiserviceInterface();
+  riverpodApiservice = generateApiServiceInterface();
 
   String riverpodlocator;
-  riverpodlocator = generateLocaltorInterface(className, fieldJson, fileName);
+  riverpodlocator = generateLocatorInterface(className, fieldJson, fileName);
 
   String riverpoddatasource;
   riverpoddatasource = generateDataSourceInterface(

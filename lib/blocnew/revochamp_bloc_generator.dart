@@ -38,7 +38,7 @@ import 'package:revojourneytryone/getx/binding.dart';
 import 'package:revojourneytryone/getx/controller.dart';
 import 'package:revojourneytryone/getx/repository.dart';
 import 'package:revojourneytryone/getx/viewscreen.dart';
-import 'package:revojourneytryone/getx/getx_temp.dart';
+import 'package:revojourneytryone/getx/getx_model.dart';
 
 // Riverpod generators
 import 'package:revojourneytryone/riverpod/riverpod_data_datasource.dart';
@@ -234,6 +234,8 @@ List<Map<String, String>> _generateGetxFiles({
   final fileName  = '${baseName}_form';
   final base      = 'lib/getx/features/$journeyNamespace/$baseName';
 
+  final flatFields = _flattenFields(rawFields);
+
   // ── Generate GetX files ──────────────────────────────────────────────────
   final binding    = generateBindingClass(
     className, 
@@ -252,7 +254,7 @@ List<Map<String, String>> _generateGetxFiles({
   ]);
 
   // ── GetX Model files (per dropdown field with data) ───────────────────────
-  for (final field in rawFields) {
+  for (final field in flatFields) {
     final dropdownData = field['dropdowndata'];
     if (dropdownData == null) continue;
 
@@ -267,7 +269,7 @@ List<Map<String, String>> _generateGetxFiles({
 
     final rawLabel    = field['label'] as String? ?? 'Unnamed';
     final safeLabel   = rawLabel.trim().isEmpty ? 'Unnamed' : rawLabel;
-    final modelName   = safeLabel.replaceAll(' ', '');
+    final modelName   = '${safeLabel.replaceAll(' ', '')}Model';
     final modelFile   = safeLabel.toLowerCase().replaceAll(' ', '_');
     final sampleData  = dataList.first is Map
         ? Map<String, dynamic>.from(dataList.first as Map)
@@ -300,8 +302,10 @@ List<Map<String, String>> _generateRiverpodFiles({
   final fileName  = '${baseName}_form';
   final base      = 'lib/riverpod/features/$journeyNamespace/$baseName';
 
+  final flatFields = _flattenFields(rawFields);
+
   // ── Riverpod model + entity files (per dropdown field) ───────────────────
-  for (final field in rawFields) {
+  for (final field in flatFields) {
     final dropdownData = field['dropdowndata'];
     if (dropdownData == null) continue;
 
@@ -335,8 +339,8 @@ List<Map<String, String>> _generateRiverpodFiles({
   final domainRepo    = generateRepositoryInterface(className, rawFields, fileName);
   final repoImpl      = generateRepositoryImplInterface(className, rawFields, fileName);
   final notifier      = generateNotifierImplInterface(className, rawFields, fileName);
-  final apiService    = generateapiserviceInterface();
-  final locator       = generateLocaltorInterface(className, rawFields, fileName);
+  final apiService    = generateApiServiceInterface();
+  final locator       = generateLocatorInterface(className, rawFields, fileName);
   final dataSource    = generateDataSourceInterface(className, rawFields, fileName);
   final provider      = generateProviderInterface(className, rawFields, fileName);
   final view          = generateriverpodviewClass(className, rawFields, fileName);
@@ -545,6 +549,31 @@ List<Map<String, dynamic>> _deepClone(List<Map<String, dynamic>> input) {
   return (jsonDecode(jsonEncode(input)) as List<dynamic>)
       .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();
+}
+
+/// Flattens nested fields so models for inner dropdowns are generated
+List<Map<String, dynamic>> _flattenFields(List<Map<String, dynamic>> source) {
+  final result = <Map<String, dynamic>>[];
+  void flatten(dynamic item) {
+    if (item == null) return;
+    if (item is List) {
+      for (final i in item) flatten(i);
+      return;
+    }
+    if (item is! Map<String, dynamic>) return;
+
+    if (item.containsKey('type')) {
+      result.add(item);
+      flatten(item['nestedFields']);
+      final config = item['componentConfig'];
+      if (config is Map) {
+        flatten(config['fields']);
+        flatten(config['columns']);
+      }
+    }
+  }
+  flatten(source);
+  return result;
 }
 
  // ── Helper functions ─────────────────────────────────────────────────────

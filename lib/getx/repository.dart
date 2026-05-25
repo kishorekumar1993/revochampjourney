@@ -1,72 +1,49 @@
-
-
 /// Generates a concrete repository class string for a Flutter application.
 ///
 /// This function creates a Dart class that implements repository methods
-/// for fetching dropdown data based on a provided configuration list.
-/// It dynamically generates imports for dropdown models and corresponding
-/// API fetching methods.
+/// for fetching dropdown data from APIs based on a provided configuration list.
+/// It uses labels (not IDs) for naming and returns raw `List<Map<String, dynamic>>`
+/// to avoid unnecessary model imports.
 ///
-/// [className]: The name of the main class (e.g., "Product") for which
-///              this repository is being generated. This will be used for
-///              `ProductRepository`. It should start with an uppercase letter.
-/// [configList]: A list of dynamic configurations, typically maps, that define
-///               the structure and behavior of various fields, especially
-///               'Dropdown' fields with API URLs.
-/// [fileName]: The base name for related files (e.g., "product"). While
-///             passed, its direct use in generated method names or class names
-///             is limited in the current implementation.
-/// [isNested]: A boolean flag (currently unused) that could be used to adjust
-///             paths or logic for nested configurations.
-///
-/// Throws [ArgumentError] if [className] or [fileName] are empty or do not
-/// follow basic naming conventions.
+/// [className]: Name of the repository class (e.g., "NewJourneyRepository").
+/// [configList]: List of configurations (fields, steps, etc.) to scan for API dropdowns.
+/// [fileName]: Base file name (unused but kept for signature compatibility).
 String generaterepositoryClass(
   String className,
   List<dynamic> configList,
   String fileName, {
-  bool isNested =
-      false, // Currently unused, but kept as per original signature.
+  bool isNested = false,
 }) {
-  final StringBuffer buffer = StringBuffer();
+  final buffer = StringBuffer();
 
-  // Import the API service provider.
+  // Import the API service provider and debug tools.
   buffer.writeln("import '/core/service/api_service.dart';");
-  buffer.writeln("import 'package:flutter/foundation.dart';\n");
+  buffer.writeln("import 'package:flutter/foundation.dart';");
+  buffer.writeln("import 'dart:convert';\n");
 
-  // ─── Helper to recursively flatten fields ─────────────
+  // -------------------------------------------------------------------
+  // Helper to recursively flatten all fields
+  // -------------------------------------------------------------------
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
-    
     if (source is List) {
-      for (final item in source) {
-        flattenFields(item, result);
-      }
+      for (final item in source) flattenFields(item, result);
       return;
     }
-    
     if (source is! Map<String, dynamic>) return;
-    
-    // If it's a journey config with steps
+
     if (source.containsKey('steps')) {
       flattenFields(source['steps'], result);
       return;
     }
-    
-    // If it's a step with fields
     if (source.containsKey('fields')) {
       flattenFields(source['fields'], result);
       return;
     }
-    
-    // It's a field - add it
+
     if (source.containsKey('type')) {
       result.add(source);
-      
-      // Recursively flatten nested fields
       flattenFields(source['nestedFields'], result);
-      
-      // Flatten component config fields (repeater, table columns)
       final config = source['componentConfig'];
       if (config is Map) {
         flattenFields(config['fields'], result);
@@ -75,125 +52,95 @@ String generaterepositoryClass(
     }
   }
 
-  // ─── Flatten fields once ──────────────────────────────
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(configList, flatFields);
 
-  // Use a Set to store unique dropdown model names to avoid duplicate imports.
-  final dropdownModels = <String>{};
-
-  for (final field in flatFields) {
-    final type = (field['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown' || type == 'api_dropdown') {
-      final List<dynamic>? staticOpts =
-          (field['options'] as List<dynamic>?) ?? (field['staticOptions'] as List<dynamic>?);
-      if (staticOpts == null || staticOpts.isEmpty) {
-        final rawId = (field['id'] ?? field['fieldId'] ?? field['label'] ?? 'model').toString().trim();
-        dropdownModels.add(rawId);
-      }
-    }
+  // -------------------------------------------------------------------
+  // Helper to get a clean PascalCase name from label (preferred) or id
+  // -------------------------------------------------------------------
+  String getPascalName(Map<String, dynamic> field) {
+    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
+        .toString()
+        .trim();
+    final cleaned = raw.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ');
+    final words = cleaned.split(' ');
+    final pascal = words.map((w) {
+      if (w.isEmpty) return '';
+      return w[0].toUpperCase() + w.substring(1).toLowerCase();
+    }).join();
+    return pascal.isEmpty ? 'Field' : pascal;
   }
 
-  // Write dynamic model imports based on collected dropdownModels.
-  for (final model in dropdownModels) {
-    final modelFile = model.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
-    buffer.writeln(
-      "import '../model/${modelFile}_model.dart';",
-    );
-  }
-
-  buffer.writeln("\nclass ${className}Repository {");
-  buffer.writeln("  final ApiService api;\n");
-
+  // -------------------------------------------------------------------
+  // Generate the repository class
+  // -------------------------------------------------------------------
+  buffer.writeln("class ${className}Repository {");
+  buffer.writeln("  final ApiService api;");
   buffer.writeln("  ${className}Repository(this.api);\n");
 
-  // Iterate through the flatFields to generate repository methods.
-  for (final item in flatFields) {
-    final type = (item['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown' || type == 'api_dropdown') {
-      final List<dynamic>? staticOpts =
-          (item['options'] as List<dynamic>?) ?? (item['staticOptions'] as List<dynamic>?);
-      
-      if (staticOpts != null && staticOpts.isNotEmpty) continue; // Skip static dropdowns
+  // Iterate through flattened fields, generate methods for API dropdowns
+  for (final field in flatFields) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    final useStatic = (field['useStaticOptions'] == true);
+    final apiUrl = field['dropdownApiUrl']?.toString() ?? '';
 
-      final rawId = (item['id'] ?? item['fieldId'] ?? item['label'] ?? 'field').toString().trim();
-      final capitalLabel = pascalCaseName(rawId);
-      final apiUrl = item['dropdownApiUrl'] ?? '';
-      var apidata = item['dropdowndata'];
+    // Only generate for API dropdowns (not static ones)
+    if ((type == 'dropdown' || type == 'api_dropdown') && !useStatic && apiUrl.isNotEmpty) {
+      final pascalName = getPascalName(field);
+      final apiMethod = (field['dropdownApiMethod'] ?? 'GET').toString().toUpperCase();
+      final apiBody = field['dropdownApiBody'];
+      final apiHeaders = field['dropdownApiHeaders'];
+      final listKey = field['dropdownListKey']?.toString() ?? '';
 
-      String? dropdownmodel = (item['modelName']?.toString());
-      if (dropdownmodel == null || dropdownmodel.isEmpty) {
-        if (apidata is Map<String, dynamic>) {
-          for (final entry in apidata.entries) {
-            final value = entry.value;
-            if (value is List && value.isNotEmpty && value.first is Map<String, dynamic>) {
-              dropdownmodel = capitalize(entry.key);
-              break;
-            }
-          }
-        }
+      buffer.writeln("  /// Fetches options for '$pascalName' from $apiUrl");
+      buffer.writeln("  Future<List<Map<String, dynamic>>> get${pascalName}Options() async {");
+      buffer.writeln("    try {");
+
+      // Prepare headers if any
+      if (apiHeaders is Map && apiHeaders.isNotEmpty) {
+        buffer.writeln("      final headers = ${_mapToLiteral(apiHeaders)};");
+      } else {
+        buffer.writeln("      const headers = <String, String>{};");
       }
-      dropdownmodel ??= '${capitalLabel}Model';
-      
-      final apiMethod = (item['dropdownApiMethod'] ?? 'GET').toString().toUpperCase();
-      final apiBody = item['dropdownApiBody'];
-      final apiHeaders = item['dropdownApiHeaders'];
-      final dropdownListKey = (item['dropdownListKey']?.toString() ?? '');
 
-      if (apiUrl.isNotEmpty) {
-        buffer.writeln(
-          '  Future<List<$dropdownmodel>> get${capitalLabel.replaceAll(" ", "")}() async {',
-        );
-        buffer.writeln("    try {");
-        
-        if (apiMethod == 'POST' || apiMethod == 'PUT' || apiMethod == 'DELETE') {
-          final bodyJson = apiBody is String && apiBody.isNotEmpty ? "'''$apiBody'''" : apiBody != null ? _generateMapLiteral(apiBody as Map<String, dynamic>) : '{}';
-
-          if (apiHeaders is Map<String, dynamic> && apiHeaders.isNotEmpty) {
-            var headerval = _generateMapLiteral(apiHeaders);
-            buffer.writeln('      final headers = <String, String>$headerval;');
-          } else {
-            buffer.writeln('      final headers = <String, String>{};');
-          }
-
-          if ((apiBody is String && apiBody.isNotEmpty) || (apiBody is Map && apiBody.isNotEmpty)) {
-            buffer.writeln('      final body = $bodyJson;');
-            buffer.writeln("      final res = await api.${apiMethod.toLowerCase()}('$apiUrl', body, headers: headers);");
-          } else {
-             buffer.writeln("      final res = await api.${apiMethod.toLowerCase()}('$apiUrl', {}, headers: headers);");
-          }
+      // Handle different HTTP methods
+      if (apiMethod == 'GET') {
+        if (apiHeaders is Map && apiHeaders.isNotEmpty) {
+          buffer.writeln("      final response = await api.get('$apiUrl', headers: headers);");
         } else {
-          if (apiHeaders is Map<String, dynamic> && apiHeaders.isNotEmpty) {
-             var headerval = _generateMapLiteral(apiHeaders);
-             buffer.writeln('      final headers = <String, String>$headerval;');
-             buffer.writeln("      final res = await api.get('$apiUrl', headers: headers);");
-          } else {
-             buffer.writeln("      final res = await api.get('$apiUrl');");
-          }
+          buffer.writeln("      final response = await api.get('$apiUrl');");
         }
-
-        if (dropdownListKey.isNotEmpty) {
-          buffer.writeln("      final data = res['$dropdownListKey'];");
-        } else {
-          buffer.writeln("      dynamic data = res;");
-          buffer.writeln("      if (res is Map) {");
-          buffer.writeln("        data = res['${dropdownmodel.toLowerCase()}'] ?? res['data'] ?? res['items'] ?? res;");
-          buffer.writeln("      }");
-        }
-
-        buffer.writeln("      if (data is! List) {");
-        buffer.writeln("        throw Exception('Invalid response format');");
-        buffer.writeln("      }");
-        buffer.writeln(
-          "      return data.map((e) => $dropdownmodel.fromJson(e)).toList();",
-        );
-        buffer.writeln("    } catch (e, st) {");
-        buffer.writeln("      debugPrint('Error fetching $capitalLabel: \$e');");
-        buffer.writeln("      debugPrintStack(stackTrace: st);");
-        buffer.writeln("      rethrow;");
-        buffer.writeln("    }");
-        buffer.writeln("  }\n");
+      } else {
+        // POST, PUT, DELETE, etc.
+        final bodyLiteral = _buildBodyLiteral(apiBody);
+        buffer.writeln("      final response = await api.${apiMethod.toLowerCase()}('$apiUrl', $bodyLiteral, headers: headers);");
       }
+
+      // Extract the list from response
+      buffer.writeln("      List<Map<String, dynamic>> items = [];");
+      buffer.writeln("      if (response is List) {");
+      buffer.writeln("        items = response.cast<Map<String, dynamic>>();");
+      buffer.writeln("      } else if (response is Map) {");
+      if (listKey.isNotEmpty) {
+        buffer.writeln("        final data = response['$listKey'];");
+        buffer.writeln("        if (data is List) items = data.cast<Map<String, dynamic>>();");
+      } else {
+        buffer.writeln("        // Try to find the first list in the response");
+        buffer.writeln("        for (final value in response.values) {");
+        buffer.writeln("          if (value is List) {");
+        buffer.writeln("            items = value.cast<Map<String, dynamic>>();");
+        buffer.writeln("            break;");
+        buffer.writeln("          }");
+        buffer.writeln("        }");
+      }
+      buffer.writeln("      }");
+      buffer.writeln("      return items;");
+      buffer.writeln("    } catch (e, st) {");
+      buffer.writeln("      debugPrint('Error fetching $pascalName options: \$e');");
+      buffer.writeln("      debugPrintStack(stackTrace: st);");
+      buffer.writeln("      rethrow;");
+      buffer.writeln("    }");
+      buffer.writeln("  }\n");
     }
   }
 
@@ -201,32 +148,35 @@ String generaterepositoryClass(
   return buffer.toString();
 }
 
-/// Helper function to capitalize the first letter of a string.
-String capitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+// -------------------------------------------------------------------
+// Helper functions
+// -------------------------------------------------------------------
 
-String capitalizeWords(String s) => s.split(' ').map(capitalize).join();
-
-String normalizeLabel(String label) =>
-    label.trim().replaceAll(RegExp(r'\s+'), '');
-
-String camelCaseName(String label) {
-  final n = normalizeLabel(label);
-  return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);
-}
-
-String pascalCaseName(String label) {
-  final n = normalizeLabel(label);
-  return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
-}
-
-String _generateMapLiteral(Map<String, dynamic> map) {
+/// Converts a Map to a Dart map literal string.
+String _mapToLiteral(Map<dynamic, dynamic> map) {
   final entries = map.entries.map((e) {
-    final key = "'${e.key}'";
+    final key = "'${e.key.toString().replaceAll("'", "\\'")}'";
     final value = e.value is String
         ? "'${e.value.toString().replaceAll("'", "\\'")}'"
         : e.value.toString();
-    return '$key: $value';
+    return "$key: $value";
   }).join(', ');
-  return '{$entries}';
+  return "{ $entries }";
+}
+
+/// Builds a Dart literal for the request body (supports String, Map, or null).
+String _buildBodyLiteral(dynamic body) {
+  if (body == null) return "null";
+  if (body is String) {
+    if (body.trim().startsWith('{') || body.trim().startsWith('[')) {
+      // Assume it's already JSON-like literal; use as-is
+      return body;
+    }
+    // String body, wrap in quotes
+    return "'${body.replaceAll("'", "\\'")}'";
+  }
+  if (body is Map) {
+    return _mapToLiteral(body);
+  }
+  return "null";
 }

@@ -5,39 +5,29 @@ String generatecontrollerClass(
 ) {
   final buffer = StringBuffer();
 
-  // ─── Helper to recursively flatten fields ─────────────
+  // -------------------------------------------------------------------
+  // Helper to recursively flatten all fields
+  // -------------------------------------------------------------------
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
-    
     if (source is List) {
-      for (final item in source) {
-        flattenFields(item, result);
-      }
+      for (final item in source) flattenFields(item, result);
       return;
     }
-    
     if (source is! Map<String, dynamic>) return;
-    
-    // If it's a journey config with steps
+
     if (source.containsKey('steps')) {
       flattenFields(source['steps'], result);
       return;
     }
-    
-    // If it's a step with fields
     if (source.containsKey('fields')) {
       flattenFields(source['fields'], result);
       return;
     }
-    
-    // It's a field - add it
+
     if (source.containsKey('type')) {
       result.add(source);
-      
-      // Recursively flatten nested fields
       flattenFields(source['nestedFields'], result);
-      
-      // Flatten component config fields (repeater, table columns)
       final config = source['componentConfig'];
       if (config is Map) {
         flattenFields(config['fields'], result);
@@ -46,11 +36,46 @@ String generatecontrollerClass(
     }
   }
 
-  // ─── Flatten fields once ──────────────────────────────
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(configList, flatFields);
 
-  // ─── Conditional imports ──────────────────────────────────────
+  // -------------------------------------------------------------------
+  // Helper to get clean names from label (preferred) or id
+  // -------------------------------------------------------------------
+  String getFieldName(Map<String, dynamic> field) {
+    // ✅ FIX 1: label first, plus .toString().trim() to avoid crash
+    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
+        .toString()
+        .trim();
+    final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
+  }
+
+  String getPascalName(Map<String, dynamic> field) {
+    // ✅ FIX 2: label first (was id first before)
+    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
+        .toString()
+        .trim();
+    final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? 'Field' : n[0].toUpperCase() + n.substring(1);
+  }
+
+  String capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  String singularize(String text) {
+    if (text.endsWith('ies')) {
+      return '${text.substring(0, text.length - 3)}y';
+    }
+    if (text.endsWith('s') && text.length > 1) {
+      return text.substring(0, text.length - 1);
+    }
+    return text;
+  }
+
+  // -------------------------------------------------------------------
+  // Imports
+  // -------------------------------------------------------------------
   final hasRadio = flatFields.any((f) =>
       (f['type'] ?? '').toString().toLowerCase().startsWith('radio'));
   final hasDropdown = flatFields.any((f) {
@@ -68,7 +93,7 @@ String generatecontrollerClass(
     buffer.writeln("import '/widget/common_dropdown_search.dart';");
   }
 
-  // ─── Dynamic dropdown model imports ──────────────────────────
+  // ✅ FIX 3: dropdownModels now uses label first (was id first before)
   final dropdownModels = <String>{};
   for (final field in flatFields) {
     final type = (field['type'] ?? '').toString().toLowerCase();
@@ -76,8 +101,11 @@ String generatecontrollerClass(
       final staticOpts = (field['options'] as List<dynamic>?) ??
           (field['staticOptions'] as List<dynamic>?);
       if (staticOpts == null || staticOpts.isEmpty) {
-        final rawId = (field['id'] ?? field['label'] ?? 'model').toString().trim();
-        dropdownModels.add(rawId);
+        final rawLabel =
+            (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
+                .toString()
+                .trim();
+        dropdownModels.add(rawLabel);
       }
     }
   }
@@ -94,447 +122,309 @@ String generatecontrollerClass(
   buffer.writeln("  final isLoading = false.obs;");
   buffer.writeln();
 
-  final dropdownInitCallsvariable = <String>[];
   final dropdownInitCalls = <String>[];
-  // Extra method bodies (file pickers, grid ops, etc.) collected here
   final extraMethods = <String>[];
 
-  // ─── Field declarations ───────────────────────────────────────
+  // -------------------------------------------------------------------
+  // Field declarations
+  // -------------------------------------------------------------------
   for (final item in flatFields) {
-    final rawId = (item['id'] ?? item['fieldId'] ?? item['label'] ?? 'field').toString().trim();
-    final name = camelCaseName(rawId);
-    final capitalLabel = pascalCaseName(rawId);
+    final name = getFieldName(item);
+    final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-
-    // Resolve dropdown model name
-    var dropdownmodel =
-        (item['modelName'] ?? '${capitalLabel}Model').toString();
-    final apidata = item['dropdowndata'];
-    if (apidata is Map<String, dynamic>) {
-      for (final entry in apidata.entries) {
-        final v = entry.value;
-        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-          dropdownmodel = capitalize(entry.key);
-          break;
-        }
-      }
-    }
-
+    final useStatic = (item['useStaticOptions'] == true);
     final staticOpts = (item['options'] as List<dynamic>?) ??
         (item['staticOptions'] as List<dynamic>?);
+    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+        !useStatic &&
+        item['dropdownApiUrl'] != null;
 
-    // Add validation generation after field declaration
-    if (item['required'] == true) {
-      buffer.writeln("  // Required: ${item['errorMessage'] ?? 'This field is required'}");
+    // ---------- Text based ----------
+    if (type == 'text' ||
+        type == 'textfield' ||
+        type == 'phone' ||
+        type == 'textarea' ||
+        type == 'otp' ||
+        type == 'email' ||
+        type == 'password' ||
+        type == 'number' ||
+        type == 'integer' ||
+        type == 'int' ||
+        type == 'decimal' ||
+        type == 'double' ||
+        type == 'float' ||
+        type == 'date' ||
+        type == 'datetime' ||
+        type == 'date time' ||
+        type == 'time') {
+      buffer.writeln("  final ${name}Controller = TextEditingController();");
     }
-    if (item['validationPattern'] != null) {
-      buffer.writeln("  // Pattern: ${item['validationPattern']}");
-    }
-
-    switch (type) {
-      // ══════════════════════════════════════════════
-      //  Text / Phone / TextArea / OTP / Email / Password / Number / Decimal
-      // ══════════════════════════════════════════════
-      case 'text':
-      case 'textfield':
-      case 'phone':
-      case 'textarea':
-      case 'otp':
-      case 'email':
-      case 'password':
-      case 'number':
-      case 'integer':
-      case 'int':
-      case 'decimal':
-      case 'double':
-      case 'float':
-        buffer.writeln(
-            "  final ${name}Controller = TextEditingController();");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Date / DateTime / Time
-      // ══════════════════════════════════════════════
-      case 'date':
-      case 'datetime':
-      case 'date time':
-      case 'time':
-        buffer.writeln(
-            "  final ${name}Controller = TextEditingController();");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Dropdown
-      // ══════════════════════════════════════════════
-      case 'dropdown':
-      case 'api_dropdown':
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          final literals = staticOpts.map((o) {
-            if (o is Map) {
-              final k = (o['key'] ?? o['value'] ?? o['id'] ?? '').toString().replaceAll("'", "\\'");
-              final v = (o['value'] ?? o['label'] ?? o['title'] ?? '').toString().replaceAll("'", "\\'");
-              return "DropdownItem(key: '$k', value: '$v')";
-            }
-            final val = o?.toString().replaceAll("'", "\\'") ?? '';
-            return "DropdownItem(key: '$val', value: '$val')";
-          }).join(', ');
-          buffer.writeln(
-              "  var selected$capitalLabel = Rxn<DropdownItem>();");
-          buffer.writeln(
-              "  final ${name}Options = <DropdownItem>[$literals].obs;");
-        } else {
-          buffer.writeln(
-              "  var selected$capitalLabel = Rxn<$dropdownmodel>();");
-          buffer.writeln(
-              "  var ${name}Options = <$dropdownmodel>[].obs;");
-          dropdownInitCallsvariable.add("      load$capitalLabel(),");
-          dropdownInitCalls.addAll([
-            "  Future<void> load$capitalLabel() async {",
-            "    try {",
-            "      final data = await repository.get$capitalLabel();",
-            "      ${name}Options.assignAll(data);",
-            "    } catch (e, st) {",
-            "      debugPrint('Error loading $capitalLabel: \$e');",
-            "      debugPrintStack(stackTrace: st);",
-            "      Get.snackbar('Error', 'Failed to load $capitalLabel');",
-            "    }",
-            "  }",
-            "",
-          ]);
-        }
-        
-        if (type == 'api_dropdown' && item['dropdownApiUrl'] != null) {
-          extraMethods.addAll([
-            "  Future<void> fetch${capitalLabel}FromApi() async {",
-            "    try {",
-            "      final url = '${item['dropdownApiUrl']}';",
-            "      // TODO: Make API call with ${item['dropdownApiMethod'] ?? 'GET'}",
-            "      // Parse response using key '${item['dropdownListKey'] ?? 'data'}'",
-            "    } catch (e) {",
-            "      debugPrint('Error fetching $capitalLabel: \$e');",
-            "    }",
-            "  }",
-            "",
-          ]);
-        }
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Radio
-      // ══════════════════════════════════════════════
-      case 'radio':
-      case 'radio buttons':
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          final formattedOptions = staticOpts.map((o) {
-            if (o is Map) {
-              final k = (o['key'] ?? o['value'] ?? o['id'] ?? '').toString().replaceAll("'", "\\'");
-              final v = (o['value'] ?? o['label'] ?? o['title'] ?? '').toString().replaceAll("'", "\\'");
-              return "RadioOption<String>(value: '$k', label: '$v')";
-            }
-            final val = o?.toString().replaceAll("'", "\\'") ?? '';
-            return "RadioOption<String>(value: '$val', label: '$val')";
-          }).join(', ');
-          buffer.writeln("  var selected$capitalLabel = ''.obs;");
-          buffer.writeln(
-              "  final ${name}Options = <RadioOption<String>>[$formattedOptions];");
-        } else {
-          buffer.writeln("  var selected$capitalLabel = ''.obs;");
-          buffer.writeln(
-              "  final ${name}Options = <RadioOption<String>>[];");
-        }
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Switch
-      // ══════════════════════════════════════════════
-      case 'switch':
-        final defaultSwitchVal =
-            (item['defaultValue'] ?? 'false').toString().toLowerCase() ==
-                'true';
-        buffer.writeln("  var ${name}Value = $defaultSwitchVal.obs;");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Checkbox
-      // ══════════════════════════════════════════════
-      case 'checkbox':
-        final defaultCheckVal =
-            (item['defaultValue'] ?? 'false').toString().toLowerCase() ==
-                'true';
-        buffer.writeln("  var ${name}Value = $defaultCheckVal.obs;");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  File
-      // ══════════════════════════════════════════════
-      case 'file':
-      case 'fileupload':
-      case 'file upload':
-        buffer.writeln("  var ${name}FileName = ''.obs;");
-        buffer.writeln("  var ${name}FilePath = ''.obs;");
-        extraMethods.addAll([
-          "  Future<void> pick${capitalLabel}File() async {",
-          "    // TODO: integrate file_picker package",
-          "    // final result = await FilePicker.platform.pickFiles();",
-          "    // if (result != null) {",
-          "    //   ${name}FileName.value = result.files.single.name;",
-          "    //   ${name}FilePath.value = result.files.single.path ?? '';",
-          "    // }",
-          "  }",
-          "",
-        ]);
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Image
-      // ══════════════════════════════════════════════
-      case 'image':
-        buffer.writeln("  var ${name}FileName = ''.obs;");
-        buffer.writeln("  var ${name}FilePath = ''.obs;");
-        extraMethods.addAll([
-          "  Future<void> pick${capitalLabel}Image() async {",
-          "    // TODO: integrate image_picker package",
-          "    // final picked = await ImagePicker().pickImage(source: ImageSource.gallery);",
-          "    // if (picked != null) {",
-          "    //   ${name}FileName.value = picked.name;",
-          "    //   ${name}FilePath.value = picked.path;",
-          "    // }",
-          "  }",
-          "",
-        ]);
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Multiselect
-      // ══════════════════════════════════════════════
-      case 'multiselect':
-      case 'multi select':
-      case 'multi_select':
-        buffer.writeln("  final ${name}Selected = <String>[].obs;");
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          final optLiterals = staticOpts.map((o) {
-            if (o is Map) {
-              final v = (o['value'] ?? o['key'] ?? o['title'] ?? '').toString().replaceAll("'", "\\'");
-              return "'$v'";
-            }
-            return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
-          }).join(', ');
-          buffer.writeln(
-              "  final ${name}Options = <String>[$optLiterals];");
-        } else {
-          buffer.writeln("  final ${name}Options = <String>[];");
-        }
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Slider
-      // ══════════════════════════════════════════════
-      case 'slider':
-      case 'range slider':
-        final sliderDefault =
-            (item['defaultValue'] as num?)?.toDouble() ??
-            (item['minValue'] as num?)?.toDouble() ??
-            0.0;
-        buffer.writeln(
-            "  var ${name}Value = $sliderDefault.obs;");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Star Rating
-      // ══════════════════════════════════════════════
-      case 'starrating':
-      case 'rating':
-      case 'star rating':
-        buffer.writeln("  var ${name}Value = 0.0.obs;");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Grid / Table
-      // ══════════════════════════════════════════════
-      case 'grid':
-      case 'table':
-      case 'table/grid':
-      case 'table grid':
-      case 'table_grid':
-        buffer.writeln(
-            "  final ${name}Rows = <Map<String, dynamic>>[].obs;");
-        
-        final columns = item['componentConfig']?['columns'] as List?;
-        if (columns != null) {
-          for (final col in columns) {
-            if (col is Map) {
-              final colType = col['type'] ?? 'text';
-              if (colType == 'text' || colType == 'number') {
-                buffer.writeln("  // Column ${col['fieldId']} inline editing bound");
+    // ---------- Dropdown (static or API via repository) ----------
+    else if (type == 'dropdown' || type == 'api_dropdown') {
+      if (!isApiDropdown && staticOpts != null && staticOpts.isNotEmpty) {
+        // Static dropdown
+        final literals = staticOpts.map((o) {
+          if (o is Map) {
+            final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            return "DropdownItem(key: '$k', value: '$v')";
+          }
+          final val = o?.toString().replaceAll("'", "\\'") ?? '';
+          return "DropdownItem(key: '$val', value: '$val')";
+        }).join(', ');
+        buffer.writeln("  var selected$pascalName = Rxn<DropdownItem>();");
+        buffer
+            .writeln("  final ${name}Options = <DropdownItem>[$literals].obs;");
+      } else if (isApiDropdown) {
+        // API dropdown – call repository method
+        var apidata = item['dropdowndata'];
+        String? dropdownmodel = (item['modelName']?.toString());
+        if (dropdownmodel == null || dropdownmodel.isEmpty) {
+          if (apidata is Map<String, dynamic>) {
+            for (final entry in apidata.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+                dropdownmodel = '${capitalize(singularize(entry.key))}Model';
+                break;
               }
             }
           }
         }
-        
+        dropdownmodel ??= '${pascalName}Model';
+
+        buffer.writeln("  var ${name}Options = <$dropdownmodel>[].obs;");
+        buffer.writeln("  var selected$pascalName = Rxn<$dropdownmodel>();");
+        buffer.writeln("  var isLoading$pascalName = false.obs;");
+        dropdownInitCalls.add("    load${pascalName}Options(),");
         extraMethods.addAll([
-          "  void add${capitalLabel}Row() {",
-          "    ${name}Rows.add({});",
-          "  }",
-          "",
-          "  void update${capitalLabel}Cell(int index, String key, dynamic value) {",
-          "    if (index >= 0 && index < ${name}Rows.length) {",
-          "      final row = Map<String, dynamic>.from(${name}Rows[index]);",
-          "      row[key] = value;",
-          "      ${name}Rows[index] = row;",
-          "    }",
-          "  }",
-          "",
-          "  void delete${capitalLabel}Row(int index) {",
-          "    if (index >= 0 && index < ${name}Rows.length) {",
-          "      ${name}Rows.removeAt(index);",
+          "  Future<void> load${pascalName}Options() async {",
+          "    if (isLoading$pascalName.value) return;",
+          "    isLoading$pascalName.value = true;",
+          "    try {",
+          "      final data = await repository.get$pascalName();",
+          "      ${name}Options.value = data;",
+          "    } catch (e) {",
+          "      Get.snackbar('Error', 'Could not load $pascalName: \$e');",
+          "    } finally {",
+          "      isLoading$pascalName.value = false;",
           "    }",
           "  }",
           "",
         ]);
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Repeater
-      // ══════════════════════════════════════════════
-      case 'repeater':
-        buffer.writeln("  final ${name}Items = <dynamic>[].obs;");
-        extraMethods.addAll([
-          "  void add${capitalLabel}Item() {",
-          "    ${name}Items.add({});",
-          "    // TODO: populate item with repeater sub-fields",
-          "  }",
-          "",
-          "  void remove${capitalLabel}Item(int index) {",
-          "    if (index >= 0 && index < ${name}Items.length) {",
-          "      ${name}Items.removeAt(index);",
-          "    }",
-          "  }",
-          "",
-        ]);
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Timeline
-      // ══════════════════════════════════════════════
-      case 'timeline':
-        final timelineList = (item['items'] as List?) ?? (item['componentConfig']?['items'] as List?) ?? staticOpts ?? [];
-        final timelineSteps = timelineList.isNotEmpty
-            ? timelineList.map((o) {
-                if (o is Map) {
-                  return "'${(o['title'] ?? o['value'] ?? o['label'] ?? '').toString().replaceAll("'", "\\'")}'";
-                }
-                return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
-              }).join(', ')
-            : "'Step 1', 'Step 2', 'Step 3'";
+      }
+    }
+    // ---------- Radio ----------
+    else if (type == 'radio' || type == 'radio buttons') {
+      if (staticOpts != null && staticOpts.isNotEmpty) {
+        final formattedOptions = staticOpts.map((o) {
+          if (o is Map) {
+            final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            return "RadioOption<String>(value: '$k', label: '$v')";
+          }
+          final val = o?.toString().replaceAll("'", "\\'") ?? '';
+          return "RadioOption<String>(value: '$val', label: '$val')";
+        }).join(', ');
+        buffer.writeln("  var selected$pascalName = ''.obs;");
         buffer.writeln(
-            "  final ${name}Steps = <dynamic>[$timelineSteps].obs;");
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Autocomplete
-      // ══════════════════════════════════════════════
-      case 'autocomplete':
-        buffer.writeln("  var selected${capitalLabel}Text = ''.obs;");
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          final optLiterals = staticOpts.map((o) {
-            if (o is Map) {
-              final v = (o['value'] ?? o['key'] ?? o['title'] ?? '').toString().replaceAll("'", "\\'");
-              return "'$v'";
-            }
-            return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
-          }).join(', ');
-          buffer.writeln(
-              "  final ${name}Options = <String>[$optLiterals];");
-        } else {
-          buffer.writeln("  final ${name}Options = <String>[];");
-        }
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Signature
-      // ══════════════════════════════════════════════
-      case 'signature':
-        buffer.writeln("  var ${name}Signed = false.obs;");
-        buffer.writeln("  var ${name}Data = ''.obs;");
-        extraMethods.addAll([
-          "  Future<void> capture${capitalLabel}Signature() async {",
-          "    // TODO: open signature pad and capture result",
-          "    // ${name}Data.value = signatureBytes;",
-          "    // ${name}Signed.value = true;",
-          "  }",
-          "",
-        ]);
-        break;
-
-      // ══════════════════════════════════════════════
-      //  Layout / Static — no state needed
-      // ══════════════════════════════════════════════
-      case 'label':
-      case 'divider':
-      case 'section':
-      case 'card':
-      case 'tabs':
-      case 'accordion':
-      case 'hidden':
-      case 'row':
-        break;
-
-      case 'formula':
-        buffer.writeln("  var $name = ''.obs; // Calculated formula value");
-        break;
-
-      default:
-        buffer.writeln("  var $name = ''.obs;");
+            "  final ${name}Options = <RadioOption<String>>[$formattedOptions];");
+      } else {
+        buffer.writeln("  var selected$pascalName = ''.obs;");
+        buffer.writeln("  final ${name}Options = <RadioOption<String>>[];");
+      }
+    }
+    // ---------- Switch ----------
+    else if (type == 'switch') {
+      final defaultValue =
+          (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
+      buffer.writeln("  var ${name}Value = $defaultValue.obs;");
+    }
+    // ---------- Checkbox ----------
+    else if (type == 'checkbox') {
+      final defaultValue =
+          (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
+      buffer.writeln("  var ${name}Value = $defaultValue.obs;");
+    }
+    // ---------- File / Image ----------
+    else if (type == 'file' ||
+        type == 'fileupload' ||
+        type == 'file upload' ||
+        type == 'image') {
+      buffer.writeln("  var ${name}FileName = ''.obs;");
+      buffer.writeln("  var ${name}FilePath = ''.obs;");
+      extraMethods.addAll([
+        "  Future<void> pick$pascalName() async {",
+        "    // TODO: integrate file_picker or image_picker",
+        "  }",
+        "",
+      ]);
+    }
+    // ---------- Multi‑select ----------
+    else if (type == 'multiselect' ||
+        type == 'multi select' ||
+        type == 'multi_select') {
+      buffer.writeln("  final ${name}Selected = <String>[].obs;");
+      if (staticOpts != null && staticOpts.isNotEmpty) {
+        final optLiterals = staticOpts.map((o) {
+          if (o is Map) {
+            final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            return "'$v'";
+          }
+          return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
+        }).join(', ');
+        buffer.writeln("  final ${name}Options = <String>[$optLiterals];");
+      } else {
+        buffer.writeln("  final ${name}Options = <String>[];");
+      }
+    }
+    // ---------- Slider ----------
+    else if (type == 'slider' || type == 'range slider') {
+      final defaultValue = (item['defaultValue'] as num?)?.toDouble() ??
+          (item['minValue'] as num?)?.toDouble() ??
+          0.0;
+      buffer.writeln("  var ${name}Value = $defaultValue.obs;");
+    }
+    // ---------- Star Rating ----------
+    else if (type == 'starrating' ||
+        type == 'rating' ||
+        type == 'star rating') {
+      buffer.writeln("  var ${name}Value = 0.0.obs;");
+    }
+    // ---------- Grid / Table ----------
+    else if (type == 'grid' ||
+        type == 'table' ||
+        type == 'table/grid' ||
+        type == 'table grid' ||
+        type == 'table_grid') {
+      buffer.writeln("  final ${name}Rows = <Map<String, dynamic>>[].obs;");
+      extraMethods.addAll([
+        "  void add${pascalName}Row() { ${name}Rows.add({}); }",
+        "  void update${pascalName}Cell(int index, String key, dynamic value) {",
+        "    if (index >= 0 && index < ${name}Rows.length) {",
+        "      final row = Map<String, dynamic>.from(${name}Rows[index]);",
+        "      row[key] = value;",
+        "      ${name}Rows[index] = row;",
+        "    }",
+        "  }",
+        "  void delete${pascalName}Row(int index) {",
+        "    if (index >= 0 && index < ${name}Rows.length) ${name}Rows.removeAt(index);",
+        "  }",
+        "",
+      ]);
+    }
+    // ---------- Repeater ----------
+    else if (type == 'repeater') {
+      buffer.writeln("  final ${name}Items = <dynamic>[].obs;");
+      extraMethods.addAll([
+        "  void add${pascalName}Item() { ${name}Items.add({}); }",
+        "  void remove${pascalName}Item(int index) {",
+        "    if (index >= 0 && index < ${name}Items.length) ${name}Items.removeAt(index);",
+        "  }",
+        "",
+      ]);
+    }
+    // ---------- Autocomplete ----------
+    else if (type == 'autocomplete') {
+      buffer.writeln("  var selected${pascalName}Text = ''.obs;");
+      if (staticOpts != null && staticOpts.isNotEmpty) {
+        final optLiterals = staticOpts.map((o) {
+          if (o is Map) {
+            final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
+                .toString()
+                .replaceAll("'", "\\'");
+            return "'$v'";
+          }
+          return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
+        }).join(', ');
+        buffer.writeln("  final ${name}Options = <String>[$optLiterals];");
+      } else {
+        buffer.writeln("  final ${name}Options = <String>[];");
+      }
+    }
+    // ---------- Signature ----------
+    else if (type == 'signature') {
+      buffer.writeln("  var ${name}Signed = false.obs;");
+      buffer.writeln("  var ${name}Data = ''.obs;");
+      extraMethods.addAll([
+        "  Future<void> capture${pascalName}Signature() async {",
+        "    // TODO: open signature pad",
+        "  }",
+        "",
+      ]);
+    }
+    // ---------- Formula ----------
+    else if (type == 'formula') {
+      buffer.writeln("  var $name = ''.obs;");
+    }
+    // Layout types – no state
+    else if (['label', 'divider', 'section', 'card', 'tabs', 'accordion', 'hidden', 'row']
+        .contains(type)) {
+      // do nothing
+    }
+    // Default fallback
+    else {
+      buffer.writeln("  var $name = ''.obs;");
     }
   }
 
-  // ─── onInit ───────────────────────────────────────────────────
+  // -------------------------------------------------------------------
+  // onInit
+  // -------------------------------------------------------------------
   buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  void onInit() {");
   buffer.writeln("    super.onInit();");
-  if (dropdownInitCallsvariable.isNotEmpty) {
-    buffer.writeln("    loadDropdowns();");
+  if (dropdownInitCalls.isNotEmpty) {
+    buffer.writeln("    _loadAllDropdowns();");
   }
   buffer.writeln("  }");
   buffer.writeln();
 
-  // ─── loadDropdowns ────────────────────────────────────────────
-  if (dropdownInitCallsvariable.isNotEmpty) {
-    buffer.writeln("  Future<void> loadDropdowns() async {");
+  if (dropdownInitCalls.isNotEmpty) {
+    buffer.writeln("  Future<void> _loadAllDropdowns() async {");
     buffer.writeln("    isLoading.value = true;");
     buffer.writeln("    try {");
     buffer.writeln("      await Future.wait([");
-    for (final call in dropdownInitCallsvariable) {
+    for (var call in dropdownInitCalls) {
       buffer.writeln("        $call");
     }
     buffer.writeln("      ]);");
-    buffer.writeln("    } catch (e, st) {");
+    buffer.writeln("    } catch (e) {");
     buffer.writeln("      debugPrint('Error loading dropdowns: \$e');");
-    buffer.writeln("      debugPrintStack(stackTrace: st);");
     buffer.writeln("    } finally {");
     buffer.writeln("      isLoading.value = false;");
     buffer.writeln("    }");
     buffer.writeln("  }");
     buffer.writeln();
-    for (final line in dropdownInitCalls) {
-      buffer.writeln("  $line");
-    }
   }
 
-  // ─── Extra methods (file pickers, grid ops, etc.) ─────────────
   for (final line in extraMethods) {
     buffer.writeln("  $line");
   }
 
-  // ─── onClose ─────────────────────────────────────────────────
+  // -------------------------------------------------------------------
+  // onClose
+  // -------------------------------------------------------------------
   buffer.writeln("  @override");
   buffer.writeln("  void onClose() {");
   for (final item in flatFields) {
-    final rawId = (item['id'] ?? item['fieldId'] ?? item['label'] ?? 'field').toString().trim();
-    final name = camelCaseName(rawId);
-    final capitalLabel = pascalCaseName(rawId);
+    final name = getFieldName(item);
+    final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
+    final useStatic = (item['useStaticOptions'] == true);
+    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+        !useStatic &&
+        item['dropdownApiUrl'] != null;
 
     switch (type) {
       case 'text':
@@ -558,11 +448,16 @@ String generatecontrollerClass(
         break;
       case 'dropdown':
       case 'api_dropdown':
-        buffer.writeln("    selected$capitalLabel.value = null;");
+        if (isApiDropdown) {
+          buffer.writeln("    selected$pascalName.value = null;");
+          buffer.writeln("    ${name}Options.clear();");
+        } else {
+          buffer.writeln("    selected$pascalName.value = null;");
+        }
         break;
       case 'radio':
       case 'radio buttons':
-        buffer.writeln("    selected$capitalLabel.value = '';");
+        buffer.writeln("    selected$pascalName.value = '';");
         break;
       case 'switch':
       case 'checkbox':
@@ -598,7 +493,7 @@ String generatecontrollerClass(
         buffer.writeln("    ${name}Items.clear();");
         break;
       case 'autocomplete':
-        buffer.writeln("    selected${capitalLabel}Text.value = '';");
+        buffer.writeln("    selected${pascalName}Text.value = '';");
         break;
       case 'signature':
         buffer.writeln("    ${name}Signed.value = false;");
@@ -610,13 +505,18 @@ String generatecontrollerClass(
   buffer.writeln("  }");
   buffer.writeln();
 
-  // ─── clearForm ───────────────────────────────────────────────
+  // -------------------------------------------------------------------
+  // clearForm
+  // -------------------------------------------------------------------
   buffer.writeln("  void clearForm() {");
   for (final item in flatFields) {
-    final rawId = (item['id'] ?? item['fieldId'] ?? item['label'] ?? 'field').toString().trim();
-    final name = camelCaseName(rawId);
-    final capitalLabel = pascalCaseName(rawId);
+    final name = getFieldName(item);
+    final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
+    final useStatic = (item['useStaticOptions'] == true);
+    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+        !useStatic &&
+        item['dropdownApiUrl'] != null;
 
     switch (type) {
       case 'text':
@@ -640,11 +540,15 @@ String generatecontrollerClass(
         break;
       case 'dropdown':
       case 'api_dropdown':
-        buffer.writeln("    selected$capitalLabel.value = null;");
+        if (isApiDropdown) {
+          buffer.writeln("    selected$pascalName.value = null;");
+        } else {
+          buffer.writeln("    selected$pascalName.value = null;");
+        }
         break;
       case 'radio':
       case 'radio buttons':
-        buffer.writeln("    selected$capitalLabel.value = '';");
+        buffer.writeln("    selected$pascalName.value = '';");
         break;
       case 'switch':
       case 'checkbox':
@@ -683,7 +587,7 @@ String generatecontrollerClass(
         buffer.writeln("    ${name}Items.clear();");
         break;
       case 'autocomplete':
-        buffer.writeln("    selected${capitalLabel}Text.value = '';");
+        buffer.writeln("    selected${pascalName}Text.value = '';");
         break;
       case 'signature':
         buffer.writeln("    ${name}Signed.value = false;");
@@ -695,21 +599,4 @@ String generatecontrollerClass(
   buffer.writeln("}");
 
   return buffer.toString();
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────
-String capitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-String normalizeLabel(String label) =>
-    label.trim().replaceAll(RegExp(r'\s+'), '');
-
-String camelCaseName(String label) {
-  final n = normalizeLabel(label);
-  return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);
-}
-
-String pascalCaseName(String label) {
-  final n = normalizeLabel(label);
-  return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
 }

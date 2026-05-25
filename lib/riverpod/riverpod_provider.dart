@@ -8,76 +8,205 @@ String generateProviderInterface(
   final buffer = StringBuffer();
   final entityImports = <String>{};
 
-  final fields = configList
-      .expand((e) => e is Iterable ? e : [e])
-      .whereType<Map<String, dynamic>>();
+  // ─── Recursive flatten (same pattern as all other generators) ──
+  void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
+    if (source == null) return;
+    if (source is List) {
+      // ignore: curly_braces_in_flow_control_structures
+      for (final item in source) flattenFields(item, result);
+      return;
+    }
+    if (source is! Map<String, dynamic>) return;
 
-  for (final item in fields) {
-    final type = item['type']?.toString() ?? '';
-    final rawLabel = item['label']?.toString().trim() ?? '';
+    if (source.containsKey('steps')) {
+      flattenFields(source['steps'], result);
+      return;
+    }
+    if (source.containsKey('fields')) {
+      flattenFields(source['fields'], result);
+      return;
+    }
+    if (source.containsKey('type')) {
+      result.add(source);
+      flattenFields(source['nestedFields'], result);
+      final config = source['componentConfig'];
+      if (config is Map) {
+        flattenFields(config['fields'], result);
+        flattenFields(config['columns'], result);
+      }
+    }
+  }
+
+  // ✅ FIX 1: flattenFields instead of configList.expand
+  final flatFields = <Map<String, dynamic>>[];
+  flattenFields(configList, flatFields);
+
+  for (final item in flatFields) {
+    // ✅ FIX 2: lowercase type check
+    final type = (item['type']?.toString() ?? '').toLowerCase();
+    final rawLabel =
+        (item['label'] ?? item['id'] ?? item['fieldId'] ?? '')
+            .toString()
+            .trim();
     if (rawLabel.isEmpty) continue;
 
     final label = rawLabel.replaceAll(RegExp(r'\s+'), '');
     final capital = _capitalize(label);
 
+    // ✅ FIX 3: isApiDropdown guard — same logic as controller/view
+    final useStatic = item['useStaticOptions'] == true;
+    final hasApiUrl = item['dropdownApiUrl'] != null;
+    final staticOpts = (item['options'] as List<dynamic>?) ??
+        (item['staticOptions'] as List<dynamic>?);
+    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+        !useStatic &&
+        hasApiUrl;
+
     switch (type) {
-      case 'TextField':
+      case 'text':
+      case 'textfield':
+      case 'textarea':
+      case 'email':
+      case 'password':
+      case 'phone':
+      case 'otp':
         buffer.writeln(_textProvider(capital));
         break;
 
-      case 'Date':
-      case 'DateTime':
+      case 'number':
+      case 'integer':
+      case 'int':
+      case 'decimal':
+      case 'double':
+      case 'float':
+        buffer.writeln(_textProvider(capital));
+        break;
+
+      case 'date':
+      case 'datetime':
+      case 'date time':
+      case 'time':
         buffer.writeln(_dateProvider(capital));
         break;
 
-      case 'Checkbox':
-      case 'Switch':
+      case 'checkbox':
+      case 'switch':
         buffer.writeln(_boolProvider(capital));
         break;
 
-      case 'Dropdown':
-        final staticOptions = item['staticOptions'] as List<dynamic>?;
-        if (staticOptions != null && staticOptions.isNotEmpty) {
-          buffer.writeln(_staticDropdownProvider(capital, staticOptions));
-        } else {
-          // entityImports.add(
-          //     "import '../../domain/entity/${_toSnakeCase(label)}_entity.dart';");
-            entityImports.add("import '../../domain/entity/${_toSnakeCase(label)}_entity.dart';");
-
+      case 'dropdown':
+      case 'api_dropdown':
+        // ✅ FIX 4: check isApiDropdown FIRST — prevents static fallback
+        //           for dropdowns that have dummy options[] but also have a URL
+        if (isApiDropdown) {
+          final entityFile = _resolveEntityFile(item, rawLabel);
+          entityImports.add(
+              "import '../../domain/entity/${entityFile}_entity.dart';");
           buffer.writeln(_apiDropdownProvider(capital, item));
+        } else if (staticOpts != null && staticOpts.isNotEmpty) {
+          buffer.writeln(_staticDropdownProvider(capital, staticOpts));
+        } else {
+          // No URL, no static opts — still generate a basic text provider
+          buffer.writeln(_textProvider(capital));
         }
         break;
 
-      case 'Multiselect':
+      case 'multiselect':
+      case 'multi select':
+      case 'multi_select':
         buffer.writeln(_multiSelectProvider(capital));
         break;
 
-      case 'Slider':
+      case 'slider':
+      case 'range slider':
         buffer.writeln(_sliderProvider(capital, item));
+        break;
+
+      case 'file':
+      case 'fileupload':
+      case 'file upload':
+      case 'image':
+        buffer.writeln(_fileProvider(capital));
+        break;
+
+      case 'label':
+      case 'divider':
+      case 'section':
+      case 'card':
+      case 'tabs':
+      case 'accordion':
+      case 'hidden':
+      case 'row':
+        // Layout types — no provider needed
         break;
 
       default:
         buffer.writeln(_textProvider(capital));
     }
   }
-  final uniqueEntityFiles = <String>{};
 
-  for (final entityFile in uniqueEntityFiles) {
-    buffer.writeln(
-        "import '../../domain/entity/${entityFile}_entity.dart';");
-  }
+  // ─── Assemble final output ─────────────────────────────────────
   final full = StringBuffer();
-  full.writeln("import 'package:riverpod_annotation/riverpod_annotation.dart';");
+
+  // ✅ Riverpod 3.0: riverpod_annotation import is still correct
+  full.writeln(
+      "import 'package:riverpod_annotation/riverpod_annotation.dart';");
+
+  // ✅ FIX 5: entityImports is now correctly populated (was dead code before)
   for (final imp in entityImports) {
     full.writeln(imp);
   }
-   final fileNames = fileName.toLowerCase().replaceAll(" ", "_");
-     
-   
-  full.writeln("part '${fileNames}_provider.g.dart';\n");
+
+  final fileSnake = fileName.toLowerCase().replaceAll(' ', '_');
+  full.writeln("part '${fileSnake}_provider.g.dart';\n");
   full.write(buffer.toString());
 
   return full.toString();
+}
+
+// ─── Resolve entity file name from dropdowndata key or label ──────
+String _resolveEntityFile(Map<String, dynamic> item, String rawLabel) {
+  final dropdowndata = item['dropdowndata'];
+  if (dropdowndata is Map<String, dynamic>) {
+    for (final entry in dropdowndata.entries) {
+      final v = entry.value;
+      if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+        return _toSnakeCase(_singularize(entry.key)); // e.g. "posts" → "post"
+      }
+    }
+  }
+  return _toSnakeCase(rawLabel); // fallback to label
+}
+
+// ─── Resolve entity class name from dropdowndata key or label ─────
+String _resolveEntityClass(Map<String, dynamic> item, String capital) {
+  final dropdowndata = item['dropdowndata'];
+  if (dropdowndata is Map<String, dynamic>) {
+    for (final entry in dropdowndata.entries) {
+      final v = entry.value;
+      if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+        // e.g. "posts" → "PostEntity"
+        return '${_capitalize(_singularize(entry.key))}Entity';
+      }
+    }
+  }
+  return '${capital}Entity'; // fallback
+}
+
+// ─── Providers ────────────────────────────────────────────────────
+
+String _textProvider(String capital) {
+  // ✅ Riverpod 3.0: @riverpod on class, extends _$ClassName, no change needed
+  return '''
+@riverpod
+class $capital extends _\$$capital {
+  @override
+  String build() => '';
+
+  void set(String value) => state = value;
+  void clear() => state = '';
+}
+''';
 }
 
 String _dateProvider(String capital) {
@@ -93,7 +222,6 @@ class $capital extends _\$$capital {
 ''';
 }
 
-
 String _boolProvider(String capital) {
   return '''
 @riverpod
@@ -107,21 +235,29 @@ class $capital extends _\$$capital {
 ''';
 }
 
-String _textProvider(String capital) {
+String _fileProvider(String capital) {
   return '''
 @riverpod
 class $capital extends _\$$capital {
   @override
   String build() => '';
 
-  void set(String value) => state = value;
+  void set(String path) => state = path;
   void clear() => state = '';
 }
 ''';
 }
 
 String _staticDropdownProvider(String capital, List<dynamic> options) {
-  final list = options.map((e) => "'$e'").join(',');
+  final list = options.map((e) {
+    if (e is Map) {
+      final val = (e['value'] ?? e['key'] ?? e['label'] ?? e.toString())
+          .toString()
+          .replaceAll("'", "\\'");
+      return "'$val'";
+    }
+    return "'${e.toString().replaceAll("'", "\\'")}'";
+  }).join(', ');
 
   return '''
 @riverpod
@@ -138,84 +274,68 @@ class $capital extends _\$$capital {
 }
 
 String _apiDropdownProvider(String capital, Map<String, dynamic> item) {
-  final dropdowndata = item['dropdowndata'] as Map<String, dynamic>?;
+  // ✅ FIX 6: no more exception throwing — graceful fallback
+  final entityClass = _resolveEntityClass(item, capital);
 
-  if (dropdowndata == null || dropdowndata.isEmpty) {
-    throw Exception(
-      "API Dropdown '$capital' requires 'dropdowndata' in config."
-    );
+  // Find list key from dropdowndata
+  String listKey = 'data';
+  final dropdowndata = item['dropdowndata'];
+  if (dropdowndata is Map<String, dynamic>) {
+    for (final entry in dropdowndata.entries) {
+      if (entry.value is List) {
+        listKey = entry.key;
+        break;
+      }
+    }
   }
 
-  // Find JSON key that contains List
-  final listKey = dropdowndata.entries
-      .firstWhere(
-        (entry) => entry.value is List,
-        orElse: () => throw Exception(
-          "API Dropdown '$capital' requires a List inside 'dropdowndata'."
-        ),
-      )
-      .key;
-
-  // Convert json key -> Entity name
-  // posts -> PostEntity
-  final singular = listKey.endsWith('s')
-      ? listKey.substring(0, listKey.length - 1)
-      : listKey;
-
-  final entityName =
-      '${singular[0].toUpperCase()}${singular.substring(1)}Entity';
-
   final primaryKey =
-      item['dropdownkey']?.toString().trim().isNotEmpty == true
-          ? item['dropdownkey']
+      (item['dropdownkey']?.toString().trim().isNotEmpty == true)
+          ? item['dropdownkey'].toString()
           : 'id';
 
   final lower = _lowerFirst(capital);
 
+  // ✅ Riverpod 3.0:
+  //   - AsyncLoading() → const AsyncLoading()  (still valid in 3.0)
+  //   - AsyncValue.guard() still valid
+  //   - ref.invalidateSelf() preferred over state = AsyncLoading() in some cases
+  //     but guard pattern is still fully supported
   return '''
 @riverpod
 class ${capital}Dropdown extends _\$${capital}Dropdown {
   @override
-  List<$entityName> build() => const [];
+  List<$entityClass> build() => const [];
 
   void setFromResponse(dynamic response) {
-    List<$entityName> parsed = [];
+    List<$entityClass> parsed = [];
 
     if (response is Map<String, dynamic>) {
       final dynamicList = response['$listKey'];
-
       if (dynamicList is List) {
         parsed = dynamicList
             .whereType<Map<String, dynamic>>()
-            .map((e) => $entityName.fromJson(e))
+            .map((e) => $entityClass.fromJson(e))
             .toList();
       }
     }
-
     state = parsed;
   }
 
-  void setItems(List<$entityName> items) {
-    state = items;
-  }
+  void setItems(List<$entityClass> items) => state = items;
 
-  void clear() {
-    state = const [];
-  }
+  void clear() => state = const [];
 }
 
 @riverpod
 class Selected$capital extends _\$Selected$capital {
   @override
-  $entityName? build() => null;
+  $entityClass? build() => null;
 
-  void select($entityName value) {
-    state = value;
-  }
+  void select($entityClass value) => state = value;
 
   void selectById(int id) {
     final items = ref.read(${lower}DropdownProvider);
-
     try {
       state = items.firstWhere((e) => e.$primaryKey == id);
     } catch (_) {
@@ -223,83 +343,17 @@ class Selected$capital extends _\$Selected$capital {
     }
   }
 
-  void clear() {
-    state = null;
-  }
-}
-''';
-}
-
-
-/*
-String _apiDropdownProvider(String capital, Map<String, dynamic> item) {
-  final wrapperEntity = '${capital}Entity';
-
-  final listEntity =
-      item['listEntity']?.toString().trim().isNotEmpty == true
-          ? item['listEntity']
-          : 'PostEntity'; // default fallback
-
-  final primaryKey =
-      item['dropdownkey']?.toString().trim().isNotEmpty == true
-          ? item['dropdownkey']
-          : 'id';
-
-  final wrapperKey =
-      item['responseListKey']?.toString().trim().isNotEmpty == true
-          ? item['responseListKey']
-          : _lowerFirst(capital) + 's';
-
-  return '''
-@riverpod
-class ${capital}Dropdown extends _\$${capital}Dropdown {
-  @override
-  List<$listEntity> build() => [];
-
-  void setFromResponse(Map<String, dynamic> response) {
-    final wrapper = $wrapperEntity.fromJson(response);
-
-    state = wrapper.$wrapperKey ?? [];
-  }
-
-  void setItems(List<$listEntity> items) {
-    state = items;
-  }
-
-  void clear() => state = [];
-}
-
-@riverpod
-class Selected$capital extends _\$Selected$capital {
-  @override
-  $listEntity? build() => null;
-
-  void select($listEntity value) => state = value;
-
-  void selectById(int id) {
-    final items = ref.read(${_lowerFirst(capital)}DropdownProvider);
-
-    state = items.where((e) => e.$primaryKey == id).isNotEmpty
-        ? items.firstWhere((e) => e.$primaryKey == id)
-        : null;
-  }
-
   void clear() => state = null;
 }
 ''';
 }
-
-*/
-
-String _lowerFirst(String s) =>
-    s.isEmpty ? s : '${s[0].toLowerCase()}${s.substring(1)}';
 
 String _multiSelectProvider(String capital) {
   return '''
 @riverpod
 class $capital extends _\$$capital {
   @override
-  Set<String> build() => {};
+  Set<String> build() => const {};
 
   void toggle(String value) {
     if (state.contains(value)) {
@@ -309,15 +363,16 @@ class $capital extends _\$$capital {
     }
   }
 
-  void clear() => state = {};
+  void selectAll(List<String> values) => state = values.toSet();
+
+  void clear() => state = const {};
 }
 ''';
 }
 
-
 String _sliderProvider(String capital, Map<String, dynamic> item) {
-  final min = item['min'] ?? 0.0;
-  final max = item['max'] ?? 100.0;
+  final min = item['minValue'] ?? item['min'] ?? 0.0;
+  final max = item['maxValue'] ?? item['max'] ?? 100.0;
 
   return '''
 @riverpod
@@ -326,23 +381,38 @@ class $capital extends _\$$capital {
   double build() => $min;
 
   void set(double value) {
-    if (value >= $min && value <= $max) {
-      state = value;
-    }
+    if (value >= $min && value <= $max) state = value;
   }
 
   void reset() => state = $min;
 }
 ''';
 }
-String _toSnakeCase(String text) {
-  if (text.isEmpty) return '';
-  return text.trim().replaceAll(RegExp(r'\s+'), '_').toLowerCase();
+
+// ─── Helpers ──────────────────────────────────────────────────────
+String _toSnakeCase(String text) =>
+    text.trim().replaceAll(RegExp(r'\s+'), '_').toLowerCase();
+
+String _toPascalCase(String text) {
+  return text
+      .split(RegExp(r'\s+'))
+      .where((s) => s.isNotEmpty)
+      .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+      .join();
 }
 
+String _lowerFirst(String s) =>
+    s.isEmpty ? s : '${s[0].toLowerCase()}${s.substring(1)}';
 
 String _capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
-// String _toSnakeCase(String text) =>
-//     text.trim().replaceAll(RegExp(r'\s+'), '_').toLowerCase();
+String _singularize(String text) {
+  if (text.endsWith('ies')) {
+    return '${text.substring(0, text.length - 3)}y';
+  }
+  if (text.endsWith('s') && text.length > 1) {
+    return text.substring(0, text.length - 1);
+  }
+  return text;
+}
