@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:revojourneytryone/blocnew/revochamp_bloc_generator.dart';
 import '../../../../core/theme.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
@@ -64,7 +65,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final textController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: RevoTheme.cardBg,
         title: const Text("Import Journey Config JSON"),
         content: SizedBox(
@@ -92,7 +93,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Cancel"),
           ),
           ElevatedButton(
@@ -104,7 +105,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: const Text("Journey Config Imported successfully!"), backgroundColor: RevoTheme.success),
                   );
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: const Text("Invalid JSON structure!"), backgroundColor: RevoTheme.error),
@@ -320,7 +321,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
         bool riverpodSelected = true;
 
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (sbContext, setStateDialog) {
             final textStyle = GoogleFonts.inter(color: RevoTheme.textPrimary);
             final hasSelection = blocSelected || getxSelected || riverpodSelected;
 
@@ -398,45 +399,47 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text("Cancel", style: TextStyle(color: RevoTheme.textSecondary)),
                 ),
-                // ElevatedButton(
-                //   onPressed: !hasSelection
-                //       ? null
-                //       : () {
-                //           Navigator.pop(dialogContext);
-                //           final architectures = <Architecture>{
-                //             if (blocSelected) Architecture.bloc,
-                //             if (getxSelected) Architecture.getx,
-                //             if (riverpodSelected) Architecture.riverpod,
-                //           };
+                ElevatedButton(
+                  onPressed: !hasSelection
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                          final architectures = <Architecture>{
+                            if (blocSelected) Architecture.bloc,
+                            if (getxSelected) Architecture.getx,
+                            if (riverpodSelected) Architecture.riverpod,
+                          };
 
-                //           try {
-                //             generateAndSaveAllFiles(
-                //               journeyConfig: journeyConfig,
-                //               architectures: architectures,
-                //             );
+                          try {
+                            generateAndSaveAllFiles(
+                              journeyConfig: journeyConfig,
+                              architectures: architectures,
+                            );
 
-                //             ScaffoldMessenger.of(context).showSnackBar(
-                //               const SnackBar(
-                //                 content: Text("✅ Code generation started — select your project folder!"),
-                //                 backgroundColor: Colors.green,
-                //                 duration: Duration(seconds: 4),
-                //               ),
-                //             );
-                //           } catch (e, stack) {
-                //             debugPrint("Generation error: $e\n$stack");
-                //             ScaffoldMessenger.of(context).showSnackBar(
-                //               SnackBar(
-                //                 content: Text("Generation error: $e"),
-                //                 backgroundColor: Colors.redAccent,
-                //               ),
-                //             );
-                //           }
-                //         },
-                //   style: ElevatedButton.styleFrom(
-                //     backgroundColor: RevoTheme.primary,
-                //   ),
-                //   child: const Text("Generate"),
-                // ),
+                  if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("✅ Code generation started — select your project folder!"),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 4),
+                              ),
+                            );
+                          } catch (e, stack) {
+                            debugPrint("Generation error: $e\n$stack");
+                  if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Generation error: $e"),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RevoTheme.primary,
+                  ),
+                  child: const Text("Generate"),
+                ),
           
               ],
             );

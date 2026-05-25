@@ -25,34 +25,29 @@ void saveRepositoryFile(
   String? modelName,
   List<Map<String, String>>? logicalFiles,
 ) {
-  // final fieldJson =
-  //     fieldJsonRaw?.map((e) => Map<String, dynamic>.from(e)).toList();
-  final fieldJson =
-      fieldJsonRaw
-          .map((e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
-          .toList();
-  String baseName = screenName!;
-  String className = '$screenName${modelName!}';
-  String fileName = '${screenName}_$modelName';
+  final fieldJson = fieldJsonRaw.map((e) => Map<String, dynamic>.from(e)).toList();
 
-  // final subfolder = 'repository';
-  String repgenerated;
-  repgenerated = generaterepositoryClass(className, fieldJson, fileName);
-  String viewgenerated;
+  String baseName = screenName ?? 'unknown';
+  String safeModelName = modelName ?? '';
+  String className = '$baseName$safeModelName';
+  String fileName = '${baseName}_$safeModelName';
 
-  viewgenerated = generateviewClass(
-    '$screenName$modelName',
+  logicalFiles ??= [];
+
+  String repgenerated = generaterepositoryClass(className, fieldJson, fileName);
+  String viewgenerated = generateviewClass(
+    className,
     fieldJson,
     fileName,
   );
-  String bingenerated;
+  String bingenerated = generateBindingClass(
+    className, 
+    fieldJson.isNotEmpty ? fieldJson.first : <String, dynamic>{}, 
+    fileName,
+  );
+  String congenerated = generatecontrollerClass(className, fieldJson, fileName);
 
-  bingenerated = generatebindingClass(className, fieldJson[0], fileName);
-  String congenerated;
-
-  congenerated = generatecontrollerClass(className, fieldJson, fileName);
-
-  logicalFiles?.addAll([
+  logicalFiles.addAll([
     {
       "layer": "bindings",
       "textContent": bingenerated,
@@ -77,10 +72,9 @@ void saveRepositoryFile(
 
   List<Map<String, String>> fileDataArray = [];
 
-  for (int i = 0; i < logicalFiles!.length; i++) {
+  for (int i = 0; i < logicalFiles.length; i++) {
     final item = logicalFiles[i];
     String folderPath = "lib/features/$baseName/${item['layer']}";
-    // String fileName = "file$i.dart"; // file0.txt, file1.txt, etc.
 
     fileDataArray.add({
       "folderPath": folderPath,
