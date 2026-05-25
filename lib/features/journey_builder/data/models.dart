@@ -177,6 +177,23 @@ class JourneyField {
   String? textCapitalization;
   String? dropdownListKey;
   Map<String, dynamic>? componentConfig;
+  List<JourneyField>? nestedFields;
+  String? groupId;
+  String? groupLabel;
+  String? sectionId;
+  bool repeatableGroup;
+  Map<String, dynamic>? repeatConfig;
+  List<Map<String, dynamic>>? conditionalValidations;
+  String? formula;
+  String? expression;
+  Map<String, dynamic>? asyncValidation;
+  String? dependsOn;
+  Map<String, dynamic>? cascadeConfig;
+  Map<String, dynamic>? localization;
+  String? defaultValueExpression;
+  List<String>? visibleForRoles;
+  List<String>? editableForRoles;
+  Map<String, dynamic>? roleVisibility;
 
   JourneyField({
     required this.id,
@@ -218,6 +235,23 @@ class JourneyField {
     this.textCapitalization,
     this.dropdownListKey,
     this.componentConfig,
+    this.nestedFields,
+    this.groupId,
+    this.groupLabel,
+    this.sectionId,
+    this.repeatableGroup = false,
+    this.repeatConfig,
+    this.conditionalValidations,
+    this.formula,
+    this.expression,
+    this.asyncValidation,
+    this.dependsOn,
+    this.cascadeConfig,
+    this.localization,
+    this.defaultValueExpression,
+    this.visibleForRoles,
+    this.editableForRoles,
+    this.roleVisibility,
   });
 
   factory JourneyField.fromJson(Map<String, dynamic> json) {
@@ -233,6 +267,27 @@ class JourneyField {
           });
         }
       }
+    }
+
+    List<Map<String, dynamic>>? parseMapList(dynamic value) {
+      if (value is! List) return null;
+      return value
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
+
+    List<String>? parseStringList(dynamic value) {
+      if (value is! List) return null;
+      return value.map((item) => item.toString()).toList();
+    }
+
+    List<JourneyField>? parseNestedFields(dynamic value) {
+      if (value is! List) return null;
+      return value
+          .whereType<Map>()
+          .map((item) => JourneyField.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
     }
 
     return JourneyField(
@@ -262,8 +317,8 @@ class JourneyField {
       dropdownApiMethod: json['dropdownApiMethod']?.toString(),
       dropdownApiHeaders: json['dropdownApiHeaders'] != null ? Map<String, dynamic>.from(json['dropdownApiHeaders']) : null,
       dropdownApiBody: json['dropdownApiBody']?.toString(),
-      dropdownkey: json['dropdownkey']?.toString(),
-      dropdownValue: json['dropdownValue']?.toString(),
+      dropdownkey: json['dropdownkey']?.toString() ?? json['dropdownKey']?.toString() ?? json['dropdownValueKey']?.toString(),
+      dropdownValue: json['dropdownValue']?.toString() ?? json['dropdownLabelKey']?.toString(),
       // dropdowndata: json['dropdowndata'],
       // Safe — normalize immediately at parse time
 dropdowndata: json['dropdowndata'] is List
@@ -283,6 +338,23 @@ dropdowndata: json['dropdowndata'] is List
       textCapitalization: json['textCapitalization']?.toString(),
       dropdownListKey: json['dropdownListKey']?.toString() ?? json['dropdownApiResponseKey']?.toString() ?? json['responseListKey']?.toString(),
       componentConfig: json['componentConfig'] != null ? Map<String, dynamic>.from(json['componentConfig']) : null,
+      nestedFields: parseNestedFields(json['nestedFields'] ?? json['children'] ?? json['fields']),
+      groupId: json['groupId']?.toString(),
+      groupLabel: json['groupLabel']?.toString(),
+      sectionId: json['sectionId']?.toString(),
+      repeatableGroup: json['repeatableGroup'] == true,
+      repeatConfig: json['repeatConfig'] != null ? Map<String, dynamic>.from(json['repeatConfig']) : null,
+      conditionalValidations: parseMapList(json['conditionalValidations']),
+      formula: json['formula']?.toString(),
+      expression: json['expression']?.toString(),
+      asyncValidation: json['asyncValidation'] != null ? Map<String, dynamic>.from(json['asyncValidation']) : null,
+      dependsOn: json['dependsOn']?.toString(),
+      cascadeConfig: json['cascadeConfig'] != null ? Map<String, dynamic>.from(json['cascadeConfig']) : null,
+      localization: json['localization'] != null ? Map<String, dynamic>.from(json['localization']) : null,
+      defaultValueExpression: json['defaultValueExpression']?.toString() ?? json['dynamicDefaultValue']?.toString(),
+      visibleForRoles: parseStringList(json['visibleForRoles']),
+      editableForRoles: parseStringList(json['editableForRoles']),
+      roleVisibility: json['roleVisibility'] != null ? Map<String, dynamic>.from(json['roleVisibility']) : null,
     );
   }
 
@@ -314,8 +386,15 @@ dropdowndata: json['dropdowndata'] is List
       if (dropdownApiMethod != null) 'dropdownApiMethod': dropdownApiMethod,
       if (dropdownApiHeaders != null) 'dropdownApiHeaders': dropdownApiHeaders,
       if (dropdownApiBody != null) 'dropdownApiBody': dropdownApiBody,
-      if (dropdownkey != null) 'dropdownkey': dropdownkey,
-      if (dropdownValue != null) 'dropdownValue': dropdownValue,
+      if (dropdownkey != null) ...{
+        'dropdownkey': dropdownkey,
+        'dropdownKey': dropdownkey,
+        'dropdownValueKey': dropdownkey,
+      },
+      if (dropdownValue != null) ...{
+        'dropdownValue': dropdownValue,
+        'dropdownLabelKey': dropdownValue,
+      },
       if (dropdowndata != null) 'dropdowndata': dropdowndata,
       if (dropdownApiResponseKey != null) 'dropdownApiResponseKey': dropdownApiResponseKey,
       if (validationPattern != null) 'validationPattern': validationPattern,
@@ -326,8 +405,28 @@ dropdowndata: json['dropdowndata'] is List
       if (keyboardType != null) 'keyboardType': keyboardType,
       if (textInputAction != null) 'textInputAction': textInputAction,
       if (textCapitalization != null) 'textCapitalization': textCapitalization,
-      if (dropdownListKey != null) 'dropdownListKey': dropdownListKey,
+      if (dropdownListKey != null) ...{
+        'dropdownListKey': dropdownListKey,
+        'responseListKey': dropdownListKey,
+      },
       if (componentConfig != null) 'componentConfig': componentConfig,
+      if (nestedFields != null) 'nestedFields': nestedFields!.map((field) => field.toJson()).toList(),
+      if (groupId != null) 'groupId': groupId,
+      if (groupLabel != null) 'groupLabel': groupLabel,
+      if (sectionId != null) 'sectionId': sectionId,
+      'repeatableGroup': repeatableGroup,
+      if (repeatConfig != null) 'repeatConfig': repeatConfig,
+      if (conditionalValidations != null) 'conditionalValidations': conditionalValidations,
+      if (formula != null) 'formula': formula,
+      if (expression != null) 'expression': expression,
+      if (asyncValidation != null) 'asyncValidation': asyncValidation,
+      if (dependsOn != null) 'dependsOn': dependsOn,
+      if (cascadeConfig != null) 'cascadeConfig': cascadeConfig,
+      if (localization != null) 'localization': localization,
+      if (defaultValueExpression != null) 'defaultValueExpression': defaultValueExpression,
+      if (visibleForRoles != null) 'visibleForRoles': visibleForRoles,
+      if (editableForRoles != null) 'editableForRoles': editableForRoles,
+      if (roleVisibility != null) 'roleVisibility': roleVisibility,
     };
   }
 
@@ -373,6 +472,23 @@ dropdowndata: json['dropdowndata'] is List
       textCapitalization: textCapitalization,
       dropdownListKey: dropdownListKey,
       componentConfig: componentConfig != null ? Map<String, dynamic>.from(componentConfig!) : null,
+      nestedFields: nestedFields?.map((field) => field.copy()).toList(),
+      groupId: groupId,
+      groupLabel: groupLabel,
+      sectionId: sectionId,
+      repeatableGroup: repeatableGroup,
+      repeatConfig: repeatConfig != null ? Map<String, dynamic>.from(repeatConfig!) : null,
+      conditionalValidations: conditionalValidations?.map((item) => Map<String, dynamic>.from(item)).toList(),
+      formula: formula,
+      expression: expression,
+      asyncValidation: asyncValidation != null ? Map<String, dynamic>.from(asyncValidation!) : null,
+      dependsOn: dependsOn,
+      cascadeConfig: cascadeConfig != null ? Map<String, dynamic>.from(cascadeConfig!) : null,
+      localization: localization != null ? Map<String, dynamic>.from(localization!) : null,
+      defaultValueExpression: defaultValueExpression,
+      visibleForRoles: visibleForRoles != null ? List<String>.from(visibleForRoles!) : null,
+      editableForRoles: editableForRoles != null ? List<String>.from(editableForRoles!) : null,
+      roleVisibility: roleVisibility != null ? Map<String, dynamic>.from(roleVisibility!) : null,
     );
   }
 
@@ -461,6 +577,9 @@ class StepValidation {
   String? validationUrl;
   String? dependentField;
   String? dependentValue;
+  Map<String, dynamic>? condition;
+  Map<String, dynamic>? request;
+  String? expression;
 
   StepValidation({
     required this.type,
@@ -470,6 +589,9 @@ class StepValidation {
     this.validationUrl,
     this.dependentField,
     this.dependentValue,
+    this.condition,
+    this.request,
+    this.expression,
   });
 
   factory StepValidation.fromJson(Map<String, dynamic> json) {
@@ -481,6 +603,9 @@ class StepValidation {
       validationUrl: json['validationUrl'],
       dependentField: json['dependentField'],
       dependentValue: json['dependentValue'],
+      condition: json['condition'] != null ? Map<String, dynamic>.from(json['condition']) : null,
+      request: json['request'] != null ? Map<String, dynamic>.from(json['request']) : null,
+      expression: json['expression']?.toString(),
     );
   }
 
@@ -493,6 +618,9 @@ class StepValidation {
       if (validationUrl != null) 'validationUrl': validationUrl,
       if (dependentField != null) 'dependentField': dependentField,
       if (dependentValue != null) 'dependentValue': dependentValue,
+      if (condition != null) 'condition': condition,
+      if (request != null) 'request': request,
+      if (expression != null) 'expression': expression,
     };
   }
 
@@ -505,6 +633,9 @@ class StepValidation {
       validationUrl: validationUrl,
       dependentField: dependentField,
       dependentValue: dependentValue,
+      condition: condition != null ? Map<String, dynamic>.from(condition!) : null,
+      request: request != null ? Map<String, dynamic>.from(request!) : null,
+      expression: expression,
     );
   }
 }

@@ -530,9 +530,42 @@ Map<String, dynamic>? _extractDropdownSample(Map<String, dynamic> field) {
   if (raw == null) return null;
   if (raw is List && raw.isNotEmpty && raw.first is Map)
     return Map<String, dynamic>.from(raw.first as Map);
-  if (raw is Map && raw.isNotEmpty)
+  if (raw is Map && raw.isNotEmpty) {
+    final listKey = (field['dropdownListKey'] ??
+            field['dropdownApiResponseKey'] ??
+            field['responseListKey'] ??
+            '')
+        .toString();
+    final candidates = [
+      _readPath(raw, listKey),
+      raw[listKey],
+      raw['data'],
+      raw['results'],
+      raw['items'],
+      raw['users'],
+      raw['options'],
+    ];
+    for (final candidate in candidates) {
+      if (candidate is List && candidate.isNotEmpty && candidate.first is Map) {
+        return Map<String, dynamic>.from(candidate.first as Map);
+      }
+    }
     return Map<String, dynamic>.from(raw);
+  }
   return null;
+}
+
+dynamic _readPath(Map<dynamic, dynamic> source, String path) {
+  if (path.trim().isEmpty) return null;
+  dynamic cursor = source;
+  for (final part in path.split('.')) {
+    if (cursor is Map) {
+      cursor = cursor[part];
+    } else {
+      return null;
+    }
+  }
+  return cursor;
 }
  // ── Helper functions ─────────────────────────────────────────────────────
   String toSnakeCase(String text) {

@@ -76,7 +76,36 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
       case 'switch':
         return {'label': 'Switch', 'defaultValue': 'false'};
       case 'table_grid':
-        return {'label': 'Table / Grid', 'placeholder': 'Manage tabular data'};
+        return {
+          'label': 'Table / Grid',
+          'placeholder': 'Manage tabular data',
+          'componentConfig': {
+            'columns': [
+              {'label': 'Name', 'fieldId': 'name', 'type': 'text', 'required': true, 'sortable': true, 'filterable': true, 'sticky': true},
+              {'label': 'Age', 'fieldId': 'age', 'type': 'number', 'required': false, 'sortable': true, 'filterable': true, 'sticky': false},
+            ],
+            'rowActions': ['edit', 'delete'],
+            'allowAddRow': true,
+            'allowDeleteRow': true,
+            'inlineEdit': true,
+            'bulkSelection': true,
+            'exportCsv': true,
+            'search': true,
+            'sorting': true,
+            'filtering': true,
+            'stickyColumns': true,
+            'dataSource': 'manual',
+            'gridApiUrl': '',
+            'gridApiMethod': 'GET',
+            'gridApiHeaders': {},
+            'gridApiBody': '',
+            'gridApiListKey': 'data',
+            'apiPagination': false,
+            'dynamicRowValidation': true,
+            'pagination': true,
+            'rowsPerPage': 10,
+          },
+        };
       case 'repeater':
         return {'label': 'Repeater', 'placeholder': 'Repeat a field group'};
       case 'timeline':
@@ -107,6 +136,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
       options: defaults['options'] as List<String>?,
       defaultValue: defaults['defaultValue'] as String?,
       keyboardType: defaults['keyboardType'] as String?,
+      componentConfig: defaults['componentConfig'] == null ? null : Map<String, dynamic>.from(defaults['componentConfig'] as Map),
     );
     ref.read(journeyConfigProvider.notifier).addFieldToStep(activeStepId, newField);
     ref.read(selectedFieldIdProvider.notifier).state = fieldId;
@@ -604,7 +634,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      _buildCanvasComponentPreview(field),
+                                      _buildCanvasComponentPreview(field, step.id),
                                       if (isSelected) ...[
                                         const SizedBox(height: 12),
                                         Divider(color: RevoTheme.cardBorder, height: 1),
@@ -667,7 +697,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildCanvasComponentPreview(JourneyField field) {
+  Widget _buildCanvasComponentPreview(JourneyField field, String stepId) {
     switch (field.type.toLowerCase()) {
       case 'dropdown':
       case 'api_dropdown':
@@ -758,13 +788,17 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
       case 'timeline':
         return _buildTimelinePreview(field);
       case 'section':
-        return _buildLayoutPreview(Icons.view_agenda_outlined, 'Section container');
+        return _buildNestedCanvasPreview(field, Icons.view_agenda_outlined, stepId);
       case 'card':
-        return _buildLayoutPreview(Icons.crop_square_rounded, 'Card container');
+        return _buildNestedCanvasPreview(field, Icons.crop_square_rounded, stepId);
       case 'tabs':
-        return _buildTabsPreview();
+        return _buildNestedTabsCanvasPreview(field, stepId);
       case 'accordion':
-        return _buildLayoutPreview(Icons.unfold_more_rounded, 'Expandable accordion item');
+        return _buildNestedCanvasPreview(field, Icons.unfold_more_rounded, stepId);
+      case 'row':
+        return _buildNestedRowCanvasPreview(field, stepId);
+      case 'formula':
+        return _buildPreviewBox(child: Text(field.formula ?? field.defaultValue ?? 'Calculated value', style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.primaryLight)));
       case 'divider':
         return Divider(color: RevoTheme.cardBorder);
       default:
@@ -817,6 +851,158 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
+  Widget _buildNestedCanvasPreview(JourneyField field, IconData icon, String stepId) {
+    final children = field.nestedFields ?? const <JourneyField>[];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: RevoTheme.primaryLight),
+              const SizedBox(width: 8),
+              Expanded(child: Text(field.label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: RevoTheme.textPrimary))),
+            ],
+          ),
+          if (children.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...children.take(6).map((child) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => ref.read(selectedFieldIdProvider.notifier).state = child.id,
+                          child: _buildCanvasComponentPreview(child, stepId),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 13, color: Colors.redAccent),
+                        onPressed: () => ref.read(journeyConfigProvider.notifier)
+                            .removeFieldFromNestedContainer(stepId, child.id),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+          // Drop zone — drag toolbox items directly into this container
+          DragTarget<String>(
+            onAcceptWithDetails: (details) {
+              final newFieldId = "field_${DateTime.now().millisecondsSinceEpoch}";
+              final defaults = _componentDefaults(details.data);
+              final newField = JourneyField(
+                id: newFieldId,
+                label: defaults['label'] as String,
+                type: details.data,
+                required: false,
+                placeholder: defaults['placeholder'] as String?,
+                options: defaults['options'] as List<String>?,
+                defaultValue: defaults['defaultValue'] as String?,
+                componentConfig: defaults['componentConfig'] == null
+                    ? null
+                    : Map<String, dynamic>.from(defaults['componentConfig'] as Map),
+              );
+              ref.read(journeyConfigProvider.notifier)
+                  .addFieldToNestedContainer(stepId, field.id, newField);
+            },
+            builder: (context, candidateData, _) {
+              final isOver = candidateData.isNotEmpty;
+              return Container(
+                height: 28,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  color: isOver
+                      ? RevoTheme.primary.withValues(alpha: 0.12)
+                      : RevoTheme.cardBg.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isOver ? RevoTheme.primaryLight : RevoTheme.cardBorder,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  isOver ? 'Drop here' : '+ drop field inside',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: isOver ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNestedRowCanvasPreview(JourneyField field, String stepId) {
+    final children = field.nestedFields ?? const <JourneyField>[];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: children.take(4).map((child) {
+        return SizedBox(
+          width: 180,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(child.label, style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => ref.read(selectedFieldIdProvider.notifier).state = child.id,
+                child: _buildCanvasComponentPreview(child, stepId),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildNestedTabsCanvasPreview(JourneyField field, String stepId) {
+    final tabs = field.nestedFields ?? const <JourneyField>[];
+    if (tabs.isEmpty) return _buildTabsPreview();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          children: tabs.map((tab) {
+            final selected = tab == tabs.first;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? RevoTheme.primary.withValues(alpha: 0.15) : RevoTheme.background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: selected ? RevoTheme.primaryLight : RevoTheme.cardBorder),
+              ),
+              child: Text(tab.label, style: GoogleFonts.inter(fontSize: 10, color: selected ? RevoTheme.primaryLight : RevoTheme.textSecondary)),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        if (tabs.first.nestedFields != null)
+          ...tabs.first.nestedFields!.take(3).map((child) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: InkWell(
+                  onTap: () => ref.read(selectedFieldIdProvider.notifier).state = child.id,
+                  child: _buildCanvasComponentPreview(child, stepId),
+                ),
+              )),
+      ],
+    );
+  }
+
   Map<String, dynamic> _componentConfig(JourneyField field) {
     return Map<String, dynamic>.from(field.componentConfig ?? {});
   }
@@ -835,9 +1021,13 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
 
   Widget _buildTableGridPreview(JourneyField field) {
     final columns = _configList(field, 'columns', [
-      {'label': '#'},
-      {'label': 'Column A'},
-      {'label': 'Action'},
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty)
+        ...field.nestedFields!.map((nested) => {'label': nested.label, 'fieldId': nested.id})
+      else ...[
+        {'label': '#'},
+        {'label': 'Column A'},
+        {'label': 'Action'},
+      ],
     ]).take(4).toList();
     return Container(
       decoration: BoxDecoration(
@@ -881,8 +1071,12 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   Widget _buildRepeaterPreview(JourneyField field) {
     final config = _componentConfig(field);
     final fields = _configList(field, 'fields', [
-      {'label': 'Name'},
-      {'label': 'Value'},
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty)
+        ...field.nestedFields!.map((nested) => {'label': nested.label, 'fieldId': nested.id})
+      else ...[
+        {'label': 'Name'},
+        {'label': 'Value'},
+      ],
     ]).take(3).toList();
     return Container(
       padding: const EdgeInsets.all(10),
@@ -1943,7 +2137,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildLivePreview(JourneyStep step, Map<String, String> formValues, JourneyConfig config) {
+  Widget _buildLivePreview(JourneyStep step, Map<String, dynamic> formValues, JourneyConfig config) {
     final activeStepId = ref.read(activeStepIdProvider);
     final activeStepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
 
@@ -2353,8 +2547,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildMobileFieldMockup(JourneyField field, Map<String, String> formValues) {
-    final value = formValues[field.id] ?? '';
+  Widget _buildMobileFieldMockup(JourneyField field, Map<String, dynamic> formValues) {
+    final value = formValues[field.id]?.toString() ?? '';
 
     switch (field.type.toLowerCase()) {
       case 'divider':
@@ -2581,29 +2775,22 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
         return _buildCompactTimelinePreview(field);
 
       case 'section':
-        return _buildCompactComponentShell(Icons.view_agenda_outlined, "Section container");
+        return _buildCompactNestedPreview(field, Icons.view_agenda_outlined);
 
       case 'card':
-        return _buildCompactComponentShell(Icons.crop_square_rounded, "Card container");
+        return _buildCompactNestedPreview(field, Icons.crop_square_rounded);
 
       case 'tabs':
-        return Wrap(
-          spacing: 4,
-          children: ['Tab 1', 'Tab 2'].map((tab) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: tab == 'Tab 1' ? RevoTheme.primary.withValues(alpha: 0.18) : RevoTheme.background,
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: tab == 'Tab 1' ? RevoTheme.primaryLight : RevoTheme.cardBorder),
-              ),
-              child: Text(tab, style: TextStyle(fontSize: 8, color: tab == 'Tab 1' ? RevoTheme.primaryLight : RevoTheme.textSecondary)),
-            );
-          }).toList(),
-        );
+        return _buildCompactNestedTabsPreview(field);
 
       case 'accordion':
-        return _buildCompactComponentShell(Icons.unfold_more_rounded, "Accordion item");
+        return _buildCompactNestedPreview(field, Icons.unfold_more_rounded);
+
+      case 'row':
+        return _buildCompactNestedRowPreview(field);
+
+      case 'formula':
+        return _buildCompactComponentShell(Icons.functions_rounded, field.formula ?? "Calculated value");
 
       case 'phone':
         return Row(
@@ -2702,11 +2889,79 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
+  Widget _buildCompactNestedPreview(JourneyField field, IconData icon) {
+    final children = field.nestedFields ?? const <JourneyField>[];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: RevoTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: RevoTheme.primaryLight),
+              const SizedBox(width: 8),
+              Expanded(child: Text(field.label, style: TextStyle(fontSize: 9, color: RevoTheme.textPrimary), overflow: TextOverflow.ellipsis)),
+            ],
+          ),
+          if (children.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...children.take(3).map((child) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _buildMobileFieldMockup(child, const {}),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactNestedRowPreview(JourneyField field) {
+    final children = field.nestedFields ?? const <JourneyField>[];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: children.take(3).map((child) {
+        return SizedBox(width: 120, child: _buildMobileFieldMockup(child, const {}));
+      }).toList(),
+    );
+  }
+
+  Widget _buildCompactNestedTabsPreview(JourneyField field) {
+    final tabs = field.nestedFields ?? const <JourneyField>[];
+    final labels = tabs.isEmpty ? ['Tab 1', 'Tab 2'] : tabs.map((tab) => tab.label).toList();
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: labels.map((tab) {
+        final selected = tab == labels.first;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? RevoTheme.primary.withValues(alpha: 0.18) : RevoTheme.background,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(color: selected ? RevoTheme.primaryLight : RevoTheme.cardBorder),
+          ),
+          child: Text(tab, style: TextStyle(fontSize: 8, color: selected ? RevoTheme.primaryLight : RevoTheme.textSecondary)),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildCompactTablePreview(JourneyField field) {
     final columns = _configList(field, 'columns', [
-      {'label': '#'},
-      {'label': 'Label'},
-      {'label': 'Act'},
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty)
+        ...field.nestedFields!.map((nested) => {'label': nested.label, 'fieldId': nested.id})
+      else ...[
+        {'label': '#'},
+        {'label': 'Label'},
+        {'label': 'Act'},
+      ],
     ]).take(3).toList();
     return Container(
       decoration: BoxDecoration(
@@ -2745,8 +3000,12 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   Widget _buildCompactRepeaterPreview(JourneyField field) {
     final config = _componentConfig(field);
     final fields = _configList(field, 'fields', [
-      {'label': 'Name'},
-      {'label': 'Value'},
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty)
+        ...field.nestedFields!.map((nested) => {'label': nested.label, 'fieldId': nested.id})
+      else ...[
+        {'label': 'Name'},
+        {'label': 'Value'},
+      ],
     ]).take(2).toList();
     return Container(
       padding: const EdgeInsets.all(10),

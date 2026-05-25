@@ -26,6 +26,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   bool _showStateFlags = false;
   bool _showValidations = false;
   bool _showDataOptions = false;
+  bool _showEnterpriseSettings = false;
   bool _showDataComponentSettings = true;
   bool _showLayoutComponentSettings = true;
 
@@ -113,10 +114,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     final stepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
     if (stepIndex != -1) {
       final step = config.steps[stepIndex];
-      final fieldIndex = step.fields.indexWhere((f) => f.id == selectedFieldId);
-      if (fieldIndex != -1) {
-        selectedField = step.fields[fieldIndex];
-      }
+      selectedField = _findFieldById(step.fields, selectedFieldId);
     }
 
     final isRadioOrSelectionOrDivider = selectedField?.type == 'radio' ||
@@ -424,6 +422,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       'table_grid',
                                       'repeater',
                                       'timeline',
+                                      'row',
+                                      'formula',
                                       'section',
                                       'card',
                                       'tabs',
@@ -585,6 +585,8 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
 
                         if (_isLayoutComponent(selectedField.type))
                           _buildLayoutComponentProperties(selectedField, activeStepId),
+
+                        _buildEnterpriseFieldProperties(selectedField, activeStepId),
 
                         if (!isRadioOrSelectionOrDivider)
                           _buildCollapsibleSection(
@@ -867,7 +869,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     maxLines: 4,
                                     onChanged: (val) {
                                       setState(() {
-                                        _testDataError = _validateJsonList(val);
+                                        _testDataError = _validateJsonResponseData(val);
                                       });
                                       if (_testDataError == null) {
                                         try {
@@ -878,8 +880,15 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           } else {
                                             final decoded = json.decode(val);
                                             if (decoded is List) {
-                                              final updatedList = decoded.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+                                              final updatedList = decoded.map((item) {
+                                                return item is Map ? Map<String, dynamic>.from(item) : item;
+                                              }).toList();
                                               final updated = selectedField!.copy()..dropdowndata = updatedList;
+                                              ref.read(journeyConfigProvider.notifier)
+                                                  .updateFieldInStep(activeStepId, selectedField.id, updated);
+                                            } else if (decoded is Map) {
+                                              final updatedMap = Map<String, dynamic>.from(decoded);
+                                              final updated = selectedField!.copy()..dropdowndata = updatedMap;
                                               ref.read(journeyConfigProvider.notifier)
                                                   .updateFieldInStep(activeStepId, selectedField.id, updated);
                                             }
@@ -1132,6 +1141,19 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     return const {'table_grid', 'repeater', 'timeline'}.contains(type);
   }
 
+  JourneyField? _findFieldById(List<JourneyField> fields, String? fieldId) {
+    if (fieldId == null) return null;
+    for (final field in fields) {
+      if (field.id == fieldId) return field;
+      final nested = field.nestedFields;
+      if (nested != null && nested.isNotEmpty) {
+        final match = _findFieldById(nested, fieldId);
+        if (match != null) return match;
+      }
+    }
+    return null;
+  }
+
   bool _isLayoutComponent(String type) {
     return const {'section', 'card', 'tabs', 'accordion'}.contains(type);
   }
@@ -1150,10 +1172,28 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           'allowEditRow': true,
           'allowDeleteRow': true,
           'allowViewRow': true,
+          'inlineEdit': true,
+          'bulkSelection': true,
+          'exportCsv': true,
+          'search': true,
+          'sorting': true,
+          'filtering': true,
+          'stickyColumns': true,
+          'dataSource': 'manual',
+          'gridApiUrl': '',
+          'gridApiMethod': 'GET',
+          'gridApiHeaders': {},
+          'gridApiBody': '',
+          'gridApiListKey': 'data',
+          'apiPagination': false,
+          'dynamicRowValidation': true,
+          'rowActions': ['view', 'edit', 'delete'],
           'minRows': 0,
           'maxRows': 10,
           'pagination': true,
           'rowsPerPage': 10,
+          'apiPageParam': 'page',
+          'apiPageSizeParam': 'limit',
           ...config,
         };
       case 'repeater':
@@ -1250,6 +1290,332 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     return fallback;
   }
 
+  Map<String, dynamic>? _tryJsonMap(String value) {
+    if (value.trim().isEmpty) return null;
+    final decoded = json.decode(value);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+  }
+
+  List<Map<String, dynamic>>? _tryJsonMapList(String value) {
+    if (value.trim().isEmpty) return null;
+    final decoded = json.decode(value);
+    if (decoded is! List) return null;
+    return decoded
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  List<String>? _csvToList(String value) {
+    final list = value
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    return list.isEmpty ? null : list;
+  }
+
+  void _updateEnterpriseField(JourneyField field, String activeStepId, void Function(JourneyField updated) mutate) {
+    final updated = field.copy();
+    mutate(updated);
+    ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
+  }
+
+  Widget _buildEnterpriseFieldProperties(JourneyField field, String activeStepId) {
+    return _buildCollapsibleSection(
+      title: "Enterprise Field Rules",
+      accentColor: RevoTheme.primaryLight,
+      icon: Icons.account_tree_outlined,
+      isExpanded: _showEnterpriseSettings,
+      onToggle: () => setState(() => _showEnterpriseSettings = !_showEnterpriseSettings),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _PropertyTextField(
+                label: "Group ID",
+                initialValue: field.groupId ?? '',
+                hint: "customerDetails",
+                onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.groupId = val.trim().isEmpty ? null : val.trim()),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PropertyTextField(
+                label: "Section ID",
+                initialValue: field.sectionId ?? '',
+                hint: "kyc",
+                onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.sectionId = val.trim().isEmpty ? null : val.trim()),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildCompactSwitchTile(
+          label: "Repeatable Group",
+          value: field.repeatableGroup,
+          onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.repeatableGroup = val),
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Formula / Calculated Value",
+          initialValue: field.formula ?? '',
+          hint: "sum(lineItems.amount)",
+          onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.formula = val.trim().isEmpty ? null : val.trim()),
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Dynamic Expression",
+          initialValue: field.expression ?? '',
+          hint: "age >= 18 && country == 'IN'",
+          onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.expression = val.trim().isEmpty ? null : val.trim()),
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Dynamic Default Expression",
+          initialValue: field.defaultValueExpression ?? '',
+          hint: "currentUser.email",
+          onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.defaultValueExpression = val.trim().isEmpty ? null : val.trim()),
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Depends On",
+          initialValue: field.dependsOn ?? '',
+          hint: "country",
+          onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.dependsOn = val.trim().isEmpty ? null : val.trim()),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _PropertyTextField(
+                label: "Visible Roles",
+                initialValue: field.visibleForRoles?.join(', ') ?? '',
+                hint: "admin, maker",
+                onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.visibleForRoles = _csvToList(val)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PropertyTextField(
+                label: "Editable Roles",
+                initialValue: field.editableForRoles?.join(', ') ?? '',
+                hint: "admin, checker",
+                onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.editableForRoles = _csvToList(val)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Async Validation JSON",
+          initialValue: field.asyncValidation == null ? '' : json.encode(field.asyncValidation),
+          hint: '{"url": "/validate-pan", "method": "POST"}',
+          maxLines: 3,
+          onChanged: (val) {
+            try {
+              final parsed = _tryJsonMap(val);
+              _updateEnterpriseField(field, activeStepId, (updated) => updated.asyncValidation = parsed);
+            } catch (_) {}
+          },
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Cascade Config JSON",
+          initialValue: field.cascadeConfig == null ? '' : json.encode(field.cascadeConfig),
+          hint: '{"parentField": "country", "param": "countryId"}',
+          maxLines: 3,
+          onChanged: (val) {
+            try {
+              final parsed = _tryJsonMap(val);
+              _updateEnterpriseField(field, activeStepId, (updated) => updated.cascadeConfig = parsed);
+            } catch (_) {}
+          },
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Localization JSON",
+          initialValue: field.localization == null ? '' : json.encode(field.localization),
+          hint: '{"en": {"label": "Name"}, "hi": {"label": "Naam"}}',
+          maxLines: 3,
+          onChanged: (val) {
+            try {
+              final parsed = _tryJsonMap(val);
+              _updateEnterpriseField(field, activeStepId, (updated) => updated.localization = parsed);
+            } catch (_) {}
+          },
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Conditional Validations JSON",
+          initialValue: field.conditionalValidations == null ? '' : json.encode(field.conditionalValidations),
+          hint: '[{"if": "age < 18", "type": "required", "message": "Guardian required"}]',
+          maxLines: 3,
+          onChanged: (val) {
+            try {
+              final parsed = _tryJsonMapList(val);
+              _updateEnterpriseField(field, activeStepId, (updated) => updated.conditionalValidations = parsed);
+            } catch (_) {}
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _testGridApiConnection(JourneyField field, String activeStepId) async {
+    final config = _componentConfig(field);
+    final urlText = config['gridApiUrl']?.toString().trim() ?? '';
+    if (urlText.isEmpty) {
+      setState(() {
+        _apiTestSuccess = false;
+        _apiTestResult = "Error: Grid API URL is required.";
+      });
+      return;
+    }
+
+    setState(() {
+      _testingApi = true;
+      _apiTestResult = null;
+    });
+
+    try {
+      final uri = _gridApiUri(urlText, config);
+      final method = (config['gridApiMethod']?.toString() ?? 'GET').toUpperCase();
+      final headers = _gridApiHeaders(config['gridApiHeaders']);
+      if (!headers.containsKey('Content-Type') && method != 'GET') {
+        headers['Content-Type'] = 'application/json';
+      }
+      final bodyText = config['gridApiBody']?.toString().trim() ?? '';
+      final body = bodyText.isEmpty ? null : bodyText;
+
+      http.Response response;
+      if (method == 'POST') {
+        response = await http.post(uri, headers: headers, body: body);
+      } else if (method == 'PUT') {
+        response = await http.put(uri, headers: headers, body: body);
+      } else if (method == 'DELETE') {
+        response = await http.delete(uri, headers: headers, body: body);
+      } else {
+        response = await http.get(uri, headers: headers);
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        setState(() {
+          _testingApi = false;
+          _apiTestSuccess = false;
+          _apiTestResult = "HTTP Error: Status ${response.statusCode}\nResponse: ${response.body}";
+        });
+        return;
+      }
+
+      final decoded = json.decode(response.body);
+      final rows = _extractGridRows(decoded, config['gridApiListKey']?.toString() ?? '');
+      final updatedConfig = {
+        ...config,
+        'gridApiSampleData': rows,
+        'dataSource': 'api',
+      };
+      final updated = field.copy()
+        ..api = true
+        ..dropdownApiUrl = urlText
+        ..dropdownApiMethod = method
+        ..dropdownApiHeaders = headers
+        ..dropdownApiBody = body
+        ..dropdownListKey = config['gridApiListKey']?.toString()
+        ..dropdowndata = rows
+        ..componentConfig = updatedConfig;
+      ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
+
+      setState(() {
+        _testingApi = false;
+        _apiTestSuccess = true;
+        _apiTestResult = "Connection successful!\nStatus: ${response.statusCode}\nParsed ${rows.length} grid row(s) and saved sample data.";
+      });
+    } catch (e) {
+      setState(() {
+        _testingApi = false;
+        _apiTestSuccess = false;
+        _apiTestResult = "Grid API test failed: ${e.toString()}";
+      });
+    }
+  }
+
+  void _submitGridApiConfig(JourneyField field, String activeStepId) {
+    final config = _componentConfig(field);
+    final sampleData = config['gridApiSampleData'];
+    final updated = field.copy()
+      ..api = true
+      ..dropdownApiUrl = config['gridApiUrl']?.toString()
+      ..dropdownApiMethod = config['gridApiMethod']?.toString()
+      ..dropdownApiHeaders = _gridApiHeaders(config['gridApiHeaders'])
+      ..dropdownApiBody = config['gridApiBody']?.toString()
+      ..dropdownListKey = config['gridApiListKey']?.toString()
+      ..dropdowndata = sampleData
+      ..componentConfig = {...config, 'dataSource': 'api'};
+    ref.read(journeyConfigProvider.notifier).updateFieldInStep(activeStepId, field.id, updated);
+    setState(() {
+      _apiTestSuccess = true;
+      _apiTestResult = "Grid API config submitted and saved for code generation.";
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Grid API config for '${field.label}' submitted."), backgroundColor: RevoTheme.secondary),
+    );
+  }
+
+  Uri _gridApiUri(String urlText, Map<String, dynamic> config) {
+    final uri = Uri.parse(urlText);
+    if (config['apiPagination'] != true) return uri;
+    final pageParam = config['apiPageParam']?.toString() ?? 'page';
+    final sizeParam = config['apiPageSizeParam']?.toString() ?? 'limit';
+    final rowsPerPage = config['rowsPerPage']?.toString() ?? '10';
+    return uri.replace(queryParameters: {
+      ...uri.queryParameters,
+      if (pageParam.isNotEmpty) pageParam: '1',
+      if (sizeParam.isNotEmpty) sizeParam: rowsPerPage,
+    });
+  }
+
+  Map<String, String> _gridApiHeaders(dynamic rawHeaders) {
+    final headers = <String, String>{};
+    if (rawHeaders is Map) {
+      rawHeaders.forEach((key, value) => headers[key.toString()] = value.toString());
+    }
+    return headers;
+  }
+
+  List<Map<String, dynamic>> _extractGridRows(dynamic decoded, String listKey) {
+    dynamic source = decoded;
+    if (decoded is Map && listKey.trim().isNotEmpty) {
+      source = _readJsonPath(decoded, listKey) ?? decoded[listKey];
+    }
+    if (source is! List && decoded is Map) {
+      for (final key in ['data', 'items', 'results', 'rows']) {
+        if (decoded[key] is List) {
+          source = decoded[key];
+          break;
+        }
+      }
+    }
+    if (source is! List) return <Map<String, dynamic>>[];
+    return source.map<Map<String, dynamic>>((item) {
+      if (item is Map) return Map<String, dynamic>.from(item);
+      return {'value': item.toString()};
+    }).toList();
+  }
+
+  dynamic _readJsonPath(dynamic source, String path) {
+    if (path.trim().isEmpty) return null;
+    dynamic cursor = source;
+    for (final part in path.split('.')) {
+      if (cursor is Map) {
+        cursor = cursor[part];
+      } else {
+        return null;
+      }
+    }
+    return cursor;
+  }
+
   Widget _buildDataComponentProperties(JourneyField field, String activeStepId) {
     switch (field.type) {
       case 'table_grid':
@@ -1285,7 +1651,15 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               onPressed: () {
                 final updatedColumns = List<Map<String, dynamic>>.from(columns);
                 final next = updatedColumns.length + 1;
-                updatedColumns.add({'label': 'Column $next', 'fieldId': 'column$next', 'type': 'text', 'required': false});
+                updatedColumns.add({
+                  'label': 'Column $next',
+                  'fieldId': 'column$next',
+                  'type': 'text',
+                  'required': false,
+                  'sortable': true,
+                  'filterable': true,
+                  'sticky': false,
+                });
                 _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
               },
               icon: const Icon(Icons.add_rounded, size: 14),
@@ -1361,6 +1735,18 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                         },
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildCompactSwitchTile(
+                        label: "Sticky",
+                        value: column['sticky'] == true,
+                        onChanged: (val) {
+                          final updatedColumns = List<Map<String, dynamic>>.from(columns);
+                          updatedColumns[index] = {...column, 'sticky': val};
+                          _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
+                        },
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
                       onPressed: columns.length <= 1
@@ -1386,10 +1772,17 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           childAspectRatio: 2.8,
           children: [
             _buildCompactSwitchTile(label: "Allow Add", value: _boolConfig(config, 'allowAddRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowAddRow', val)),
-            _buildCompactSwitchTile(label: "Allow Edit", value: _boolConfig(config, 'allowEditRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowEditRow', val)),
+            _buildCompactSwitchTile(label: "Inline Edit", value: _boolConfig(config, 'inlineEdit', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'inlineEdit', val)),
             _buildCompactSwitchTile(label: "Allow Delete", value: _boolConfig(config, 'allowDeleteRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowDeleteRow', val)),
-            _buildCompactSwitchTile(label: "Allow View", value: _boolConfig(config, 'allowViewRow', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'allowViewRow', val)),
+            _buildCompactSwitchTile(label: "Bulk Select", value: _boolConfig(config, 'bulkSelection', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'bulkSelection', val)),
+            _buildCompactSwitchTile(label: "Export CSV", value: _boolConfig(config, 'exportCsv', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'exportCsv', val)),
+            _buildCompactSwitchTile(label: "Search", value: _boolConfig(config, 'search', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'search', val)),
+            _buildCompactSwitchTile(label: "Sorting", value: _boolConfig(config, 'sorting', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'sorting', val)),
+            _buildCompactSwitchTile(label: "Filtering", value: _boolConfig(config, 'filtering', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'filtering', val)),
+            _buildCompactSwitchTile(label: "Sticky Columns", value: _boolConfig(config, 'stickyColumns', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'stickyColumns', val)),
             _buildCompactSwitchTile(label: "Pagination", value: _boolConfig(config, 'pagination', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'pagination', val)),
+            _buildCompactSwitchTile(label: "API Pagination", value: _boolConfig(config, 'apiPagination', false), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'apiPagination', val)),
+            _buildCompactSwitchTile(label: "Row Validation", value: _boolConfig(config, 'dynamicRowValidation', true), onChanged: (val) => _updateComponentConfig(field, activeStepId, 'dynamicRowValidation', val)),
           ],
         ),
         const SizedBox(height: 10),
@@ -1400,6 +1793,156 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             Expanded(child: _numberConfigField(field, activeStepId, config, 'maxRows', 'Max Rows', 10)),
             const SizedBox(width: 8),
             Expanded(child: _numberConfigField(field, activeStepId, config, 'rowsPerPage', 'Rows/Page', 10)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _PropertyTextField(
+          label: "Row Actions",
+          initialValue: (config['rowActions'] is List ? (config['rowActions'] as List).join(', ') : config['rowActions']?.toString()) ?? '',
+          hint: "view, edit, delete, duplicate",
+          onChanged: (val) {
+            final actions = val
+                .split(',')
+                .map((item) => item.trim())
+                .where((item) => item.isNotEmpty)
+                .toList();
+            _updateComponentConfig(field, activeStepId, 'rowActions', actions);
+          },
+        ),
+        const SizedBox(height: 10),
+        _PropertyDropdownField(
+          label: "Data Source",
+          currentValue: config['dataSource']?.toString() ?? 'manual',
+          items: const ['manual', 'api'],
+          onChanged: (val) => _updateComponentConfig(field, activeStepId, 'dataSource', val),
+        ),
+        if ((config['dataSource']?.toString() ?? 'manual') == 'api') ...[
+          const SizedBox(height: 10),
+          _PropertyTextField(
+            label: "Grid API URL",
+            initialValue: config['gridApiUrl']?.toString() ?? '',
+            hint: "https://api.example.com/users",
+            onChanged: (val) => _updateComponentConfig(field, activeStepId, 'gridApiUrl', val.trim()),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _PropertyDropdownField(
+                  label: "Grid API Method",
+                  currentValue: config['gridApiMethod']?.toString() ?? 'GET',
+                  items: const ['GET', 'POST', 'PUT', 'DELETE'],
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'gridApiMethod', val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _PropertyTextField(
+                  label: "Response List Key",
+                  initialValue: config['gridApiListKey']?.toString() ?? '',
+                  hint: "data.items",
+                  onChanged: (val) => _updateComponentConfig(field, activeStepId, 'gridApiListKey', val.trim()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _PropertyTextField(
+            label: "Grid API Headers (JSON)",
+            initialValue: config['gridApiHeaders'] == null || (config['gridApiHeaders'] is Map && (config['gridApiHeaders'] as Map).isEmpty)
+                ? ''
+                : json.encode(config['gridApiHeaders']),
+            hint: '{"Authorization": "Bearer token"}',
+            maxLines: 3,
+            onChanged: (val) {
+              try {
+                final decoded = val.trim().isEmpty ? <String, dynamic>{} : json.decode(val);
+                if (decoded is Map) {
+                  _updateComponentConfig(field, activeStepId, 'gridApiHeaders', Map<String, dynamic>.from(decoded));
+                }
+              } catch (_) {}
+            },
+          ),
+          const SizedBox(height: 10),
+          _PropertyTextField(
+            label: "Grid API Body (JSON)",
+            initialValue: config['gridApiBody']?.toString() ?? '',
+            hint: '{"status": "active"}',
+            maxLines: 3,
+            onChanged: (val) => _updateComponentConfig(field, activeStepId, 'gridApiBody', val.trim()),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RevoTheme.cardBg,
+                    foregroundColor: RevoTheme.textPrimary,
+                    side: BorderSide(color: RevoTheme.primaryLight.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: _testingApi ? null : () => _testGridApiConnection(field, activeStepId),
+                  icon: _testingApi
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.bolt_rounded, size: 14),
+                  label: Text("Test Connection", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RevoTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => _submitGridApiConfig(field, activeStepId),
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
+                  label: Text("Submit Config", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+          if (_apiTestResult != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _apiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.08) : Colors.redAccent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _apiTestSuccess ? Colors.greenAccent.withValues(alpha: 0.25) : Colors.redAccent.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                _apiTestResult!,
+                style: GoogleFonts.inter(fontSize: 10, color: _apiTestSuccess ? Colors.greenAccent : Colors.redAccent),
+              ),
+            ),
+          ],
+        ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _PropertyTextField(
+                label: "API Page Param",
+                initialValue: config['apiPageParam']?.toString() ?? 'page',
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'apiPageParam', val.trim()),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PropertyTextField(
+                label: "API Size Param",
+                initialValue: config['apiPageSizeParam']?.toString() ?? 'limit',
+                onChanged: (val) => _updateComponentConfig(field, activeStepId, 'apiPageSizeParam', val.trim()),
+              ),
+            ),
           ],
         ),
       ],
@@ -2247,11 +2790,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     }
   }
 
-  String? _validateJsonList(String val) {
+  String? _validateJsonResponseData(String val) {
     if (val.trim().isEmpty) return null;
     try {
       final decoded = json.decode(val);
-      if (decoded is! List) return "Must be a valid JSON List (e.g. [{\"id\": 1}])";
+      if (decoded is! List && decoded is! Map) {
+        return "Must be a valid JSON Array or Object response.";
+      }
       return null;
     } catch (e) {
       return "Invalid JSON syntax: ${e.toString()}";

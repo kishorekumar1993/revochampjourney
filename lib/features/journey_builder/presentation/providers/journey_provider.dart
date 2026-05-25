@@ -439,7 +439,7 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
-    final updatedFields = step.fields.map((f) => f.id == fieldId ? updatedField : f).toList();
+    final updatedFields = _updateFieldRecursive(step.fields, fieldId, updatedField);
 
     final updatedStep = step.copy()..fields = updatedFields;
     final updatedSteps = List<JourneyStep>.from(state.steps);
@@ -448,6 +448,18 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     final updated = state.copyWith(steps: updatedSteps);
     state = updated;
     _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  List<JourneyField> _updateFieldRecursive(List<JourneyField> fields, String fieldId, JourneyField updatedField) {
+    return fields.map((field) {
+      if (field.id == fieldId) return updatedField;
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        final copy = field.copy();
+        copy.nestedFields = _updateFieldRecursive(field.nestedFields!, fieldId, updatedField);
+        return copy;
+      }
+      return field;
+    }).toList();
   }
 
   void reorderFieldsInStep(String stepId, int oldIndex, int newIndex) {
@@ -471,6 +483,72 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     _ref.read(historyProvider.notifier).push(updated);
   }
 
+  // Add a field into the nestedFields of a container field (section/card/tabs/accordion/repeater)
+  void addFieldToNestedContainer(String stepId, String parentFieldId, JourneyField newField) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = _addFieldToParent(step.fields, parentFieldId, newField);
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+  }
+
+  List<JourneyField> _addFieldToParent(List<JourneyField> fields, String parentId, JourneyField newField) {
+    return fields.map((field) {
+      if (field.id == parentId) {
+        final nested = List<JourneyField>.from(field.nestedFields ?? [])..add(newField);
+        final copy = field.copy();
+        copy.nestedFields = nested;
+        return copy;
+      }
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        final copy = field.copy();
+        copy.nestedFields = _addFieldToParent(field.nestedFields!, parentId, newField);
+        return copy;
+      }
+      return field;
+    }).toList();
+  }
+
+  // Remove a field from any nested container recursively
+  void removeFieldFromNestedContainer(String stepId, String fieldId) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+
+    final step = state.steps[stepIndex];
+    final updatedFields = _removeFieldRecursive(step.fields, fieldId);
+
+    final updatedStep = step.copy()..fields = updatedFields;
+    final updatedSteps = List<JourneyStep>.from(state.steps);
+    updatedSteps[stepIndex] = updatedStep;
+
+    final updated = state.copyWith(steps: updatedSteps);
+    state = updated;
+    _ref.read(historyProvider.notifier).push(updated);
+
+    if (_ref.read(selectedFieldIdProvider) == fieldId) {
+      _ref.read(selectedFieldIdProvider.notifier).state = null;
+    }
+  }
+
+  List<JourneyField> _removeFieldRecursive(List<JourneyField> fields, String fieldId) {
+    return fields.where((f) => f.id != fieldId).map((field) {
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        final copy = field.copy();
+        copy.nestedFields = _removeFieldRecursive(field.nestedFields!, fieldId);
+        return copy;
+      }
+      return field;
+    }).toList();
+  }
+
   void syncWithHistory(JourneyConfig config) {
     state = config;
   }
@@ -486,10 +564,11 @@ final journeyConfigProvider = StateNotifierProvider<JourneyConfigNotifier, Journ
 });
 
 // Centralized dynamic form state mapping provider (Step Values)
-class FormValuesNotifier extends StateNotifier<Map<String, String>> {
+// Map<String, dynamic> supports strings, booleans, lists (repeater/grid rows), nested objects
+class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
   FormValuesNotifier() : super({});
 
-  void updateValue(String fieldId, String value) {
+  void updateValue(String fieldId, dynamic value) {
     state = {...state, fieldId: value};
   }
 
@@ -498,8 +577,8 @@ class FormValuesNotifier extends StateNotifier<Map<String, String>> {
   }
 
   void resetWithDefaults(List<JourneyField> fields) {
-    final defaults = <String, String>{};
-    for (var f in fields) {
+    final defaults = <String, dynamic>{};
+    for (var f in EngineHelper.flattenFields(fields)) {
       if (f.defaultValue != null) {
         defaults[f.id] = f.defaultValue!;
       }
@@ -508,14 +587,25 @@ class FormValuesNotifier extends StateNotifier<Map<String, String>> {
   }
 }
 
-final formValuesProvider = StateNotifierProvider<FormValuesNotifier, Map<String, String>>((ref) {
+final formValuesProvider = StateNotifierProvider<FormValuesNotifier, Map<String, dynamic>>((ref) {
   return FormValuesNotifier();
 });
 
 // Validation and condition evaluation functions
 class EngineHelper {
-  static bool evaluateCondition(StepCondition cond, Map<String, String> values) {
-    final val = values[cond.field];
+  static List<JourneyField> flattenFields(List<JourneyField> fields) {
+    final flattened = <JourneyField>[];
+    for (final field in fields) {
+      flattened.add(field);
+      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
+        flattened.addAll(flattenFields(field.nestedFields!));
+      }
+    }
+    return flattened;
+  }
+
+  static bool evaluateCondition(StepCondition cond, Map<String, dynamic> values) {
+    final val = values[cond.field]?.toString();
     if (val == null) return false;
     switch (cond.operator) {
       case 'equals':
@@ -530,16 +620,26 @@ class EngineHelper {
   }
 
   // Field visible condition evaluation helper
-  static bool isFieldVisible(JourneyField field, Map<String, String> values) {
+  static bool isFieldVisible(JourneyField field, Map<String, dynamic> values) {
     if (!field.visible) return false;
     if (field.visibleIf == null) return true;
 
     final targetField = field.visibleIf!['field'];
-    final equalsVal = field.visibleIf!['equals'];
-    if (targetField == null || equalsVal == null) return true;
+    final expectedVal = field.visibleIf!['equals'] ?? field.visibleIf!['value'];
+    final operator = field.visibleIf!['operator']?.toString() ?? 'equals';
+    if (targetField == null || expectedVal == null) return true;
 
-    final currentVal = values[targetField];
-    return currentVal?.toLowerCase() == equalsVal.toString().toLowerCase();
+    final currentVal = values[targetField]?.toString();
+    if (currentVal == null) return false;
+    switch (operator) {
+      case 'notEquals':
+        return currentVal.toLowerCase() != expectedVal.toString().toLowerCase();
+      case 'contains':
+        return currentVal.toLowerCase().contains(expectedVal.toString().toLowerCase());
+      case 'equals':
+      default:
+        return currentVal.toLowerCase() == expectedVal.toString().toLowerCase();
+    }
   }
 }
 
@@ -682,4 +782,3 @@ class JourneyRunsNotifier extends StateNotifier<List<Map<String, dynamic>>> {
 final journeyRunsProvider = StateNotifierProvider<JourneyRunsNotifier, List<Map<String, dynamic>>>((ref) {
   return JourneyRunsNotifier();
 });
-

@@ -205,6 +205,7 @@ class FieldSchema {
     this.dropdownKey = '',
     this.dropdownLabelKey = 'name',
     this.dropdownValueKey = 'id',
+    this.dropdownListKey = '',
     this.cacheKey,
     this.cacheDuration,
     this.dependsOn,
@@ -217,6 +218,22 @@ class FieldSchema {
     this.isLocalStorageEnabled = false,
     this.localStorageKey,
     this.apiEnabled = false,
+    this.nestedFields = const [],
+    this.groupId,
+    this.groupLabel,
+    this.sectionId,
+    this.repeatableGroup = false,
+    this.repeatConfig,
+    this.conditionalValidations = const [],
+    this.formula,
+    this.expression,
+    this.asyncValidation,
+    this.cascadeConfig,
+    this.localization,
+    this.defaultValueExpression,
+    this.visibleForRoles = const [],
+    this.editableForRoles = const [],
+    this.roleVisibility,
   });
 
   final String fieldName;
@@ -251,6 +268,7 @@ class FieldSchema {
   final String dropdownKey;
   final String dropdownLabelKey;
   final String dropdownValueKey;
+  final String dropdownListKey;
   final dynamic dropdownValue;
 
   final String? cacheKey;
@@ -267,6 +285,22 @@ class FieldSchema {
 
   final bool isLocalStorageEnabled;
   final String? localStorageKey;
+  final List<Map<String, dynamic>> nestedFields;
+  final String? groupId;
+  final String? groupLabel;
+  final String? sectionId;
+  final bool repeatableGroup;
+  final Map<String, dynamic>? repeatConfig;
+  final List<Map<String, dynamic>> conditionalValidations;
+  final String? formula;
+  final String? expression;
+  final Map<String, dynamic>? asyncValidation;
+  final Map<String, dynamic>? cascadeConfig;
+  final Map<String, dynamic>? localization;
+  final String? defaultValueExpression;
+  final List<String> visibleForRoles;
+  final List<String> editableForRoles;
+  final Map<String, dynamic>? roleVisibility;
 
   // -----------------------------------------------------------------------
   // Helpers
@@ -350,13 +384,57 @@ class FieldSchema {
     // ─────────────────────────────────────────────────────────────────────
     // parseDropdownData — API response data (list of objects)
     // ─────────────────────────────────────────────────────────────────────
-    List<Map<String, dynamic>> parseDropdownData(dynamic value) {
+    dynamic readPath(dynamic source, String path) {
+      if (source == null || path.trim().isEmpty) return null;
+      dynamic cursor = source;
+      for (final part in path.split('.')) {
+        if (cursor is Map) {
+          cursor = cursor[part];
+        } else {
+          return null;
+        }
+      }
+      return cursor;
+    }
+
+    List<Map<String, dynamic>> parseDropdownData(dynamic value, String listKey) {
       if (value == null) return const [];
+      if (value is Map) {
+        final fromConfiguredPath = readPath(value, listKey);
+        final candidates = [
+          fromConfiguredPath,
+          value[listKey],
+          value['data'],
+          value['results'],
+          value['items'],
+          value['users'],
+          value['options'],
+        ];
+        for (final candidate in candidates) {
+          if (candidate is List) {
+            return parseDropdownData(candidate, '');
+          }
+        }
+        return const [];
+      }
       if (value is! List) return const [];
       return value.map<Map<String, dynamic>>((e) {
         if (e is Map) return Map<String, dynamic>.from(e);
         return <String, dynamic>{'value': e.toString()};
       }).toList();
+    }
+
+    List<Map<String, dynamic>> parseMapListValue(dynamic value) {
+      if (value is! List) return const [];
+      return value
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
+
+    List<String> parseStringListValue(dynamic value) {
+      if (value is! List) return const [];
+      return value.map((item) => item.toString()).toList();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -387,8 +465,14 @@ class FieldSchema {
       staticStringValues = const [];
     }
 
+    final dropdownListKey = (j['dropdownListKey'] ??
+            j['dropdownApiResponseKey'] ??
+            j['responseListKey'] ??
+            '')
+        .toString();
+
     final dropdownData =
-        parseDropdownData(j['dropdownData'] ?? j['dropdowndata']);
+        parseDropdownData(j['dropdownData'] ?? j['dropdowndata'], dropdownListKey);
 
     // ─────────────────────────────────────────────────────────────────────
     // Safe headers cast — .cast() crashes on Flutter Web JSObject
@@ -438,9 +522,10 @@ class FieldSchema {
       dropdownApiMethod: j['dropdownApiMethod'] as String? ?? 'GET',
       dropdownApiBody: j['dropdownApiBody'] as String? ?? '',
       dropdownApiHeaders: safeHeaders,
-      dropdownKey: j['dropdownKey'] as String? ?? '',
-      dropdownLabelKey: j['dropdownLabelKey'] as String? ?? 'name',
-      dropdownValueKey: j['dropdownValueKey'] as String? ?? 'id',
+      dropdownKey: (j['dropdownKey'] ?? j['dropdownkey'] ?? '').toString(),
+      dropdownLabelKey: (j['dropdownLabelKey'] ?? j['dropdownValue'] ?? 'name').toString(),
+      dropdownValueKey: (j['dropdownValueKey'] ?? j['dropdownkey'] ?? j['dropdownKey'] ?? 'id').toString(),
+      dropdownListKey: dropdownListKey,
       cacheKey: j['cacheKey'] as String?,
       cacheDuration: (j['cacheDuration'] as num?)?.toInt(),
       dependsOn: j['dependsOn'] as String?,
@@ -453,6 +538,22 @@ class FieldSchema {
       isLocalStorageEnabled: j['isLocalStorageEnabled'] as bool? ?? false,
       localStorageKey: j['localStorageKey'] as String?,
       dropdownValue: j['dropdownValue'] as String? ?? '',
+      nestedFields: parseMapListValue(j['nestedFields'] ?? j['children'] ?? j['fields']),
+      groupId: j['groupId']?.toString(),
+      groupLabel: j['groupLabel']?.toString(),
+      sectionId: j['sectionId']?.toString(),
+      repeatableGroup: j['repeatableGroup'] == true,
+      repeatConfig: j['repeatConfig'] is Map ? Map<String, dynamic>.from(j['repeatConfig'] as Map) : null,
+      conditionalValidations: parseMapListValue(j['conditionalValidations']),
+      formula: j['formula']?.toString(),
+      expression: j['expression']?.toString(),
+      asyncValidation: j['asyncValidation'] is Map ? Map<String, dynamic>.from(j['asyncValidation'] as Map) : null,
+      cascadeConfig: j['cascadeConfig'] is Map ? Map<String, dynamic>.from(j['cascadeConfig'] as Map) : null,
+      localization: j['localization'] is Map ? Map<String, dynamic>.from(j['localization'] as Map) : null,
+      defaultValueExpression: j['defaultValueExpression']?.toString() ?? j['dynamicDefaultValue']?.toString(),
+      visibleForRoles: parseStringListValue(j['visibleForRoles']),
+      editableForRoles: parseStringListValue(j['editableForRoles']),
+      roleVisibility: j['roleVisibility'] is Map ? Map<String, dynamic>.from(j['roleVisibility'] as Map) : null,
     );
   }
 }
