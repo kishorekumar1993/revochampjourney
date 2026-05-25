@@ -1,31 +1,3 @@
-void _extractFieldsRecursive(dynamic fields, List<Map<String, dynamic>> flatFields) {
-  if (fields == null) return;
-  
-  final fieldList = fields is List ? fields : [fields];
-  
-  for (final field in fieldList) {
-    if (field is! Map<String, dynamic>) continue;
-    
-    // Add the field itself
-    flatFields.add(Map<String, dynamic>.from(field));
-    
-    // Recursively extract nested fields
-    final nestedFields = field['nestedFields'];
-    if (nestedFields is List) {
-      _extractFieldsRecursive(nestedFields, flatFields);
-    }
-    
-    // Also check componentConfig for repeater/table nested fields
-    final config = field['componentConfig'];
-    if (config is Map) {
-      final configFields = config['fields'] ?? config['columns'];
-      if (configFields is List) {
-        _extractFieldsRecursive(configFields, flatFields);
-      }
-    }
-  }
-}
-
 String generatecontrollerClass(
   String className,
   List<dynamic> configList,
@@ -33,23 +5,50 @@ String generatecontrollerClass(
 ) {
   final buffer = StringBuffer();
 
-  // ─── Flatten fields once ──────────────────────────────────────
-  final flatFields = <Map<String, dynamic>>[];
-  for (final config in configList) {
-    if (config is Map<String, dynamic>) {
-      if (config.containsKey('steps') && config['steps'] is List) {
-        for (final step in (config['steps'] as List)) {
-          if (step is Map<String, dynamic> && step.containsKey('fields')) {
-            _extractFieldsRecursive(step['fields'], flatFields);
-          }
-        }
-      } else if (config.containsKey('fields')) {
-        _extractFieldsRecursive(config['fields'], flatFields);
-      } else if (config.containsKey('type')) {
-        _extractFieldsRecursive(config, flatFields);
+  // ─── Helper to recursively flatten fields ─────────────
+  void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
+    if (source == null) return;
+    
+    if (source is List) {
+      for (final item in source) {
+        flattenFields(item, result);
+      }
+      return;
+    }
+    
+    if (source is! Map<String, dynamic>) return;
+    
+    // If it's a journey config with steps
+    if (source.containsKey('steps')) {
+      flattenFields(source['steps'], result);
+      return;
+    }
+    
+    // If it's a step with fields
+    if (source.containsKey('fields')) {
+      flattenFields(source['fields'], result);
+      return;
+    }
+    
+    // It's a field - add it
+    if (source.containsKey('type')) {
+      result.add(source);
+      
+      // Recursively flatten nested fields
+      flattenFields(source['nestedFields'], result);
+      
+      // Flatten component config fields (repeater, table columns)
+      final config = source['componentConfig'];
+      if (config is Map) {
+        flattenFields(config['fields'], result);
+        flattenFields(config['columns'], result);
       }
     }
   }
+
+  // ─── Flatten fields once ──────────────────────────────
+  final flatFields = <Map<String, dynamic>>[];
+  flattenFields(configList, flatFields);
 
   // ─── Conditional imports ──────────────────────────────────────
   final hasRadio = flatFields.any((f) =>
@@ -124,6 +123,14 @@ String generatecontrollerClass(
     final staticOpts = (item['options'] as List<dynamic>?) ??
         (item['staticOptions'] as List<dynamic>?);
 
+    // Add validation generation after field declaration
+    if (item['required'] == true) {
+      buffer.writeln("  // Required: ${item['errorMessage'] ?? 'This field is required'}");
+    }
+    if (item['validationPattern'] != null) {
+      buffer.writeln("  // Pattern: ${item['validationPattern']}");
+    }
+
     switch (type) {
       // ══════════════════════════════════════════════
       //  Text / Phone / TextArea / OTP / Email / Password / Number / Decimal
@@ -190,6 +197,21 @@ String generatecontrollerClass(
             "      debugPrint('Error loading $capitalLabel: \$e');",
             "      debugPrintStack(stackTrace: st);",
             "      Get.snackbar('Error', 'Failed to load $capitalLabel');",
+            "    }",
+            "  }",
+            "",
+          ]);
+        }
+        
+        if (type == 'api_dropdown' && item['dropdownApiUrl'] != null) {
+          extraMethods.addAll([
+            "  Future<void> fetch${capitalLabel}FromApi() async {",
+            "    try {",
+            "      final url = '${item['dropdownApiUrl']}';",
+            "      // TODO: Make API call with ${item['dropdownApiMethod'] ?? 'GET'}",
+            "      // Parse response using key '${item['dropdownListKey'] ?? 'data'}'",
+            "    } catch (e) {",
+            "      debugPrint('Error fetching $capitalLabel: \$e');",
             "    }",
             "  }",
             "",
@@ -336,6 +358,19 @@ String generatecontrollerClass(
       case 'table_grid':
         buffer.writeln(
             "  final ${name}Rows = <Map<String, dynamic>>[].obs;");
+        
+        final columns = item['componentConfig']?['columns'] as List?;
+        if (columns != null) {
+          for (final col in columns) {
+            if (col is Map) {
+              final colType = col['type'] ?? 'text';
+              if (colType == 'text' || colType == 'number') {
+                buffer.writeln("  // Column ${col['fieldId']} controller needed");
+              }
+            }
+          }
+        }
+        
         extraMethods.addAll([
           "  void add${capitalLabel}Row() {",
           "    ${name}Rows.add({});",

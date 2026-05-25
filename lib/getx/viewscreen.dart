@@ -5,10 +5,47 @@ String generateviewClass(
 ) {
   final buffer = StringBuffer();
 
+  // ─── Helper to recursively flatten fields ─────────────
+  void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
+    if (source == null) return;
+    
+    if (source is List) {
+      for (final item in source) flattenFields(item, result);
+      return;
+    }
+    
+    if (source is! Map<String, dynamic>) return;
+    
+    if (source.containsKey('steps')) {
+      flattenFields(source['steps'], result);
+      return;
+    }
+    
+    if (source.containsKey('fields')) {
+      flattenFields(source['fields'], result);
+      return;
+    }
+    
+    if (source.containsKey('type')) {
+      result.add(source);
+      flattenFields(source['nestedFields'], result);
+      
+      final config = source['componentConfig'];
+      if (config is Map) {
+        flattenFields(config['fields'], result);
+        flattenFields(config['columns'], result);
+      }
+    }
+  }
+
+  // ─── Flatten fields once ──────────────────────────────
+  final flatFields = <Map<String, dynamic>>[];
+  flattenFields(fields, flatFields);
+
   // ─── Conditional imports ───────────────────────────────────────
-  final hasRadio = fields.any((f) =>
+  final hasRadio = flatFields.any((f) =>
       (f['type'] ?? '').toString().toLowerCase().startsWith('radio'));
-  final hasDropdown = fields.any((f) {
+  final hasDropdown = flatFields.any((f) {
     final t = (f['type'] ?? '').toString().toLowerCase();
     return t == 'dropdown' || t == 'api_dropdown';
   });
@@ -65,10 +102,14 @@ String generateviewClass(
       "              crossAxisAlignment: CrossAxisAlignment.start,");
   buffer.writeln("              children: [");
 
-  for (final field in fields) {
-    final rawLabel = (field['label'] ?? 'Field').toString().trim();
-    final name = camelCaseName(rawLabel);
-    final capitalLabel = pascalCaseName(rawLabel);
+  void buildWidgets(List<dynamic> currentFields) {
+    for (final rawField in currentFields) {
+      if (rawField is! Map<String, dynamic>) continue;
+      final field = rawField;
+      final rawId = (field['id'] ?? field['fieldId'] ?? field['label'] ?? 'field').toString().trim();
+      final rawLabel = (field['label'] ?? rawId).toString().trim();
+      final name = camelCaseName(rawId);
+      final capitalLabel = pascalCaseName(rawId);
     final type = (field['type'] ?? '').toString().toLowerCase().trim();
     final hint =
         (field['placeholder'] ?? field['hintText'] ?? '').toString();
@@ -275,16 +316,16 @@ String generateviewClass(
       } else {
         final dropdownKey =
             (field['dropdownValue'] ?? 'name').toString();
-        String? dropdownmodel;
-        final apidata = field['dropdowndata'];
-        if (apidata is Map<String, dynamic>) {
-          for (final entry in apidata.entries) {
-            final v = entry.value;
-            if (v is List &&
-                v.isNotEmpty &&
-                v.first is Map<String, dynamic>) {
-              dropdownmodel = capitalize(entry.key);
-              break;
+        String? dropdownmodel = (field['modelName']?.toString());
+        if (dropdownmodel == null || dropdownmodel.isEmpty) {
+          final apidata = field['dropdowndata'];
+          if (apidata is Map<String, dynamic>) {
+            for (final entry in apidata.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+                dropdownmodel = capitalize(entry.key);
+                break;
+              }
             }
           }
         }
@@ -986,6 +1027,11 @@ String generateviewClass(
       buffer.writeln("                      const SizedBox(height: 4),");
       buffer.writeln(
           "                      const Divider(thickness: 1.5),");
+      buffer.writeln("                      const SizedBox(height: 8),");
+      final nested = field['nestedFields'] as List<dynamic>? ?? [];
+      if (nested.isNotEmpty) {
+        buildWidgets(nested);
+      }
       buffer.writeln("                    ],");
       buffer.writeln("                  ),");
       buffer.writeln("                ),");
@@ -1011,8 +1057,13 @@ String generateviewClass(
           "                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),");
       buffer.writeln("                        ),");
       buffer.writeln("                        const SizedBox(height: 12),");
-      buffer.writeln(
-          "                        // TODO: Add card child fields here");
+      final nested = field['nestedFields'] as List<dynamic>? ?? [];
+      if (nested.isNotEmpty) {
+        buildWidgets(nested);
+      } else {
+        buffer.writeln(
+            "                        // No child fields defined");
+      }
       buffer.writeln("                      ],");
       buffer.writeln("                    ),");
       buffer.writeln("                  ),");
@@ -1022,9 +1073,12 @@ String generateviewClass(
     //  tabs  (layout)
     // ══════════════════════════════════════════════
     } else if (type == 'tabs') {
-      final tabOptions = staticOpts != null && staticOpts.isNotEmpty
-          ? staticOpts.map((o) => o.toString()).toList()
-          : ['Tab 1', 'Tab 2'];
+      final nested = field['nestedFields'] as List<dynamic>? ?? [];
+      final tabOptions = nested.isNotEmpty
+          ? nested.map((t) => ((t as Map)['label'] ?? 'Tab').toString()).toList()
+          : (staticOpts != null && staticOpts.isNotEmpty
+              ? staticOpts.map((o) => o.toString()).toList()
+              : ['Tab 1', 'Tab 2']);
       final tabLength = tabOptions.length;
       final tabItems = tabOptions
           .map((t) => "Tab(text: '${t.replaceAll("'", "\\'")}')")
@@ -1048,8 +1102,20 @@ String generateviewClass(
       buffer.writeln(
           "                        child: TabBarView(children: [");
       for (int i = 0; i < tabLength; i++) {
-        buffer.writeln(
-            "                          const Center(child: Text('// TODO: Tab ${i + 1} content')),");
+        buffer.writeln("                          SingleChildScrollView(");
+        buffer.writeln("                            padding: const EdgeInsets.all(16.0),");
+        buffer.writeln("                            child: Column(");
+        buffer.writeln("                              crossAxisAlignment: CrossAxisAlignment.start,");
+        buffer.writeln("                              children: [");
+        if (nested.isNotEmpty && i < nested.length) {
+          final tabNested = (nested[i] as Map)['nestedFields'] as List<dynamic>? ?? [];
+          if (tabNested.isNotEmpty) buildWidgets(tabNested);
+        } else {
+          buffer.writeln("                                const Center(child: Text('// No content')),");
+        }
+        buffer.writeln("                              ],");
+        buffer.writeln("                            ),");
+        buffer.writeln("                          ),");
       }
       buffer.writeln("                        ]),");
       buffer.writeln("                      ),");
@@ -1082,7 +1148,13 @@ String generateviewClass(
       buffer.writeln(
           "                      padding: EdgeInsets.all(16.0),");
       buffer.writeln(
-          "                      child: Text('// TODO: Add accordion content'),");
+          "                      child: Column(");
+      buffer.writeln("                        crossAxisAlignment: CrossAxisAlignment.start,");
+      buffer.writeln("                        children: [");
+      final nested = field['nestedFields'] as List<dynamic>? ?? [];
+      if (nested.isNotEmpty) buildWidgets(nested);
+      buffer.writeln("                        ],");
+      buffer.writeln("                      ),");
       buffer.writeln("                    ),");
       buffer.writeln("                  ],");
       buffer.writeln("                ),");
@@ -1128,7 +1200,7 @@ String generateviewClass(
       if (hasColumns) {
         for (final col in columns) {
           final colLabel = col is Map
-              ? (col['label'] ?? col['fieldId'] ?? 'Column').toString()
+              ? (col['label'] ?? col['id'] ?? col['fieldId'] ?? 'Column').toString()
               : col.toString();
           buffer.write(
               "DataColumn(label: Text('${colLabel.replaceAll("'", "\\'")}')), ");
@@ -1148,7 +1220,7 @@ String generateviewClass(
       if (hasColumns) {
         for (final col in columns) {
           final fieldId = col is Map
-              ? (col['fieldId'] ?? col['label'] ?? 'value').toString()
+              ? (col['fieldId'] ?? col['id'] ?? col['label'] ?? 'value').toString()
               : col.toString();
           buffer.writeln(
               "                            DataCell(Text(row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '')),");
@@ -1386,6 +1458,42 @@ String generateviewClass(
       buffer.writeln("                  ),");
       buffer.writeln("                )),");
 
+    // ══════════════════════════════════════════════
+    //  row  (layout)
+    // ══════════════════════════════════════════════
+    } else if (type == 'row') {
+      buffer.writeln("                Wrap(");
+      buffer.writeln("                  spacing: 12, runSpacing: 12,");
+      buffer.writeln("                  children: [");
+      final nested = field['nestedFields'] as List<dynamic>? ?? [];
+      for (final child in nested) {
+        if (child is! Map) continue;
+        final colSpan = int.tryParse(child['componentConfig']?['colSpan']?.toString() ?? '') ?? 12;
+        buffer.writeln("                    LayoutBuilder(builder: (context, constraints) {");
+        buffer.writeln("                      final w = constraints.maxWidth;");
+        buffer.writeln("                      return SizedBox(width: w > 760 ? w * ($colSpan / 12) : double.infinity,");
+        buffer.writeln("                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [");
+        buildWidgets([child]);
+        buffer.writeln("                        ]),");
+        buffer.writeln("                      );");
+        buffer.writeln("                    }),");
+      }
+      buffer.writeln("                  ],");
+      buffer.writeln("                ),");
+
+    // ══════════════════════════════════════════════
+    //  formula
+    // ══════════════════════════════════════════════
+    } else if (type == 'formula') {
+      buffer.writeln("                Obx(() => CustomTextFormField(");
+      buffer.writeln("                  label: '$rawLabel',");
+      buffer.writeln("                  hint: '$hint',");
+      buffer.writeln("                  isMandatory: false,");
+      buffer.writeln("                  controller: TextEditingController(text: controller.$name.value),");
+      buffer.writeln("                  readOnly: true,");
+      buffer.writeln("                  validator: (value) => null,");
+      buffer.writeln("                )),");
+
     } else {
       buffer.writeln(
           "                // TODO: unsupported field type '$type' for '$rawLabel'");
@@ -1393,6 +1501,9 @@ String generateviewClass(
 
     buffer.writeln("                const SizedBox(height: 16),");
   }
+  } // end buildWidgets
+
+  buildWidgets(fields);
 
   // ─── Submit button ────────────────────────────────────────────
   buffer.writeln("                const SizedBox(height: 20),");
