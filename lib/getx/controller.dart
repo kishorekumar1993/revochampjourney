@@ -11,7 +11,9 @@ String generatecontrollerClass(
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;
@@ -24,7 +26,6 @@ String generatecontrollerClass(
       flattenFields(source['fields'], result);
       return;
     }
-
     if (source.containsKey('type')) {
       result.add(source);
       flattenFields(source['nestedFields'], result);
@@ -40,10 +41,9 @@ String generatecontrollerClass(
   flattenFields(configList, flatFields);
 
   // -------------------------------------------------------------------
-  // Helper to get clean names from label (preferred) or id
+  // Name helpers
   // -------------------------------------------------------------------
   String getFieldName(Map<String, dynamic> field) {
-    // ✅ FIX 1: label first, plus .toString().trim() to avoid crash
     final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
         .toString()
         .trim();
@@ -52,7 +52,6 @@ String generatecontrollerClass(
   }
 
   String getPascalName(Map<String, dynamic> field) {
-    // ✅ FIX 2: label first (was id first before)
     final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
         .toString()
         .trim();
@@ -73,11 +72,47 @@ String generatecontrollerClass(
     return text;
   }
 
+  // ✅ FIX 1: Resolve model class WITHOUT appending "Model"
+  // The dropdown items are the inner classes (e.g., Post, User), not the wrapper.
+  String resolveModelClass(Map<String, dynamic> field) {
+    final dropdowndata = field['dropdowndata'];
+    if (dropdowndata is Map<String, dynamic>) {
+      for (final entry in dropdowndata.entries) {
+        final v = entry.value;
+        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+          final singular = singularize(entry.key);
+          return capitalize(singular); // e.g. "recipes" → "Recipe"
+        }
+      }
+    }
+    // Fallback: label‑based
+    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
+        .toString()
+        .trim();
+    final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return capitalize(n);
+  }
+
+  // e.g. "Recipe" → "recipe"  (for import file name)
+  String modelClassToFileName(String modelClass) {
+    // Model class is now just "Recipe", not "RecipeModel"
+    final snake = modelClass.replaceAllMapped(
+      RegExp(r'[A-Z]'),
+      (m) => '_${m.group(0)!.toLowerCase()}',
+    );
+    return snake.startsWith('_') ? snake.substring(1) : snake;
+  }
+
+  // ✅ FIX 2: Repository method pattern changed to get<PascalName>Options
+  // No longer needed for the method name itself, but keep the function if used elsewhere.
+  bool needsS(String name) => !name.toLowerCase().endsWith('s');
+
   // -------------------------------------------------------------------
   // Imports
   // -------------------------------------------------------------------
-  final hasRadio = flatFields.any((f) =>
-      (f['type'] ?? '').toString().toLowerCase().startsWith('radio'));
+  final hasRadio = flatFields.any(
+    (f) => (f['type'] ?? '').toString().toLowerCase().startsWith('radio'),
+  );
   final hasDropdown = flatFields.any((f) {
     final t = (f['type'] ?? '').toString().toLowerCase();
     return t == 'dropdown' || t == 'api_dropdown';
@@ -86,32 +121,36 @@ String generatecontrollerClass(
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln(
-    "import '../repository/${fileName.toLowerCase()}_repository.dart';",
+    "import '../repository/${fileName.toLowerCase().replaceAll(' ', '_')}_repository.dart';",
   );
   if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
-  if (hasDropdown) {
-    buffer.writeln("import '/widget/common_dropdown_search.dart';");
-  }
 
-  // ✅ FIX 3: dropdownModels now uses label first (was id first before)
-  final dropdownModels = <String>{};
+  // ✅ FIX 3: Remove the import of common_dropdown_search.dart from the controller.
+  // That widget is only needed in the view, not in the controller.
+  // The following three lines are DELETED:
+  // if (hasDropdown) {
+  //   buffer.writeln("import '/widget/common_dropdown_search.dart';");
+  // }
+
+  // Collect model imports for API dropdowns
+  final emittedModelFiles = <String>{};
   for (final field in flatFields) {
     final type = (field['type'] ?? '').toString().toLowerCase();
     if (type == 'dropdown' || type == 'api_dropdown') {
-      final staticOpts = (field['options'] as List<dynamic>?) ??
+      final useStatic = field['useStaticOptions'] == true;
+      final hasApiUrl = field['dropdownApiUrl'] != null;
+      final staticOpts =
+          (field['options'] as List<dynamic>?) ??
           (field['staticOptions'] as List<dynamic>?);
-      if (staticOpts == null || staticOpts.isEmpty) {
-        final rawLabel =
-            (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
-                .toString()
-                .trim();
-        dropdownModels.add(rawLabel);
+      if ((!useStatic && hasApiUrl) ||
+          (!useStatic && (staticOpts == null || staticOpts.isEmpty))) {
+        final modelClass = resolveModelClass(field); // e.g. "Post"
+        final modelFile = modelClassToFileName(modelClass); // e.g. "post"
+        if (emittedModelFiles.add(modelFile)) {
+          buffer.writeln("import '../model/${modelFile}_model.dart';");
+        }
       }
     }
-  }
-  for (final model in dropdownModels) {
-    final modelFile = model.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
-    buffer.writeln("import '../model/${modelFile}_model.dart';");
   }
 
   buffer.writeln();
@@ -132,10 +171,12 @@ String generatecontrollerClass(
     final name = getFieldName(item);
     final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-    final useStatic = (item['useStaticOptions'] == true);
-    final staticOpts = (item['options'] as List<dynamic>?) ??
+    final useStatic = item['useStaticOptions'] == true;
+    final staticOpts =
+        (item['options'] as List<dynamic>?) ??
         (item['staticOptions'] as List<dynamic>?);
-    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+    final isApiDropdown =
+        (type == 'dropdown' || type == 'api_dropdown') &&
         !useStatic &&
         item['dropdownApiUrl'] != null;
 
@@ -158,55 +199,51 @@ String generatecontrollerClass(
         type == 'date time' ||
         type == 'time') {
       buffer.writeln("  final ${name}Controller = TextEditingController();");
-    }
-    // ---------- Dropdown (static or API via repository) ----------
-    else if (type == 'dropdown' || type == 'api_dropdown') {
+
+      // ---------- Dropdown ----------
+    } else if (type == 'dropdown' || type == 'api_dropdown') {
       if (!isApiDropdown && staticOpts != null && staticOpts.isNotEmpty) {
         // Static dropdown
-        final literals = staticOpts.map((o) {
-          if (o is Map) {
-            final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            return "DropdownItem(key: '$k', value: '$v')";
-          }
-          final val = o?.toString().replaceAll("'", "\\'") ?? '';
-          return "DropdownItem(key: '$val', value: '$val')";
-        }).join(', ');
-        buffer.writeln("  var selected$pascalName = Rxn<DropdownItem>();");
-        buffer
-            .writeln("  final ${name}Options = <DropdownItem>[$literals].obs;");
-      } else if (isApiDropdown) {
-        // API dropdown – call repository method
-        var apidata = item['dropdowndata'];
-        String? dropdownmodel = (item['modelName']?.toString());
-        if (dropdownmodel == null || dropdownmodel.isEmpty) {
-          if (apidata is Map<String, dynamic>) {
-            for (final entry in apidata.entries) {
-              final v = entry.value;
-              if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-                dropdownmodel = '${capitalize(singularize(entry.key))}Model';
-                break;
+        final literals = staticOpts
+            .map((o) {
+              if (o is Map) {
+                final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                return "DropdownItem(key: '$k', value: '$v')";
               }
-            }
-          }
-        }
-        dropdownmodel ??= '${pascalName}Model';
+              final val = o?.toString().replaceAll("'", "\\'") ?? '';
+              return "DropdownItem(key: '$val', value: '$val')";
+            })
+            .join(', ');
+        buffer.writeln("  var selected$pascalName = Rxn<DropdownItem>();");
+        buffer.writeln(
+          "  final ${name}Options = <DropdownItem>[$literals].obs;",
+        );
+      } else if (isApiDropdown) {
+        // Dynamic dropdown – uses inner model class
+        final dropdownmodel = resolveModelClass(item);
 
         buffer.writeln("  var ${name}Options = <$dropdownmodel>[].obs;");
         buffer.writeln("  var selected$pascalName = Rxn<$dropdownmodel>();");
         buffer.writeln("  var isLoading$pascalName = false.obs;");
+
+        // ✅ FIX 2: Repository method changed to "get{pascalName}Options"
+        final repoMethod = 'get${pascalName}Options';
         dropdownInitCalls.add("    load${pascalName}Options(),");
         extraMethods.addAll([
           "  Future<void> load${pascalName}Options() async {",
           "    if (isLoading$pascalName.value) return;",
           "    isLoading$pascalName.value = true;",
           "    try {",
-          "      final data = await repository.get$pascalName();",
-          "      ${name}Options.value = data;",
+          "      final data = await repository.$repoMethod();",
+          "      // Defer assignment to avoid didUpdateWidget during build",
+          "      SchedulerBinding.instance.addPostFrameCallback((_) {",
+          "        ${name}Options.value = data.map((json) => $dropdownmodel.fromJson(json)).toList();",
+          "      });",
           "    } catch (e) {",
           "      Get.snackbar('Error', 'Could not load $pascalName: \$e');",
           "    } finally {",
@@ -216,45 +253,48 @@ String generatecontrollerClass(
           "",
         ]);
       }
-    }
-    // ---------- Radio ----------
-    else if (type == 'radio' || type == 'radio buttons') {
+
+      // ---------- Radio ----------
+    } else if (type == 'radio' || type == 'radio buttons') {
       if (staticOpts != null && staticOpts.isNotEmpty) {
-        final formattedOptions = staticOpts.map((o) {
-          if (o is Map) {
-            final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            return "RadioOption<String>(value: '$k', label: '$v')";
-          }
-          final val = o?.toString().replaceAll("'", "\\'") ?? '';
-          return "RadioOption<String>(value: '$val', label: '$val')";
-        }).join(', ');
+        final formattedOptions = staticOpts
+            .map((o) {
+              if (o is Map) {
+                final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                return "RadioOption<String>(value: '$k', label: '$v')";
+              }
+              final val = o?.toString().replaceAll("'", "\\'") ?? '';
+              return "RadioOption<String>(value: '$val', label: '$val')";
+            })
+            .join(', ');
         buffer.writeln("  var selected$pascalName = ''.obs;");
         buffer.writeln(
-            "  final ${name}Options = <RadioOption<String>>[$formattedOptions];");
+          "  final ${name}Options = <RadioOption<String>>[$formattedOptions];",
+        );
       } else {
         buffer.writeln("  var selected$pascalName = ''.obs;");
         buffer.writeln("  final ${name}Options = <RadioOption<String>>[];");
       }
-    }
-    // ---------- Switch ----------
-    else if (type == 'switch') {
+
+      // ---------- Switch ----------
+    } else if (type == 'switch') {
       final defaultValue =
           (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
       buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // ---------- Checkbox ----------
-    else if (type == 'checkbox') {
+
+      // ---------- Checkbox ----------
+    } else if (type == 'checkbox') {
       final defaultValue =
           (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
       buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // ---------- File / Image ----------
-    else if (type == 'file' ||
+
+      // ---------- File / Image ----------
+    } else if (type == 'file' ||
         type == 'fileupload' ||
         type == 'file upload' ||
         type == 'image') {
@@ -266,42 +306,45 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // ---------- Multi‑select ----------
-    else if (type == 'multiselect' ||
+
+      // ---------- Multi-select ----------
+    } else if (type == 'multiselect' ||
         type == 'multi select' ||
         type == 'multi_select') {
       buffer.writeln("  final ${name}Selected = <String>[].obs;");
       if (staticOpts != null && staticOpts.isNotEmpty) {
-        final optLiterals = staticOpts.map((o) {
-          if (o is Map) {
-            final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            return "'$v'";
-          }
-          return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
-        }).join(', ');
+        final optLiterals = staticOpts
+            .map((o) {
+              if (o is Map) {
+                final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                return "'$v'";
+              }
+              return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
+            })
+            .join(', ');
         buffer.writeln("  final ${name}Options = <String>[$optLiterals];");
       } else {
         buffer.writeln("  final ${name}Options = <String>[];");
       }
-    }
-    // ---------- Slider ----------
-    else if (type == 'slider' || type == 'range slider') {
-      final defaultValue = (item['defaultValue'] as num?)?.toDouble() ??
+
+      // ---------- Slider ----------
+    } else if (type == 'slider' || type == 'range slider') {
+      final defaultValue =
+          (item['defaultValue'] as num?)?.toDouble() ??
           (item['minValue'] as num?)?.toDouble() ??
           0.0;
       buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // ---------- Star Rating ----------
-    else if (type == 'starrating' ||
+
+      // ---------- Star Rating ----------
+    } else if (type == 'starrating' ||
         type == 'rating' ||
         type == 'star rating') {
       buffer.writeln("  var ${name}Value = 0.0.obs;");
-    }
-    // ---------- Grid / Table ----------
-    else if (type == 'grid' ||
+
+      // ---------- Grid / Table ----------
+    } else if (type == 'grid' ||
         type == 'table' ||
         type == 'table/grid' ||
         type == 'table grid' ||
@@ -321,9 +364,9 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // ---------- Repeater ----------
-    else if (type == 'repeater') {
+
+      // ---------- Repeater ----------
+    } else if (type == 'repeater') {
       buffer.writeln("  final ${name}Items = <dynamic>[].obs;");
       extraMethods.addAll([
         "  void add${pascalName}Item() { ${name}Items.add({}); }",
@@ -332,27 +375,29 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // ---------- Autocomplete ----------
-    else if (type == 'autocomplete') {
+
+      // ---------- Autocomplete ----------
+    } else if (type == 'autocomplete') {
       buffer.writeln("  var selected${pascalName}Text = ''.obs;");
       if (staticOpts != null && staticOpts.isNotEmpty) {
-        final optLiterals = staticOpts.map((o) {
-          if (o is Map) {
-            final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
-                .toString()
-                .replaceAll("'", "\\'");
-            return "'$v'";
-          }
-          return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
-        }).join(', ');
+        final optLiterals = staticOpts
+            .map((o) {
+              if (o is Map) {
+                final v = (o['value'] ?? o['key'] ?? o['title'] ?? '')
+                    .toString()
+                    .replaceAll("'", "\\'");
+                return "'$v'";
+              }
+              return "'${o?.toString().replaceAll("'", "\\'") ?? ''}'";
+            })
+            .join(', ');
         buffer.writeln("  final ${name}Options = <String>[$optLiterals];");
       } else {
         buffer.writeln("  final ${name}Options = <String>[];");
       }
-    }
-    // ---------- Signature ----------
-    else if (type == 'signature') {
+
+      // ---------- Signature ----------
+    } else if (type == 'signature') {
       buffer.writeln("  var ${name}Signed = false.obs;");
       buffer.writeln("  var ${name}Data = ''.obs;");
       extraMethods.addAll([
@@ -361,18 +406,26 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // ---------- Formula ----------
-    else if (type == 'formula') {
+
+      // ---------- Formula ----------
+    } else if (type == 'formula') {
       buffer.writeln("  var $name = ''.obs;");
-    }
-    // Layout types – no state
-    else if (['label', 'divider', 'section', 'card', 'tabs', 'accordion', 'hidden', 'row']
-        .contains(type)) {
-      // do nothing
-    }
-    // Default fallback
-    else {
+
+      // ---------- Layout — no state ----------
+    } else if ([
+      'label',
+      'divider',
+      'section',
+      'card',
+      'tabs',
+      'accordion',
+      'hidden',
+      'row',
+    ].contains(type)) {
+      // intentionally empty
+
+      // ---------- Default fallback ----------
+    } else {
       buffer.writeln("  var $name = ''.obs;");
     }
   }
@@ -395,7 +448,7 @@ String generatecontrollerClass(
     buffer.writeln("    isLoading.value = true;");
     buffer.writeln("    try {");
     buffer.writeln("      await Future.wait([");
-    for (var call in dropdownInitCalls) {
+    for (final call in dropdownInitCalls) {
       buffer.writeln("        $call");
     }
     buffer.writeln("      ]);");
@@ -421,8 +474,9 @@ String generatecontrollerClass(
     final name = getFieldName(item);
     final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-    final useStatic = (item['useStaticOptions'] == true);
-    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+    final useStatic = item['useStaticOptions'] == true;
+    final isApiDropdown =
+        (type == 'dropdown' || type == 'api_dropdown') &&
         !useStatic &&
         item['dropdownApiUrl'] != null;
 
@@ -513,8 +567,9 @@ String generatecontrollerClass(
     final name = getFieldName(item);
     final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-    final useStatic = (item['useStaticOptions'] == true);
-    final isApiDropdown = (type == 'dropdown' || type == 'api_dropdown') &&
+    final useStatic = item['useStaticOptions'] == true;
+    final isApiDropdown =
+        (type == 'dropdown' || type == 'api_dropdown') &&
         !useStatic &&
         item['dropdownApiUrl'] != null;
 
@@ -540,11 +595,7 @@ String generatecontrollerClass(
         break;
       case 'dropdown':
       case 'api_dropdown':
-        if (isApiDropdown) {
-          buffer.writeln("    selected$pascalName.value = null;");
-        } else {
-          buffer.writeln("    selected$pascalName.value = null;");
-        }
+        buffer.writeln("    selected$pascalName.value = null;");
         break;
       case 'radio':
       case 'radio buttons':

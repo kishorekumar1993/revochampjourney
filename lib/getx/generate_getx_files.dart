@@ -18,14 +18,15 @@ import 'package:revojourneytryone/riverpod/riverpod_provider.dart';
 import 'package:revojourneytryone/riverpod/riverpod_temp_model.dart';
 import 'package:revojourneytryone/riverpod/riverpodapiservice.dart';
 
-
 void saveRepositoryFile(
   List<Map<String, dynamic>> fieldJsonRaw,
   String? screenName,
   String? modelName,
   List<Map<String, String>>? logicalFiles,
 ) {
-  final fieldJson = fieldJsonRaw.map((e) => Map<String, dynamic>.from(e)).toList();
+  final fieldJson = fieldJsonRaw
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
 
   final flatFields = <Map<String, dynamic>>[];
   void flatten(dynamic source) {
@@ -45,6 +46,7 @@ void saveRepositoryFile(
       }
     }
   }
+
   flatten(fieldJson);
 
   String baseName = screenName ?? 'unknown';
@@ -55,14 +57,10 @@ void saveRepositoryFile(
   logicalFiles ??= [];
 
   String repgenerated = generaterepositoryClass(className, fieldJson, fileName);
-  String viewgenerated = generateviewClass(
-    className,
-    fieldJson,
-    fileName,
-  );
+  String viewgenerated = generateviewClass(className, fieldJson, fileName);
   String bingenerated = generateBindingClass(
-    className, 
-    fieldJson.isNotEmpty ? fieldJson.first : <String, dynamic>{}, 
+    className,
+    fieldJson.isNotEmpty ? fieldJson.first : <String, dynamic>{},
     fileName,
   );
   String congenerated = generatecontrollerClass(className, fieldJson, fileName);
@@ -117,10 +115,9 @@ void saveRepositoryFile(
 
     // ✅ Safe label extraction
     final rawLabel = item['label'];
-    final safeLabel =
-        (rawLabel is String && rawLabel.trim().isNotEmpty)
-            ? rawLabel
-            : 'UnnamedModel';
+    final safeLabel = (rawLabel is String && rawLabel.trim().isNotEmpty)
+        ? rawLabel
+        : 'UnnamedModel';
 
     final fileName = safeLabel.toLowerCase();
     final modelClassName = "${safeLabel.toString().replaceAll(" ", "")}Model";
@@ -175,10 +172,9 @@ void saveRepositoryFile(
 
     // ✅ Safe label extraction
     final rawLabel = item['label'];
-    final safeLabel =
-        (rawLabel is String && rawLabel.trim().isNotEmpty)
-            ? rawLabel
-            : 'UnnamedModel';
+    final safeLabel = (rawLabel is String && rawLabel.trim().isNotEmpty)
+        ? rawLabel
+        : 'UnnamedModel';
 
     final fileName = safeLabel.toLowerCase().replaceAll(" ", "_");
     final modelClassName = safeLabel.toString().replaceAll(" ", "");
@@ -188,7 +184,8 @@ void saveRepositoryFile(
 
     if (textContent is List && textContent.isNotEmpty) {
       if (textContent.first is Map<String, dynamic>) {
-        generatedEnrity = generateEntityClass(
+        generatedEnrity =
+         generateEquatableEntityClass(
           '${modelClassName}Entity',
           textContent.first as Map<String, dynamic>,
           fileName,
@@ -205,7 +202,7 @@ void saveRepositoryFile(
           fileName,
         );
 
-        generatedEnrity = generateEntityClass(
+        generatedEnrity = generateEquatableEntityClass(
           '${modelClassName}Entity',
           Map<String, dynamic>.from(textContent.first),
           fileName,
@@ -213,10 +210,10 @@ void saveRepositoryFile(
       } else {
         generateModel = riverpodModelGenerateClass(modelClassName, {}, '');
 
-        generatedEnrity = generateEntityClass(modelClassName, {}, '');
+        generatedEnrity = generateEquatableEntityClass(modelClassName, {}, '');
       }
     } else if (textContent is Map<String, dynamic>) {
-      generatedEnrity = generateEntityClass(
+      generatedEnrity = generateEquatableEntityClass(
         '${modelClassName}Entity',
         textContent,
         fileName,
@@ -233,13 +230,13 @@ void saveRepositoryFile(
         fileName,
       );
 
-      generatedEnrity = generateEntityClass(
+      generatedEnrity = generateEquatableEntityClass(
         '${modelClassName}Entity',
         Map<String, dynamic>.from(textContent),
         fileName,
       );
     } else {
-      generatedEnrity = generateEntityClass(
+      generatedEnrity = generateEquatableEntityClass(
         '${modelClassName}Entity',
 
         Map<String, dynamic>.from(textContent),
@@ -378,9 +375,6 @@ void saveRepositoryFile(
         "${fileName.toString().toLowerCase().replaceAll(" ", "_")}_notifier.dart",
     "textContent": riverpodpresentnotifier,
   });
-
-
-
 
   // ... then jsonEncode and save ...
 

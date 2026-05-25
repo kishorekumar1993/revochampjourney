@@ -1,8 +1,9 @@
 String generateLocatorInterface(
   String className,
   List<dynamic> configList,
-  String fileName,
-) {
+  String fileName, {
+  int depthToCore = 5, // from domain/locator to lib/core
+}) {
   final buffer = StringBuffer();
 
   // ─── Recursive flatten ─────────────────────────────────────────
@@ -44,7 +45,8 @@ String generateLocatorInterface(
     if (type == 'dropdown' || type == 'api_dropdown') {
       final useStatic = field['useStaticOptions'] == true;
       final hasApiUrl = field['dropdownApiUrl'] != null;
-      final staticOpts = (field['options'] as List<dynamic>?) ??
+      final staticOpts =
+          (field['options'] as List<dynamic>?) ??
           (field['staticOptions'] as List<dynamic>?);
       if (!useStatic && hasApiUrl) {
         apiDropdownFields.add(field);
@@ -57,17 +59,19 @@ String generateLocatorInterface(
   final fileSnake = fileName.toLowerCase().replaceAll(' ', '_');
   final classLower = _toCamelCase(className);
 
+  // ─── Build relative paths ─────────────────────────────────────
+  final corePath = '../' * depthToCore + 'core';
+
   // ─── Imports ──────────────────────────────────────────────────
+  buffer.writeln("import 'package:flutter_riverpod/flutter_riverpod.dart';");
+  buffer.writeln("import '$corePath/network/api_service.dart';");
   buffer.writeln(
-      "import 'package:flutter_riverpod/flutter_riverpod.dart';");
+    "import '../../data/dataSource/${fileSnake}_data_source.dart';",
+  );
   buffer.writeln(
-      "import '../../../../../network/client/client_provider.dart';");
-  buffer.writeln(
-      "import '../../data/dataSource/${fileSnake}_data_source.dart';");
-  buffer.writeln(
-      "import '../../data/repositoryimpl/${fileSnake}_repositoryimpl.dart';");
-  buffer.writeln(
-      "import '../repository/${fileSnake}_repository.dart';");
+    "import '../../data/repositoryimpl/${fileSnake}_repositoryimpl.dart';",
+  );
+  buffer.writeln("import '../repository/${fileSnake}_repository.dart';");
 
   // ✅ UseCase imports — one per API dropdown field
   for (final field in apiDropdownFields) {
@@ -79,37 +83,31 @@ String generateLocatorInterface(
         'get_all_${rawLabel.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}_usecase';
     buffer.writeln("import '../usecase/$useCaseFile.dart';");
   }
-
   buffer.writeln();
 
   // ─── DataSource provider ───────────────────────────────────────
   buffer.writeln("/// DataSource provider.");
   buffer.writeln(
-      "/// [${className}DataSource] → abstract interface.");
-  buffer.writeln(
-      "/// [${className}DataSourceImpl] → concrete HTTP implementation.");
-  buffer.writeln(
-      "final ${classLower}DataSourceProvider = Provider.autoDispose<${className}DataSource>((ref) {");
-  buffer.writeln("  final client = ref.watch(httpClientProvider);");
-  buffer.writeln("  return ${className}DataSourceImpl(client);");
+    "final ${classLower}DataSourceProvider = Provider.autoDispose<${className}DataSource>((ref) {",
+  );
+  buffer.writeln("  final apiService = ref.watch(apiServiceProvider);");
+  buffer.writeln("  return ${className}DataSourceImpl(apiService);");
   buffer.writeln("});");
   buffer.writeln();
 
   // ─── Repository provider ───────────────────────────────────────
   buffer.writeln("/// Repository provider.");
   buffer.writeln(
-      "/// Bridges [${className}DataSource] ↔ [${className}Repository] interface.");
+    "final ${classLower}RepositoryProvider = Provider.autoDispose<${className}Repository>((ref) {",
+  );
   buffer.writeln(
-      "final ${classLower}RepositoryProvider = Provider.autoDispose<${className}Repository>((ref) {");
-  buffer.writeln(
-      "  final dataSource = ref.watch(${classLower}DataSourceProvider);");
+    "  final dataSource = ref.watch(${classLower}DataSourceProvider);",
+  );
   buffer.writeln("  return ${className}RepoImpl(dataSource);");
   buffer.writeln("});");
   buffer.writeln();
 
-  // ─── UseCase providers — one per API dropdown ──────────────────
-  // ✅ UI → Notifier → UseCase Provider → Repository
-  // Notifier calls ref.read(xxxUseCaseProvider) and invokes .call()
+  // ─── UseCase providers (one per API dropdown) ──────────────────
   for (final field in apiDropdownFields) {
     final rawLabel =
         (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
@@ -125,11 +123,8 @@ String generateLocatorInterface(
     if (dropdowndata is Map<String, dynamic>) {
       for (final entry in dropdowndata.entries) {
         final v = entry.value;
-        if (v is List &&
-            v.isNotEmpty &&
-            v.first is Map<String, dynamic>) {
-          entityClass =
-              '${_capitalize(_singularize(entry.key))}Entity';
+        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+          entityClass = '${_capitalize(_singularize(entry.key))}Entity';
           break;
         }
       }
@@ -139,13 +134,11 @@ String generateLocatorInterface(
 
     buffer.writeln("/// UseCase provider for [$pascal].");
     buffer.writeln(
-        "/// Returns [Either<Failure, List<$entityClass>>].");
+      "final ${lower}UseCaseProvider = Provider.autoDispose<$useCaseClass>((ref) {",
+    );
     buffer.writeln(
-        "/// Usage: ref.read(${lower}UseCaseProvider).call()");
-    buffer.writeln(
-        "final ${lower}UseCaseProvider = Provider.autoDispose<$useCaseClass>((ref) {");
-    buffer.writeln(
-        "  final repository = ref.watch(${classLower}RepositoryProvider);");
+      "  final repository = ref.watch(${classLower}RepositoryProvider);",
+    );
     buffer.writeln("  return $useCaseClass(repository);");
     buffer.writeln("});");
     buffer.writeln();
@@ -154,9 +147,7 @@ String generateLocatorInterface(
   return buffer.toString();
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────
-
-/// "UserJourneyForm" → "userJourneyForm"
+// ─── Helpers (consistent with previous generators) ───────────────
 String _toCamelCase(String s) {
   if (s.isEmpty) return s;
   if (s.contains(RegExp(r'[a-z]'))) {
@@ -177,48 +168,9 @@ String _capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
 String _singularize(String text) {
-  if (text.endsWith('ies')) {
-    return '${text.substring(0, text.length - 3)}y';
-  }
+  if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
   if (text.endsWith('s') && text.length > 1) {
     return text.substring(0, text.length - 1);
   }
   return text;
 }
-
-// String generateLocaltorInterface(
-//   String className,
-//   List<dynamic> configList,
-//   String fileName, // Not directly used in this snippet, but kept for signature
-// ) {
-//   final buffer = StringBuffer();
-//   buffer.writeln('''
-// import  '../../data/repositoryimpl/${fileName.toLowerCase().replaceAll(" ", "_")}_repositoryimpl.dart';
-// import '../repository/${fileName.toLowerCase().replaceAll(" ", "_")}_repository.dart';
-// import '../../data/dataSource/${fileName.toLowerCase().replaceAll(" ", "_")}_data_source.dart';
-
-// import '../../../../../network/client/client_provider.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-
-
-// final connectionProvider = Provider<${className}Datasource>((ref) {
-//   final client = ref.watch(httpClientProvider);
-//   return ${className}DatasourceImpl(client);
-// });
-// final ${lowercapitalize(className)}ViewProvider = Provider<${className}Repository>((ref) {
-//   final dataSource = ref.watch(connectionProvider);
-//   return ${className}RepoImpl(dataSource);
-// });
-// ''');
-
-//   return buffer.toString();
-// }
-
-// /// Helper function to capitalize the first letter of a string.
-// String capitalize(String s) =>
-//     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-// /// Helper function to lowercase the first letter of a string.
-// String lowercapitalize(String s) =>
-//     s.isEmpty ? s : '${s[0].toLowerCase()}${s.substring(1)}';

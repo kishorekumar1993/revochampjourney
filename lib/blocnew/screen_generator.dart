@@ -30,8 +30,8 @@ class ScreenGenerator {
     buf.writeln("import '/core/runtime/reactive_value.dart';");
     // Feature imports
     buf.writeln("import '../bloc/${snakeName}_bloc.dart';");
-    buf.writeln("import '../state/${snakeName}_state.dart';");
-    buf.writeln("import '../events/${snakeName}_event.dart';");
+    buf.writeln("import '../bloc/${snakeName}_state.dart';");
+    buf.writeln("import '../bloc/${snakeName}_event.dart';");
     buf.writeln();
 
     // ─── Screen widget ──────────────────────────────────────────────────────
@@ -41,12 +41,13 @@ class ScreenGenerator {
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
     buf.writeln('    return BlocListener<$blocName, $stateName>(');
-    buf.writeln('      listenWhen: (previous, current) => previous.submission != current.submission,');
+    buf.writeln('      listenWhen: (previous, current) => previous.submissionAsync != current.submissionAsync,');
     buf.writeln('      listener: (context, state) {');
-    buf.writeln('        state.submission.maybeWhen(');
-    buf.writeln("          success: (data) => _showSuccess(context, data.message),");
-    buf.writeln('          onFailure: (failure) => _showError(context, failure.message),');
-    buf.writeln('          orElse: () {},');
+    buf.writeln('        state.submissionAsync.when(');
+    buf.writeln('          idle: () {},');
+    buf.writeln('          loading: () {},');
+    buf.writeln("          data: (data) => _showSuccess(context, 'Submitted successfully'),");
+    buf.writeln("          error: (error) => _showError(context, error.toString()),");
     buf.writeln('        );');
     buf.writeln('      },');
     buf.writeln('      child: Scaffold(');
@@ -145,7 +146,7 @@ class ScreenGenerator {
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
     buf.writeln('    return BlocSelector<$blocName, $stateName, bool>(');
-    buf.writeln('      selector: (state) => state.isSubmitting,');
+    buf.writeln('      selector: (state) => state.submissionAsync.isLoading,');
     buf.writeln('      builder: (context, isSubmitting) => AppFormButton(');
     buf.writeln("        label: 'Submit',");
     buf.writeln("        loadingLabel: 'Submitting...',");
@@ -254,7 +255,7 @@ class ScreenGenerator {
     buf.writeln('  void initState() {');
     buf.writeln('    super.initState();');
     buf.writeln('    _controller = TextEditingController(');
-    buf.writeln("        text: context.read<$blocName>().state.${f.fieldName}.value);");
+    buf.writeln("        text: context.read<$blocName>().state.formValues['${f.fieldName}']?.toString() ?? '');");
     buf.writeln('  }');
     buf.writeln();
     buf.writeln('  @override');
@@ -266,19 +267,18 @@ class ScreenGenerator {
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
     buf.writeln('    return BlocConsumer<$blocName, $stateName>(');
-    buf.writeln('      listenWhen: (previous, current) => previous.${f.fieldName}.value != current.${f.fieldName}.value,');
+    buf.writeln("      listenWhen: (previous, current) => previous.formValues['${f.fieldName}'] != current.formValues['${f.fieldName}'],");
     buf.writeln('      listener: (context, state) {');
-    buf.writeln('        final newValue = state.${f.fieldName}.value;');
+    buf.writeln("        final newValue = state.formValues['${f.fieldName}']?.toString() ?? '';");
     buf.writeln('        if (_controller.text != newValue) _controller.text = newValue;');
     buf.writeln('      },');
-    buf.writeln('      buildWhen: (previous, current) => previous.${f.fieldName}.hasError != current.${f.fieldName}.hasError,');
+    buf.writeln("      buildWhen: (previous, current) => false,");
     buf.writeln('      builder: (context, state) {');
-    buf.writeln('        final field = state.${f.fieldName};');
     buf.writeln('        return AppTextField(');
     buf.writeln('          controller: _controller,');
     buf.writeln("          label: '${_escape(f.label)}',");
     if (hintText.isNotEmpty) buf.writeln("          hint: '${_escape(hintText)}',");
-    buf.writeln('          errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('          errorText: null,');
     if (f.isReadOnly)         buf.writeln('          readOnly: true,');
     if (f.isDisabled)         buf.writeln('          enabled: false,');
     if (f.obscureText)        buf.writeln('          obscureText: true,');
@@ -291,7 +291,7 @@ class ScreenGenerator {
     buf.writeln('          textCapitalization: $capType,');
     buf.writeln('          textInputAction: $action,');
     buf.writeln('          onChanged: (value) => context.read<$blocName>().add(');
-    buf.writeln('            ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("            ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: value),");
     buf.writeln('          ),');
     buf.writeln('        );');
     buf.writeln('      },');
@@ -302,18 +302,18 @@ class ScreenGenerator {
 
   void _writeStaticStringDropdown(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
     final options = f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ');
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<String>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName},');
-    buf.writeln('      builder: (context, field) => AppDropdownField<String>(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, String>(');
+    buf.writeln("      selector: (state) => state.formValues['${f.fieldName}']?.toString() ?? '',");
+    buf.writeln('      builder: (context, value) => AppDropdownField<String>(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: field.value.isEmpty ? null : field.value,');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        value: value.isEmpty ? null : value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        items: [$options],');
     buf.writeln('        itemLabelBuilder: (item) => item,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
-    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("              ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: value),");
     buf.writeln('            );');
     buf.writeln('          }');
     buf.writeln('        },');
@@ -327,22 +327,21 @@ class ScreenGenerator {
         : 'title';
     buf.writeln('    return BlocBuilder<$blocName, $stateName>(');
     buf.writeln('      buildWhen: (previous, current) =>');
-    buf.writeln('          previous.${f.fieldName}Options != current.${f.fieldName}Options ||');
-    buf.writeln('          previous.${f.fieldName}Field   != current.${f.fieldName}Field   ||');
-    buf.writeln('          previous.${f.fieldName}State   != current.${f.fieldName}State,');
+    buf.writeln("          previous.${f.fieldName}Async != current.${f.fieldName}Async ||");
+    buf.writeln("          previous.formValues['${f.fieldName}'] != current.formValues['${f.fieldName}'],");
     buf.writeln('      builder: (context, state) {');
-    buf.writeln('        final options = state.${f.fieldName}Options;');
-    buf.writeln('        final field   = state.${f.fieldName};');
-    buf.writeln('        final async   = state.${f.fieldName}State;');
+    buf.writeln("        final value = state.formValues['${f.fieldName}']?.toString() ?? '';");
+    buf.writeln('        final async = state.${f.fieldName}Async;');
+    buf.writeln('        final options = async.isData ? async.data! : [];');
     buf.writeln('        return AppAsyncDropdownField<dynamic>(');
     buf.writeln("          label: '${_escape(f.label)}',");
-    buf.writeln('          asyncState: async.map(options),');
-    buf.writeln('          value: field.value?.toString().isEmpty == true ? null : options.firstWhere(');
-    buf.writeln('            (item) => item.$labelKey.toString() == field.value.toString(),');
+    buf.writeln('          asyncState: async,');
+    buf.writeln('          value: value.isEmpty ? null : options.firstWhere(');
+    buf.writeln('            (item) => item.$labelKey.toString() == value,');
     buf.writeln('            orElse: () => null,');
     buf.writeln('          ),');
     buf.writeln('          itemLabelBuilder: (item) => item.$labelKey.toString(),');
-    buf.writeln('          errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('          errorText: null,');
     if (hasAsyncDropdown) {
       buf.writeln('          onRetry: () => context.read<$blocName>().add(const Load${featureName}DataEvent()),');
     } else {
@@ -351,7 +350,7 @@ class ScreenGenerator {
     buf.writeln('          onChanged: (value) {');
     buf.writeln('            if (value != null) {');
     buf.writeln('              context.read<$blocName>().add(');
-    buf.writeln('                ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value.$labelKey.toString()),');
+    buf.writeln("                ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val.$labelKey.toString()),");
     buf.writeln('              );');
     buf.writeln('            }');
     buf.writeln('          },');
@@ -364,17 +363,17 @@ class ScreenGenerator {
     final options = f.isStaticStringOnly
         ? f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ')
         : "'Option 1', 'Option 2'";
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<String>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName},');
-    buf.writeln('      builder: (context, field) => AppRadioGroupField(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, String>(');
+    buf.writeln("      selector: (state) => state.formValues['${f.fieldName}']?.toString() ?? '',");
+    buf.writeln('      builder: (context, value) => AppRadioGroupField(');
     buf.writeln("        label: '${_escape(f.label)}',");
     buf.writeln('        options: [$options],');
-    buf.writeln('        value: field.value.isEmpty ? null : field.value,');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        value: value.isEmpty ? null : value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
-    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("              ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val),");
     buf.writeln('            );');
     buf.writeln('          }');
     buf.writeln('        },');
@@ -383,16 +382,16 @@ class ScreenGenerator {
   }
 
   void _writeDatePicker(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<DateTime?>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName}Field,');
-    buf.writeln('      builder: (context, field) => AppDatePickerField(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, DateTime?>(');
+    buf.writeln("      selector: (state) => state.formValues['${f.fieldName}'] as DateTime?,");
+    buf.writeln('      builder: (context, value) => AppDatePickerField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: field.value,');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        value: value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
-    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("              ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val),");
     buf.writeln('            );');
     buf.writeln('          }');
     buf.writeln('        },');
@@ -401,30 +400,30 @@ class ScreenGenerator {
   }
 
   void _writeCheckbox(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<bool>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName},');
-    buf.writeln('      builder: (context, field) => AppCheckboxField(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, bool>(');
+    buf.writeln("      selector: (state) => state.formValues['${f.fieldName}'] as bool? ?? false,");
+    buf.writeln('      builder: (context, value) => AppCheckboxField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: field.value,');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        value: value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
-    buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value ?? false),');
+    buf.writeln("          ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val ?? false),");
     buf.writeln('        ),');
     buf.writeln('      ),');
     buf.writeln('    );');
   }
 
   void _writeFileUpload(StringBuffer buf, FieldSchema f, String stateName, String blocName, String keysClass) {
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<dynamic>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName},');
-    buf.writeln('      builder: (context, field) => AppFileUploadField(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, String?>(');
+    buf.writeln("      selector: (state) => state.formValues['${f.fieldName}']?.toString(),");
+    buf.writeln('      builder: (context, value) => AppFileUploadField(');
     buf.writeln("        label: '${_escape(f.label)}',");
-    buf.writeln('        value: field.value?.toString(),');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        value: value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        onChanged: (value) {');
     buf.writeln('          if (value != null) {');
     buf.writeln('            context.read<$blocName>().add(');
-    buf.writeln('              ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("              ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val),");
     buf.writeln('            );');
     buf.writeln('          }');
     buf.writeln('        },');
@@ -436,15 +435,15 @@ class ScreenGenerator {
     final options = f.staticStringValues.isNotEmpty
         ? f.staticStringValues.map((v) => "'${_escape(v)}'").join(', ')
         : "'Option 1', 'Option 2', 'Option 3'";
-    buf.writeln('    return BlocSelector<$blocName, $stateName, ReactiveValue<List<String>>>(');
-    buf.writeln('      selector: (state) => state.${f.fieldName},');
-    buf.writeln('      builder: (context, field) => AppMultiSelectField(');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, List<String>>(');
+    buf.writeln("      selector: (state) => (state.formValues['${f.fieldName}'] as List<dynamic>?)?.cast<String>() ?? [],");
+    buf.writeln('      builder: (context, value) => AppMultiSelectField(');
     buf.writeln("        label: '${_escape(f.label)}',");
     buf.writeln('        options: [$options],');
-    buf.writeln('        selectedValues: field.value,');
-    buf.writeln('        errorText: field.hasError ? field.error?.message : null,');
+    buf.writeln('        selectedValues: value,');
+    buf.writeln('        errorText: null,');
     buf.writeln('        onChanged: (value) => context.read<$blocName>().add(');
-    buf.writeln('          ${featureName}ComponentUpdatedEvent($keysClass.${f.fieldName}, value),');
+    buf.writeln("          ${featureName}FieldChangedEvent(fieldName: '${f.fieldName}', value: val),");
     buf.writeln('        ),');
     buf.writeln('      ),');
     buf.writeln('    );');

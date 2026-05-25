@@ -327,7 +327,7 @@ List<Map<String, String>> _generateRiverpodFiles({
         : <String, dynamic>{};
 
     final modelContent  = riverpodModelGenerateClass(modelName, sampleData, modelFile);
-    final entityContent = generateEntityClass('${modelName}Entity', sampleData, modelFile);
+    final entityContent = generateEquatableEntityClass('${modelName}Entity', sampleData, modelFile);
 
     result.addAll([
       {'folderPath': '$base/data/model',       'fileName': '${modelFile}_model.dart',  'textContent': modelContent},
@@ -442,13 +442,23 @@ class RevochampBlocGenerator {
           entityClassName: '${featureName}Entity',
           stateName: '${featureName}FeatureState',
         ).generate();
-    files['$featBase/presentation/bloc/${snakeName}_bloc.dart'] =
-        BlocGenerator(
-          featureName: featureName,
-          fields: fields, generateAsyncValueSeparately: false,
-          // hasAsyncDropdown: fields.any((f) => f.isAsyncDropdown
-          // ),
-        ).generate();
+//     files['$featBase/presentation/bloc/${snakeName}_bloc.dart'] =
+//         BlocGenerator(
+//   featureName: featureName,
+//   configList: fields,
+//   generateAsyncValueSeparately: false,
+//   hasSubmit: false,
+// ).generate();
+final blocFiles = BlocGenerator(
+  featureName: featureName,
+  configList: fields,
+  generateAsyncValueSeparately: false,
+  hasSubmit: false,
+).generateAll(); // Changed from .generate() to .generateAll()
+
+blocFiles.forEach((key, value) {
+  files['$featBase/presentation/bloc/$key'] = value;
+});
     files['$featBase/presentation/screens/${snakeName}_screen.dart'] =
         ScreenGenerator(featureName: featureName, fields: fields).generate();
 
