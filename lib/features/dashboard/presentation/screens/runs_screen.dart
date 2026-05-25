@@ -317,7 +317,7 @@ class _RevoRunsScreenState extends ConsumerState<RevoRunsScreen> {
   }
 
   void _showInspectDataDialog(BuildContext context, Map<String, dynamic> run) {
-    final dataMap = run['data'] as Map<String, String>;
+    final dataMap = Map<String, dynamic>.from(run['data'] as Map? ?? {});
     
     showDialog(
       context: context,
@@ -372,7 +372,7 @@ class _RevoRunsScreenState extends ConsumerState<RevoRunsScreen> {
                   itemCount: dataMap.length,
                   itemBuilder: (context, index) {
                     final key = dataMap.keys.elementAt(index);
-                    final value = dataMap[key]!;
+                    final value = dataMap[key]?.toString() ?? '';
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),

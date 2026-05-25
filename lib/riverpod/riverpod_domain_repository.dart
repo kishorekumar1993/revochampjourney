@@ -49,16 +49,21 @@ String generateRepositoryInterface(
     final label = (item['label'] ?? '').toString().trim();
     if (label.isEmpty) continue; // Skip if label is empty.
 
-    final name = label.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final name = label.replaceAll(RegExp(r'\s+'), '');
     final apiUrl = item['dropdownApiUrl'] ?? '';
-          final modelClassName = label.toString().replaceAll(" ", "");
+    final modelClassName = label.toString().replaceAll(" ", "");
+    final dropdowndata = item['dropdowndata'];
 
-
-    // Logic to determine the model name from 'dropdowndata'.
     if (apiUrl.isNotEmpty) {
-      buffer.writeln(
-        "  Future<Either<Failure, ${modelClassName}Entity>> getAll${name}s();",
-      );
+      if (dropdowndata is Map) {
+        buffer.writeln(
+          "  Future<Either<Failure, ${modelClassName}Entity>> getAll${capitalize(name)}s();",
+        );
+      } else {
+        buffer.writeln(
+          "  Future<Either<Failure, List<${modelClassName}Entity>>> getAll${capitalize(name)}s();",
+        );
+      }
     }
   }
   buffer.writeln("}");

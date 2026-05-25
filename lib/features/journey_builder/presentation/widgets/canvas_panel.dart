@@ -127,17 +127,17 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     final activeStepId = ref.read(activeStepIdProvider);
     final fieldId = "field_${DateTime.now().millisecondsSinceEpoch}";
     final defaults = _componentDefaults(fieldType);
-    final newField = JourneyField(
-      id: fieldId,
-      label: defaults['label'] as String,
-      type: fieldType,
-      required: false,
-      placeholder: defaults['placeholder'] as String?,
-      options: defaults['options'] as List<String>?,
-      defaultValue: defaults['defaultValue'] as String?,
-      keyboardType: defaults['keyboardType'] as String?,
-      componentConfig: defaults['componentConfig'] == null ? null : Map<String, dynamic>.from(defaults['componentConfig'] as Map),
-    );
+    final newField = JourneyField.fromJson({
+      'id': fieldId,
+      'label': defaults['label'],
+      'type': fieldType,
+      'required': false,
+      'placeholder': defaults['placeholder'],
+      'options': defaults['options'],
+      'defaultValue': defaults['defaultValue'],
+      'keyboardType': defaults['keyboardType'],
+      'componentConfig': defaults['componentConfig'],
+    });
     ref.read(journeyConfigProvider.notifier).addFieldToStep(activeStepId, newField);
     ref.read(selectedFieldIdProvider.notifier).state = fieldId;
   }
@@ -820,18 +820,6 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildLayoutPreview(IconData icon, String text) {
-    return _buildPreviewBox(
-      height: 56,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: RevoTheme.primaryLight),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary))),
-        ],
-      ),
-    );
-  }
 
   Widget _buildTabsPreview() {
     return Row(
@@ -900,18 +888,16 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             onAcceptWithDetails: (details) {
               final newFieldId = "field_${DateTime.now().millisecondsSinceEpoch}";
               final defaults = _componentDefaults(details.data);
-              final newField = JourneyField(
-                id: newFieldId,
-                label: defaults['label'] as String,
-                type: details.data,
-                required: false,
-                placeholder: defaults['placeholder'] as String?,
-                options: defaults['options'] as List<String>?,
-                defaultValue: defaults['defaultValue'] as String?,
-                componentConfig: defaults['componentConfig'] == null
-                    ? null
-                    : Map<String, dynamic>.from(defaults['componentConfig'] as Map),
-              );
+              final newField = JourneyField.fromJson({
+                'id': newFieldId,
+                'label': defaults['label'],
+                'type': details.data,
+                'required': false,
+                'placeholder': defaults['placeholder'],
+                'options': defaults['options'],
+                'defaultValue': defaults['defaultValue'],
+                'componentConfig': defaults['componentConfig'],
+              });
               ref.read(journeyConfigProvider.notifier)
                   .addFieldToNestedContainer(stepId, field.id, newField);
             },
@@ -2601,8 +2587,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
             children: [
               Expanded(
                 child: Text(
-                  field.apiUrl != null && field.apiUrl!.isNotEmpty 
-                      ? "API: ${field.apiUrl}" 
+                  field.dropdownApiUrl != null && field.dropdownApiUrl!.isNotEmpty 
+                      ? "API: ${field.dropdownApiUrl}" 
                       : (field.placeholder ?? field.hintText ?? "Select (API Loaded)"),
                   style: TextStyle(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha:0.5), overflow: TextOverflow.ellipsis),
                 ),

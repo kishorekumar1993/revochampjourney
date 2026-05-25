@@ -1,3 +1,9 @@
+import 'dart:convert';
+
+enum ComponentType {
+  text, textarea, number, dropdown, api_dropdown, radio, checkbox, switchType, date, time, datetime, file, image, otp, phone, multi_select, table_grid, repeater, timeline, row, column, section, card, tabs, accordion, divider, formula, unknown
+}
+
 class JourneyConfig {
   String journeyName;
   String version;
@@ -135,30 +141,37 @@ class JourneyStep {
   }
 }
 
-class JourneyField {
+// --------------------------------------------------------------------------
+// BASE COMPONENT (Previously God-Class JourneyField)
+// --------------------------------------------------------------------------
+abstract class JourneyField {
   String id;
   String label;
-  String type; // text, textarea, number, dropdown, api_dropdown, radio, checkbox, switch, date, time, datetime, file, image, otp, phone, table_grid, repeater, timeline, section, card, tabs, accordion, divider
+  String type; // kept as string for easy serialization and matching old code
   bool required;
   bool visible;
   bool readOnly;
   String? placeholder;
-  List<String>? options;
-  Map<String, dynamic>? visibleIf;
-  String? defaultValue;
-  String? apiUrl;
-
-  // Additional design parameters
-  bool useStaticOptions;
-  List<Map<String, String>>? staticOptions;
-  String? fieldtype;
   String? hintText;
-  int? maxLength;
-  int? minLength;
+  String? errorMessage;
   bool disable;
   bool hidden;
-  String? apiParam;
-  bool api;
+  
+  Map<String, dynamic>? visibleIf;
+  List<Map<String, dynamic>>? conditionalValidations;
+  Map<String, dynamic>? asyncValidation;
+  String? validationPattern;
+  String? dependsOn;
+  List<String>? visibleForRoles;
+  List<String>? editableForRoles;
+
+  // The below are legacy catch-alls to prevent immediate breaking changes in properties_panel
+  // Subclasses that actually use these will override them.
+  List<JourneyField>? nestedFields;
+  String? defaultValue;
+  List<String>? options;
+  bool useStaticOptions = false;
+  List<Map<String, String>>? staticOptions;
   String? dropdownApiUrl;
   String? dropdownApiMethod;
   Map<String, dynamic>? dropdownApiHeaders;
@@ -167,33 +180,28 @@ class JourneyField {
   String? dropdownValue;
   dynamic dropdowndata;
   String? dropdownApiResponseKey;
-  String? validationPattern;
-  String? errorMessage;
-  bool obscureText;
-  bool autocorrect;
-  bool enableSuggestions;
+  String? dropdownListKey;
+  String? apiParam;
+  Map<String, dynamic>? componentConfig;
+  String? fieldtype;
+  int? maxLength;
+  int? minLength;
   String? keyboardType;
   String? textInputAction;
   String? textCapitalization;
-  String? dropdownListKey;
-  Map<String, dynamic>? componentConfig;
-  List<JourneyField>? nestedFields;
-  String? groupId;
-  String? groupLabel;
-  String? sectionId;
-  bool repeatableGroup;
-  Map<String, dynamic>? repeatConfig;
-  List<Map<String, dynamic>>? conditionalValidations;
+  bool obscureText = false;
+  bool autocorrect = true;
+  bool enableSuggestions = true;
   String? formula;
+  bool repeatableGroup = false;
+  Map<String, dynamic>? repeatConfig;
+  String? groupId;
+  String? sectionId;
   String? expression;
-  Map<String, dynamic>? asyncValidation;
-  String? dependsOn;
+  String? defaultValueExpression;
   Map<String, dynamic>? cascadeConfig;
   Map<String, dynamic>? localization;
-  String? defaultValueExpression;
-  List<String>? visibleForRoles;
-  List<String>? editableForRoles;
-  Map<String, dynamic>? roleVisibility;
+
 
   JourneyField({
     required this.id,
@@ -203,20 +211,24 @@ class JourneyField {
     this.visible = true,
     this.readOnly = false,
     this.placeholder,
-    this.options,
-    this.visibleIf,
-    this.defaultValue,
-    this.apiUrl,
-    this.useStaticOptions = false,
-    this.staticOptions,
-    this.fieldtype,
     this.hintText,
-    this.maxLength,
-    this.minLength,
+    this.errorMessage,
     this.disable = false,
     this.hidden = false,
-    this.apiParam,
-    this.api = false,
+    this.visibleIf,
+    this.conditionalValidations,
+    this.asyncValidation,
+    this.validationPattern,
+    this.dependsOn,
+    this.visibleForRoles,
+    this.editableForRoles,
+    
+    // Legacy mapping (will be overridden by subclasses)
+    this.nestedFields,
+    this.defaultValue,
+    this.options,
+    this.useStaticOptions = false,
+    this.staticOptions,
     this.dropdownApiUrl,
     this.dropdownApiMethod,
     this.dropdownApiHeaders,
@@ -225,271 +237,121 @@ class JourneyField {
     this.dropdownValue,
     this.dropdowndata,
     this.dropdownApiResponseKey,
-    this.validationPattern,
-    this.errorMessage,
-    this.obscureText = false,
-    this.autocorrect = true,
-    this.enableSuggestions = true,
+    this.dropdownListKey,
+    this.apiParam,
+    this.componentConfig,
+    this.fieldtype,
+    this.maxLength,
+    this.minLength,
     this.keyboardType,
     this.textInputAction,
     this.textCapitalization,
-    this.dropdownListKey,
-    this.componentConfig,
-    this.nestedFields,
-    this.groupId,
-    this.groupLabel,
-    this.sectionId,
+    this.obscureText = false,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
+    this.formula,
     this.repeatableGroup = false,
     this.repeatConfig,
-    this.conditionalValidations,
-    this.formula,
+    this.groupId,
+    this.sectionId,
     this.expression,
-    this.asyncValidation,
-    this.dependsOn,
+    this.defaultValueExpression,
     this.cascadeConfig,
     this.localization,
-    this.defaultValueExpression,
-    this.visibleForRoles,
-    this.editableForRoles,
-    this.roleVisibility,
+
   });
-
-  factory JourneyField.fromJson(Map<String, dynamic> json) {
-    // Helper to safely parse staticOptions list of maps
-    List<Map<String, String>>? parsedStaticOptions;
-    if (json['staticOptions'] != null && json['staticOptions'] is List) {
-      parsedStaticOptions = [];
-      for (var item in json['staticOptions']) {
-        if (item is Map) {
-          parsedStaticOptions.add({
-            'key': item['key']?.toString() ?? '',
-            'value': item['value']?.toString() ?? '',
-          });
-        }
-      }
-    }
-
-    List<Map<String, dynamic>>? parseMapList(dynamic value) {
-      if (value is! List) return null;
-      return value
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-    }
-
-    List<String>? parseStringList(dynamic value) {
-      if (value is! List) return null;
-      return value.map((item) => item.toString()).toList();
-    }
-
-    List<JourneyField>? parseNestedFields(dynamic value) {
-      if (value is! List) return null;
-      return value
-          .whereType<Map>()
-          .map((item) => JourneyField.fromJson(Map<String, dynamic>.from(item)))
-          .toList();
-    }
-
-    return JourneyField(
-      id: json['id'] ?? '',
-      label: json['label'] ?? '',
-      type: json['type'] ?? 'text',
-      required: json['required'] ?? false,
-      visible: json['visible'] ?? true,
-      readOnly: json['readOnly'] ?? false,
-      placeholder: json['placeholder'] ?? json['hintText'],
-      options: json['options'] != null ? List<String>.from(json['options']) : null,
-      visibleIf: json['visibleIf'] != null ? Map<String, dynamic>.from(json['visibleIf']) : null,
-      defaultValue: json['defaultValue']?.toString() ?? json['initialValue']?.toString(),
-      apiUrl: json['apiUrl']?.toString() ?? json['dropdownApiUrl']?.toString(),
-      
-      useStaticOptions: json['useStaticOptions'] ?? false,
-      staticOptions: parsedStaticOptions,
-      fieldtype: json['fieldtype']?.toString(),
-      hintText: json['hintText']?.toString(),
-      maxLength: json['maxLength'] is int ? json['maxLength'] : int.tryParse(json['maxLength']?.toString() ?? ''),
-      minLength: json['minLength'] is int ? json['minLength'] : int.tryParse(json['minLength']?.toString() ?? ''),
-      disable: json['disable'] ?? false,
-      hidden: json['hidden'] ?? false,
-      apiParam: json['apiParam']?.toString(),
-      api: json['api'] ?? false,
-      dropdownApiUrl: json['dropdownApiUrl']?.toString(),
-      dropdownApiMethod: json['dropdownApiMethod']?.toString(),
-      dropdownApiHeaders: json['dropdownApiHeaders'] != null ? Map<String, dynamic>.from(json['dropdownApiHeaders']) : null,
-      dropdownApiBody: json['dropdownApiBody']?.toString(),
-      dropdownkey: json['dropdownkey']?.toString() ?? json['dropdownKey']?.toString() ?? json['dropdownValueKey']?.toString(),
-      dropdownValue: json['dropdownValue']?.toString() ?? json['dropdownLabelKey']?.toString(),
-      // dropdowndata: json['dropdowndata'],
-      // Safe — normalize immediately at parse time
-dropdowndata: json['dropdowndata'] is List
-    ? (json['dropdowndata'] as List)
-        .map((e) => e is Map ? Map<String, dynamic>.from(e) : e)
-        .toList()
-    : json['dropdowndata'],
-
-      dropdownApiResponseKey: json['dropdownApiResponseKey']?.toString() ?? json['responseListKey']?.toString(),
-      validationPattern: json['validationPattern']?.toString(),
-      errorMessage: json['errorMessage']?.toString(),
-      obscureText: json['obscureText'] ?? false,
-      autocorrect: json['autocorrect'] ?? true,
-      enableSuggestions: json['enableSuggestions'] ?? true,
-      keyboardType: json['keyboardType']?.toString(),
-      textInputAction: json['textInputAction']?.toString(),
-      textCapitalization: json['textCapitalization']?.toString(),
-      dropdownListKey: json['dropdownListKey']?.toString() ?? json['dropdownApiResponseKey']?.toString() ?? json['responseListKey']?.toString(),
-      componentConfig: json['componentConfig'] != null ? Map<String, dynamic>.from(json['componentConfig']) : null,
-      nestedFields: parseNestedFields(json['nestedFields'] ?? json['children'] ?? json['fields']),
-      groupId: json['groupId']?.toString(),
-      groupLabel: json['groupLabel']?.toString(),
-      sectionId: json['sectionId']?.toString(),
-      repeatableGroup: json['repeatableGroup'] == true,
-      repeatConfig: json['repeatConfig'] != null ? Map<String, dynamic>.from(json['repeatConfig']) : null,
-      conditionalValidations: parseMapList(json['conditionalValidations']),
-      formula: json['formula']?.toString(),
-      expression: json['expression']?.toString(),
-      asyncValidation: json['asyncValidation'] != null ? Map<String, dynamic>.from(json['asyncValidation']) : null,
-      dependsOn: json['dependsOn']?.toString(),
-      cascadeConfig: json['cascadeConfig'] != null ? Map<String, dynamic>.from(json['cascadeConfig']) : null,
-      localization: json['localization'] != null ? Map<String, dynamic>.from(json['localization']) : null,
-      defaultValueExpression: json['defaultValueExpression']?.toString() ?? json['dynamicDefaultValue']?.toString(),
-      visibleForRoles: parseStringList(json['visibleForRoles']),
-      editableForRoles: parseStringList(json['editableForRoles']),
-      roleVisibility: json['roleVisibility'] != null ? Map<String, dynamic>.from(json['roleVisibility']) : null,
-    );
-  }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (groupId != null) 'groupId': groupId,
+      if (sectionId != null) 'sectionId': sectionId,
+      if (expression != null) 'expression': expression,
+      if (defaultValueExpression != null) 'defaultValueExpression': defaultValueExpression,
+      if (cascadeConfig != null) 'cascadeConfig': cascadeConfig,
+      if (localization != null) 'localization': localization,
       'label': label,
       'type': type,
       'required': required,
       'visible': visible,
       'readOnly': readOnly,
       if (placeholder != null) 'placeholder': placeholder,
-      if (options != null) 'options': options,
-      if (visibleIf != null) 'visibleIf': visibleIf,
-      if (defaultValue != null) 'defaultValue': defaultValue,
-      if (apiUrl != null) 'apiUrl': apiUrl,
-      
-      'useStaticOptions': useStaticOptions,
-      if (staticOptions != null) 'staticOptions': staticOptions,
-      if (fieldtype != null) 'fieldtype': fieldtype,
       if (hintText != null) 'hintText': hintText,
-      if (maxLength != null) 'maxLength': maxLength,
-      if (minLength != null) 'minLength': minLength,
+      if (errorMessage != null) 'errorMessage': errorMessage,
       'disable': disable,
       'hidden': hidden,
-      if (apiParam != null) 'apiParam': apiParam,
-      'api': api,
+      if (visibleIf != null) 'visibleIf': visibleIf,
+      if (conditionalValidations != null) 'conditionalValidations': conditionalValidations,
+      if (asyncValidation != null) 'asyncValidation': asyncValidation,
+      if (validationPattern != null) 'validationPattern': validationPattern,
+      if (dependsOn != null) 'dependsOn': dependsOn,
+      if (visibleForRoles != null) 'visibleForRoles': visibleForRoles,
+      if (editableForRoles != null) 'editableForRoles': editableForRoles,
+      
+      // Legacy exports
+      if (nestedFields != null) 'nestedFields': nestedFields!.map((f) => f.toJson()).toList(),
+      if (defaultValue != null) 'defaultValue': defaultValue,
+      if (options != null) 'options': options,
+      'useStaticOptions': useStaticOptions,
+      if (staticOptions != null) 'staticOptions': staticOptions,
       if (dropdownApiUrl != null) 'dropdownApiUrl': dropdownApiUrl,
       if (dropdownApiMethod != null) 'dropdownApiMethod': dropdownApiMethod,
       if (dropdownApiHeaders != null) 'dropdownApiHeaders': dropdownApiHeaders,
       if (dropdownApiBody != null) 'dropdownApiBody': dropdownApiBody,
-      if (dropdownkey != null) ...{
-        'dropdownkey': dropdownkey,
-        'dropdownKey': dropdownkey,
-        'dropdownValueKey': dropdownkey,
-      },
-      if (dropdownValue != null) ...{
-        'dropdownValue': dropdownValue,
-        'dropdownLabelKey': dropdownValue,
-      },
+      if (dropdownkey != null) 'dropdownkey': dropdownkey,
+      if (dropdownValue != null) 'dropdownValue': dropdownValue,
       if (dropdowndata != null) 'dropdowndata': dropdowndata,
       if (dropdownApiResponseKey != null) 'dropdownApiResponseKey': dropdownApiResponseKey,
-      if (validationPattern != null) 'validationPattern': validationPattern,
-      if (errorMessage != null) 'errorMessage': errorMessage,
-      'obscureText': obscureText,
-      'autocorrect': autocorrect,
-      'enableSuggestions': enableSuggestions,
+      if (dropdownListKey != null) 'dropdownListKey': dropdownListKey,
+      if (apiParam != null) 'apiParam': apiParam,
+      if (componentConfig != null) 'componentConfig': componentConfig,
+      if (fieldtype != null) 'fieldtype': fieldtype,
+      if (maxLength != null) 'maxLength': maxLength,
+      if (minLength != null) 'minLength': minLength,
       if (keyboardType != null) 'keyboardType': keyboardType,
       if (textInputAction != null) 'textInputAction': textInputAction,
       if (textCapitalization != null) 'textCapitalization': textCapitalization,
-      if (dropdownListKey != null) ...{
-        'dropdownListKey': dropdownListKey,
-        'responseListKey': dropdownListKey,
-      },
-      if (componentConfig != null) 'componentConfig': componentConfig,
-      if (nestedFields != null) 'nestedFields': nestedFields!.map((field) => field.toJson()).toList(),
-      if (groupId != null) 'groupId': groupId,
-      if (groupLabel != null) 'groupLabel': groupLabel,
-      if (sectionId != null) 'sectionId': sectionId,
+      'obscureText': obscureText,
+      'autocorrect': autocorrect,
+      'enableSuggestions': enableSuggestions,
+      if (formula != null) 'formula': formula,
       'repeatableGroup': repeatableGroup,
       if (repeatConfig != null) 'repeatConfig': repeatConfig,
-      if (conditionalValidations != null) 'conditionalValidations': conditionalValidations,
-      if (formula != null) 'formula': formula,
-      if (expression != null) 'expression': expression,
-      if (asyncValidation != null) 'asyncValidation': asyncValidation,
-      if (dependsOn != null) 'dependsOn': dependsOn,
-      if (cascadeConfig != null) 'cascadeConfig': cascadeConfig,
-      if (localization != null) 'localization': localization,
-      if (defaultValueExpression != null) 'defaultValueExpression': defaultValueExpression,
-      if (visibleForRoles != null) 'visibleForRoles': visibleForRoles,
-      if (editableForRoles != null) 'editableForRoles': editableForRoles,
-      if (roleVisibility != null) 'roleVisibility': roleVisibility,
     };
   }
 
   JourneyField copy() {
-    return JourneyField(
-      id: id,
-      label: label,
-      type: type,
-      required: required,
-      visible: visible,
-      readOnly: readOnly,
-      placeholder: placeholder,
-      options: options != null ? List<String>.from(options!) : null,
-      visibleIf: visibleIf != null ? Map<String, dynamic>.from(visibleIf!) : null,
-      defaultValue: defaultValue,
-      apiUrl: apiUrl,
-      
-      useStaticOptions: useStaticOptions,
-      staticOptions: staticOptions?.map((item) => Map<String, String>.from(item)).toList(),
-      fieldtype: fieldtype,
-      hintText: hintText,
-      maxLength: maxLength,
-      minLength: minLength,
-      disable: disable,
-      hidden: hidden,
-      apiParam: apiParam,
-      api: api,
-      dropdownApiUrl: dropdownApiUrl,
-      dropdownApiMethod: dropdownApiMethod,
-      dropdownApiHeaders: dropdownApiHeaders != null ? Map<String, dynamic>.from(dropdownApiHeaders!) : null,
-      dropdownApiBody: dropdownApiBody,
-      dropdownkey: dropdownkey,
-      dropdownValue: dropdownValue,
-      dropdowndata: dropdowndata,
-      dropdownApiResponseKey: dropdownApiResponseKey,
-      validationPattern: validationPattern,
-      errorMessage: errorMessage,
-      obscureText: obscureText,
-      autocorrect: autocorrect,
-      enableSuggestions: enableSuggestions,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      textCapitalization: textCapitalization,
-      dropdownListKey: dropdownListKey,
-      componentConfig: componentConfig != null ? Map<String, dynamic>.from(componentConfig!) : null,
-      nestedFields: nestedFields?.map((field) => field.copy()).toList(),
-      groupId: groupId,
-      groupLabel: groupLabel,
-      sectionId: sectionId,
-      repeatableGroup: repeatableGroup,
-      repeatConfig: repeatConfig != null ? Map<String, dynamic>.from(repeatConfig!) : null,
-      conditionalValidations: conditionalValidations?.map((item) => Map<String, dynamic>.from(item)).toList(),
-      formula: formula,
-      expression: expression,
-      asyncValidation: asyncValidation != null ? Map<String, dynamic>.from(asyncValidation!) : null,
-      dependsOn: dependsOn,
-      cascadeConfig: cascadeConfig != null ? Map<String, dynamic>.from(cascadeConfig!) : null,
-      localization: localization != null ? Map<String, dynamic>.from(localization!) : null,
-      defaultValueExpression: defaultValueExpression,
-      visibleForRoles: visibleForRoles != null ? List<String>.from(visibleForRoles!) : null,
-      editableForRoles: editableForRoles != null ? List<String>.from(editableForRoles!) : null,
-      roleVisibility: roleVisibility != null ? Map<String, dynamic>.from(roleVisibility!) : null,
-    );
+    return JourneyField.fromJson(toJson());
+  }
+
+  factory JourneyField.fromJson(Map<String, dynamic> json) {
+    String t = json['type'] ?? 'text';
+    // Instead of instantiating the abstract base, we now instantiate the God-class temporarily
+    // until we fully migrate to subclasses. Wait, the user wants a true tree based structure.
+    // I will return a Concrete Component depending on type.
+    
+    switch (t) {
+      case 'section':
+      case 'card':
+      case 'tabs':
+      case 'accordion':
+      case 'row':
+      case 'column':
+        return LayoutComponent.fromJson(json);
+      case 'dropdown':
+      case 'api_dropdown':
+      case 'radio':
+      case 'checkbox':
+      case 'switch':
+      case 'multi_select':
+        return OptionsComponent.fromJson(json);
+      case 'table_grid':
+        return GridComponent.fromJson(json);
+      case 'repeater':
+        return RepeaterComponent.fromJson(json);
+      default:
+        return InputComponent.fromJson(json);
+    }
   }
 
   List<String> getResolvedOptions() {
@@ -498,33 +360,14 @@ dropdowndata: json['dropdowndata'] is List
     }
     if (!useStaticOptions && dropdowndata != null) {
       final key = dropdownValue ?? 'title';
-      
-      // Extract option list from dropdowndata (which could be List or Map)
       List<dynamic> listToParse = [];
       if (dropdowndata is List) {
         listToParse = dropdowndata;
       } else if (dropdowndata is Map) {
         final responseKey = dropdownListKey ?? dropdownApiResponseKey;
-        dynamic candidate;
-        if (responseKey != null && responseKey.isNotEmpty) {
-          final parts = responseKey.split('.');
-          dynamic cursor = dropdowndata;
-          for (final part in parts) {
-            if (cursor is Map) {
-              cursor = cursor[part];
-            } else {
-              cursor = null;
-              break;
-            }
-          }
-          candidate = cursor;
-        }
-        if (candidate is List) {
-          listToParse = candidate;
-        } else if (responseKey != null && responseKey.isNotEmpty && dropdowndata[responseKey] is List) {
+        if (responseKey != null && responseKey.isNotEmpty && dropdowndata[responseKey] is List) {
           listToParse = dropdowndata[responseKey];
         } else {
-          // Fallback to standard nested keys
           final keysToTry = ['data', 'results', 'items', 'users', 'options'];
           for (var k in keysToTry) {
             if (dropdowndata[k] is List) {
@@ -537,28 +380,17 @@ dropdowndata: json['dropdowndata'] is List
       
       final List<String> resolved = [];
       for (var item in listToParse) {
-        if (item is String) {
-          resolved.add(item);
-        } else if (item is num || item is bool) {
-          resolved.add(item.toString());
-        } else if (item is Map) {
-          if (item.containsKey(key) && item[key] != null) {
-            resolved.add(item[key].toString());
-          } else {
-            // Try standard display keys as fallback if key is not found
+        if (item is String) resolved.add(item);
+        else if (item is num || item is bool) resolved.add(item.toString());
+        else if (item is Map) {
+          if (item.containsKey(key) && item[key] != null) resolved.add(item[key].toString());
+          else {
             final keysToTry = ['title', 'name', 'value', 'label', 'text'];
-            String? found;
             for (var k in keysToTry) {
               if (item.containsKey(k) && item[k] != null) {
-                found = item[k].toString();
+                resolved.add(item[k].toString());
                 break;
               }
-            }
-            if (found == null && item.isNotEmpty) {
-              found = item.values.first.toString();
-            }
-            if (found != null) {
-              resolved.add(found);
             }
           }
         }
@@ -569,8 +401,190 @@ dropdowndata: json['dropdowndata'] is List
   }
 }
 
+// --------------------------------------------------------------------------
+// COMPONENT SUBCLASSES
+// --------------------------------------------------------------------------
+
+class InputComponent extends JourneyField {
+  InputComponent({
+    required super.id, required super.label, required super.type,
+    super.required, super.visible, super.readOnly, super.placeholder,
+    super.hintText, super.errorMessage, super.disable, super.hidden,
+    super.visibleIf, super.conditionalValidations, super.asyncValidation,
+    super.validationPattern, super.dependsOn, super.visibleForRoles, super.editableForRoles,
+    
+    super.groupId, super.sectionId, super.expression, super.defaultValueExpression, super.cascadeConfig, super.localization,
+    super.defaultValue, super.fieldtype, super.maxLength, super.minLength,
+    super.keyboardType, super.textInputAction, super.textCapitalization,
+    super.obscureText, super.autocorrect, super.enableSuggestions, super.formula,
+  });
+
+  factory InputComponent.fromJson(Map<String, dynamic> json) {
+    return InputComponent(
+      id: json['id'] ?? '', label: json['label'] ?? '', type: json['type'] ?? 'text',
+      required: json['required'] ?? false, visible: json['visible'] ?? true,
+      readOnly: json['readOnly'] ?? false, placeholder: json['placeholder'],
+      hintText: json['hintText'], errorMessage: json['errorMessage'],
+      disable: json['disable'] ?? false, hidden: json['hidden'] ?? false,
+      visibleIf: json['visibleIf'], conditionalValidations: _parseMapList(json['conditionalValidations']),
+      asyncValidation: json['asyncValidation'], validationPattern: json['validationPattern'],
+      dependsOn: json['dependsOn'], visibleForRoles: _parseStringList(json['visibleForRoles']),
+      editableForRoles: _parseStringList(json['editableForRoles']),
+      
+      defaultValue: json['defaultValue']?.toString() ?? json['initialValue']?.toString(),
+      groupId: json['groupId'], sectionId: json['sectionId'], expression: json['expression'],
+      defaultValueExpression: json['defaultValueExpression'], cascadeConfig: json['cascadeConfig'],
+      localization: json['localization'],
+      fieldtype: json['fieldtype'], maxLength: _parseInt(json['maxLength']),
+      minLength: _parseInt(json['minLength']), keyboardType: json['keyboardType'],
+      textInputAction: json['textInputAction'], textCapitalization: json['textCapitalization'],
+      obscureText: json['obscureText'] ?? false, autocorrect: json['autocorrect'] ?? true,
+      enableSuggestions: json['enableSuggestions'] ?? true, formula: json['formula'],
+    );
+  }
+}
+
+class OptionsComponent extends JourneyField {
+  OptionsComponent({
+    required super.id, required super.label, required super.type,
+    super.required, super.visible, super.readOnly, super.placeholder,
+    super.hintText, super.errorMessage, super.disable, super.hidden,
+    super.visibleIf, super.conditionalValidations, super.asyncValidation,
+    super.validationPattern, super.dependsOn, super.visibleForRoles, super.editableForRoles,
+    
+    super.groupId, super.sectionId, super.expression, super.defaultValueExpression, super.cascadeConfig, super.localization,
+    super.options, super.useStaticOptions, super.staticOptions,
+    super.dropdownApiUrl, super.dropdownApiMethod, super.dropdownApiHeaders,
+    super.dropdownApiBody, super.dropdownkey, super.dropdownValue, super.dropdowndata,
+    super.dropdownApiResponseKey, super.dropdownListKey, super.apiParam, super.defaultValue,
+  });
+
+  factory OptionsComponent.fromJson(Map<String, dynamic> json) {
+    return OptionsComponent(
+      id: json['id'] ?? '', label: json['label'] ?? '', type: json['type'] ?? 'dropdown',
+      required: json['required'] ?? false, visible: json['visible'] ?? true,
+      readOnly: json['readOnly'] ?? false, placeholder: json['placeholder'],
+      hintText: json['hintText'], errorMessage: json['errorMessage'],
+      disable: json['disable'] ?? false, hidden: json['hidden'] ?? false,
+      visibleIf: json['visibleIf'], conditionalValidations: _parseMapList(json['conditionalValidations']),
+      asyncValidation: json['asyncValidation'], validationPattern: json['validationPattern'],
+      dependsOn: json['dependsOn'], visibleForRoles: _parseStringList(json['visibleForRoles']),
+      editableForRoles: _parseStringList(json['editableForRoles']),
+      
+      options: _parseStringList(json['options']),
+      useStaticOptions: json['useStaticOptions'] ?? false,
+      staticOptions: _parseStringMapList(json['staticOptions']),
+      dropdownApiUrl: json['dropdownApiUrl'] ?? json['apiUrl'],
+      dropdownApiMethod: json['dropdownApiMethod'],
+      dropdownApiHeaders: json['dropdownApiHeaders'],
+      dropdownApiBody: json['dropdownApiBody'],
+      dropdownkey: json['dropdownkey'] ?? json['dropdownKey'] ?? json['dropdownValueKey'],
+      dropdownValue: json['dropdownValue'] ?? json['dropdownLabelKey'],
+      dropdowndata: json['dropdowndata'] is List ? List.from(json['dropdowndata']) : json['dropdowndata'],
+      dropdownApiResponseKey: json['dropdownApiResponseKey'] ?? json['responseListKey'],
+      dropdownListKey: json['dropdownListKey'],
+      apiParam: json['apiParam'],
+      defaultValue: json['defaultValue']?.toString(),
+    );
+  }
+}
+
+class LayoutComponent extends JourneyField {
+  LayoutComponent({
+    required super.id, required super.label, required super.type,
+    super.required, super.visible, super.readOnly, super.placeholder,
+    super.hintText, super.errorMessage, super.disable, super.hidden,
+    super.visibleIf, super.conditionalValidations, super.asyncValidation,
+    super.validationPattern, super.dependsOn, super.visibleForRoles, super.editableForRoles,
+    
+    super.nestedFields, super.componentConfig,
+  });
+
+  factory LayoutComponent.fromJson(Map<String, dynamic> json) {
+    return LayoutComponent(
+      id: json['id'] ?? '', label: json['label'] ?? '', type: json['type'] ?? 'section',
+      required: json['required'] ?? false, visible: json['visible'] ?? true,
+      readOnly: json['readOnly'] ?? false, placeholder: json['placeholder'],
+      hintText: json['hintText'], errorMessage: json['errorMessage'],
+      disable: json['disable'] ?? false, hidden: json['hidden'] ?? false,
+      visibleIf: json['visibleIf'], conditionalValidations: _parseMapList(json['conditionalValidations']),
+      asyncValidation: json['asyncValidation'], validationPattern: json['validationPattern'],
+      dependsOn: json['dependsOn'], visibleForRoles: _parseStringList(json['visibleForRoles']),
+      editableForRoles: _parseStringList(json['editableForRoles']),
+      
+      nestedFields: _parseNestedFields(json['nestedFields'] ?? json['children'] ?? json['fields']),
+      componentConfig: json['componentConfig'],
+    );
+  }
+}
+
+class GridComponent extends JourneyField {
+  GridComponent({
+    required super.id, required super.label, required super.type,
+    super.required, super.visible, super.readOnly, super.placeholder,
+    super.hintText, super.errorMessage, super.disable, super.hidden,
+    super.visibleIf, super.conditionalValidations, super.asyncValidation,
+    super.validationPattern, super.dependsOn, super.visibleForRoles, super.editableForRoles,
+    
+    super.nestedFields, super.componentConfig,
+  });
+
+  factory GridComponent.fromJson(Map<String, dynamic> json) {
+    return GridComponent(
+      id: json['id'] ?? '', label: json['label'] ?? '', type: json['type'] ?? 'table_grid',
+      required: json['required'] ?? false, visible: json['visible'] ?? true,
+      readOnly: json['readOnly'] ?? false, placeholder: json['placeholder'],
+      hintText: json['hintText'], errorMessage: json['errorMessage'],
+      disable: json['disable'] ?? false, hidden: json['hidden'] ?? false,
+      visibleIf: json['visibleIf'], conditionalValidations: _parseMapList(json['conditionalValidations']),
+      asyncValidation: json['asyncValidation'], validationPattern: json['validationPattern'],
+      dependsOn: json['dependsOn'], visibleForRoles: _parseStringList(json['visibleForRoles']),
+      editableForRoles: _parseStringList(json['editableForRoles']),
+      
+      nestedFields: _parseNestedFields(json['nestedFields'] ?? json['children'] ?? json['fields']),
+      componentConfig: json['componentConfig'],
+    );
+  }
+}
+
+class RepeaterComponent extends JourneyField {
+  RepeaterComponent({
+    required super.id, required super.label, required super.type,
+    super.required, super.visible, super.readOnly, super.placeholder,
+    super.hintText, super.errorMessage, super.disable, super.hidden,
+    super.visibleIf, super.conditionalValidations, super.asyncValidation,
+    super.validationPattern, super.dependsOn, super.visibleForRoles, super.editableForRoles,
+    
+    super.groupId, super.sectionId, super.expression, super.defaultValueExpression, super.cascadeConfig, super.localization,
+    super.nestedFields, super.repeatableGroup, super.repeatConfig,
+  });
+
+  factory RepeaterComponent.fromJson(Map<String, dynamic> json) {
+    return RepeaterComponent(
+      id: json['id'] ?? '', label: json['label'] ?? '', type: json['type'] ?? 'repeater',
+      required: json['required'] ?? false, visible: json['visible'] ?? true,
+      readOnly: json['readOnly'] ?? false, placeholder: json['placeholder'],
+      hintText: json['hintText'], errorMessage: json['errorMessage'],
+      disable: json['disable'] ?? false, hidden: json['hidden'] ?? false,
+      visibleIf: json['visibleIf'], conditionalValidations: _parseMapList(json['conditionalValidations']),
+      asyncValidation: json['asyncValidation'], validationPattern: json['validationPattern'],
+      dependsOn: json['dependsOn'], visibleForRoles: _parseStringList(json['visibleForRoles']),
+      editableForRoles: _parseStringList(json['editableForRoles']),
+      
+      nestedFields: _parseNestedFields(json['nestedFields'] ?? json['children'] ?? json['fields']),
+      repeatableGroup: json['repeatableGroup'] ?? true,
+      repeatConfig: json['repeatConfig'],
+      groupId: json['groupId'], sectionId: json['sectionId'], expression: json['expression'],
+      defaultValueExpression: json['defaultValueExpression'], cascadeConfig: json['cascadeConfig'],
+      localization: json['localization'],
+    );
+  }
+}
+
+// Validation & Condition helpers
+
 class StepValidation {
-  String type; // required, regex, async, dependency
+  String type;
   String field;
   String message;
   String? regexPattern;
@@ -582,188 +596,104 @@ class StepValidation {
   String? expression;
 
   StepValidation({
-    required this.type,
-    required this.field,
-    required this.message,
-    this.regexPattern,
-    this.validationUrl,
-    this.dependentField,
-    this.dependentValue,
-    this.condition,
-    this.request,
-    this.expression,
+    required this.type, required this.field, required this.message,
+    this.regexPattern, this.validationUrl, this.dependentField,
+    this.dependentValue, this.condition, this.request, this.expression,
   });
 
-  factory StepValidation.fromJson(Map<String, dynamic> json) {
-    return StepValidation(
-      type: json['type'] ?? 'required',
-      field: json['field'] ?? '',
-      message: json['message'] ?? 'Validation failed',
-      regexPattern: json['regexPattern'],
-      validationUrl: json['validationUrl'],
-      dependentField: json['dependentField'],
-      dependentValue: json['dependentValue'],
-      condition: json['condition'] != null ? Map<String, dynamic>.from(json['condition']) : null,
-      request: json['request'] != null ? Map<String, dynamic>.from(json['request']) : null,
-      expression: json['expression']?.toString(),
-    );
-  }
+  factory StepValidation.fromJson(Map<String, dynamic> json) => StepValidation(
+    type: json['type'] ?? 'required', field: json['field'] ?? '', message: json['message'] ?? '',
+    regexPattern: json['regexPattern'], validationUrl: json['validationUrl'],
+    dependentField: json['dependentField'], dependentValue: json['dependentValue'],
+    condition: json['condition'], request: json['request'], expression: json['expression'],
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'field': field,
-      'message': message,
-      if (regexPattern != null) 'regexPattern': regexPattern,
-      if (validationUrl != null) 'validationUrl': validationUrl,
-      if (dependentField != null) 'dependentField': dependentField,
-      if (dependentValue != null) 'dependentValue': dependentValue,
-      if (condition != null) 'condition': condition,
-      if (request != null) 'request': request,
-      if (expression != null) 'expression': expression,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'type': type, 'field': field, 'message': message, 'regexPattern': regexPattern,
+    'validationUrl': validationUrl, 'dependentField': dependentField,
+    'dependentValue': dependentValue, 'condition': condition, 'request': request, 'expression': expression,
+  };
 
-  StepValidation copy() {
-    return StepValidation(
-      type: type,
-      field: field,
-      message: message,
-      regexPattern: regexPattern,
-      validationUrl: validationUrl,
-      dependentField: dependentField,
-      dependentValue: dependentValue,
-      condition: condition != null ? Map<String, dynamic>.from(condition!) : null,
-      request: request != null ? Map<String, dynamic>.from(request!) : null,
-      expression: expression,
-    );
-  }
+  StepValidation copy() => StepValidation.fromJson(toJson());
 }
 
 class StepCondition {
-  String type; // showIf, enableIf, visibleIf, nextStepIf
+  String type;
   String field;
-  String operator; // equals, notEquals, contains
+  String operator;
   String value;
-  String? targetStep; // for nextStepIf
+  String? targetStep;
 
   StepCondition({
-    required this.type,
-    required this.field,
-    required this.operator,
-    required this.value,
-    this.targetStep,
+    required this.type, required this.field, required this.operator, required this.value, this.targetStep,
   });
 
-  factory StepCondition.fromJson(Map<String, dynamic> json) {
-    return StepCondition(
-      type: json['type'] ?? 'visibleIf',
-      field: json['field'] ?? '',
-      operator: json['operator'] ?? 'equals',
-      value: json['value']?.toString() ?? '',
-      targetStep: json['targetStep'],
-    );
-  }
+  factory StepCondition.fromJson(Map<String, dynamic> json) => StepCondition(
+    type: json['type'] ?? 'visibleIf', field: json['field'] ?? '',
+    operator: json['operator'] ?? 'equals', value: json['value']?.toString() ?? '',
+    targetStep: json['targetStep'],
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'field': field,
-      'operator': operator,
-      'value': value,
-      if (targetStep != null) 'targetStep': targetStep,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'type': type, 'field': field, 'operator': operator, 'value': value, 'targetStep': targetStep,
+  };
 
-  StepCondition copy() {
-    return StepCondition(
-      type: type,
-      field: field,
-      operator: operator,
-      value: value,
-      targetStep: targetStep,
-    );
-  }
+  StepCondition copy() => StepCondition.fromJson(toJson());
 }
 
 class StepAPI {
-  String method; // GET, POST, PUT, DELETE
-  String url;
-  String description;
+  String method, url, description;
   Map<String, dynamic>? headers;
   String? body;
 
-  StepAPI({
-    required this.method,
-    required this.url,
-    required this.description,
-    this.headers,
-    this.body,
-  });
+  StepAPI({required this.method, required this.url, required this.description, this.headers, this.body});
 
-  factory StepAPI.fromJson(Map<String, dynamic> json) {
-    return StepAPI(
-      method: json['method'] ?? 'GET',
-      url: json['url'] ?? '',
-      description: json['description'] ?? '',
-      headers: json['headers'] != null ? Map<String, dynamic>.from(json['headers']) : null,
-      body: json['body']?.toString(),
-    );
-  }
+  factory StepAPI.fromJson(Map<String, dynamic> json) => StepAPI(
+    method: json['method'] ?? 'GET', url: json['url'] ?? '', description: json['description'] ?? '',
+    headers: json['headers'], body: json['body']?.toString(),
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'method': method,
-      'url': url,
-      'description': description,
-      if (headers != null) 'headers': headers,
-      if (body != null) 'body': body,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'method': method, 'url': url, 'description': description, 'headers': headers, 'body': body,
+  };
 
-  StepAPI copy() {
-    return StepAPI(
-      method: method,
-      url: url,
-      description: description,
-      headers: headers != null ? Map<String, dynamic>.from(headers!) : null,
-      body: body,
-    );
-  }
+  StepAPI copy() => StepAPI.fromJson(toJson());
 }
 
 class StepAction {
-  String trigger; // onSubmit, onFieldChange
-  String actionType; // apiCall, navigate, showBanner
-  String details;
+  String trigger, actionType, details;
 
-  StepAction({
-    required this.trigger,
-    required this.actionType,
-    required this.details,
-  });
+  StepAction({required this.trigger, required this.actionType, required this.details});
 
-  factory StepAction.fromJson(Map<String, dynamic> json) {
-    return StepAction(
-      trigger: json['trigger'] ?? 'onSubmit',
-      actionType: json['actionType'] ?? 'showBanner',
-      details: json['details'] ?? '',
-    );
-  }
+  factory StepAction.fromJson(Map<String, dynamic> json) => StepAction(
+    trigger: json['trigger'] ?? 'onSubmit', actionType: json['actionType'] ?? '', details: json['details'] ?? '',
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'trigger': trigger,
-      'actionType': actionType,
-      'details': details,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'trigger': trigger, 'actionType': actionType, 'details': details,
+  };
 
-  StepAction copy() {
-    return StepAction(
-      trigger: trigger,
-      actionType: actionType,
-      details: details,
-    );
-  }
+  StepAction copy() => StepAction.fromJson(toJson());
+}
+
+// Parsers
+List<String>? _parseStringList(dynamic value) {
+  if (value is! List) return null;
+  return value.map((e) => e.toString()).toList();
+}
+List<Map<String, dynamic>>? _parseMapList(dynamic value) {
+  if (value is! List) return null;
+  return value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+}
+List<Map<String, String>>? _parseStringMapList(dynamic value) {
+  if (value is! List) return null;
+  return value.whereType<Map>().map((e) => {'key': e['key']?.toString() ?? '', 'value': e['value']?.toString() ?? ''}).toList();
+}
+List<JourneyField>? _parseNestedFields(dynamic value) {
+  if (value is! List) return null;
+  return value.whereType<Map>().map((e) => JourneyField.fromJson(Map<String, dynamic>.from(e))).toList();
+}
+int? _parseInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '');
 }

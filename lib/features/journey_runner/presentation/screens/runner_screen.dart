@@ -59,7 +59,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
       final field = EngineHelper.flattenFields(step.fields).firstWhere((f) => f.id == val.field);
       // Only validate if field is visible
       if (EngineHelper.isFieldVisible(field, values)) {
-        final fieldVal = values[val.field] ?? '';
+        final fieldVal = values[val.field]?.toString() ?? '';
         if (val.type == 'required' && fieldVal.trim().isEmpty) {
           isValid = false;
           _errors[val.field] = val.message;
@@ -1638,13 +1638,13 @@ class _ApiDropdownWidgetState extends ConsumerState<ApiDropdownWidget> {
   @override
   void didUpdateWidget(ApiDropdownWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.field.apiUrl != widget.field.apiUrl) {
+    if (oldWidget.field.dropdownApiUrl != widget.field.dropdownApiUrl) {
       _fetchOptions();
     }
   }
 
   Future<void> _fetchOptions() async {
-    final urlStr = widget.field.dropdownApiUrl ?? widget.field.apiUrl;
+    final urlStr = widget.field.dropdownApiUrl;
     if (urlStr == null || urlStr.trim().isEmpty) {
       setState(() {
         _options = widget.field.options ?? ["Select"];

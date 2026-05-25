@@ -64,23 +64,32 @@ String generateRepositoryImplInterface(
     if (label.isEmpty) continue; // Skip if label is empty.
 
     // Derive names for method and variables.
-    final labelname = label.replaceAll(RegExp(r'\s+'), '');
-    final name = label.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-
-    // final name = label.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final name = label.replaceAll(RegExp(r'\s+'), '');
     final apiUrl = item['dropdownApiUrl'] ?? '';
     final modelClassName = label.toString().replaceAll(" ", "");
-    // Logic to determine the model name from 'dropdowndata'.
+    final dropdowndata = item['dropdowndata'];
+
     if (apiUrl.isNotEmpty) {
       buffer.writeln("  @override");
-      buffer.writeln(
-        "  Future<Either<NoData, ${modelClassName}Entity>> getAll${name}s() async {",
-      );
-      buffer.writeln("    try {");
-      buffer.writeln(
-        "      final model = await ${className.toLowerCase()}Datasource.getAll${labelname}s();",
-      );
-      buffer.writeln("      return Right(model.toDomain());");
+      if (dropdowndata is Map) {
+        buffer.writeln(
+          "  Future<Either<Failure, ${modelClassName}Entity>> getAll${capitalize(name)}s() async {",
+        );
+        buffer.writeln("    try {");
+        buffer.writeln(
+          "      final model = await ${className.toLowerCase()}Datasource.getAll${capitalize(name)}s();",
+        );
+        buffer.writeln("      return Right(model.toDomain());");
+      } else {
+        buffer.writeln(
+          "  Future<Either<Failure, List<${modelClassName}Entity>>> getAll${capitalize(name)}s() async {",
+        );
+        buffer.writeln("    try {");
+        buffer.writeln(
+          "      final models = await ${className.toLowerCase()}Datasource.getAll${capitalize(name)}s();",
+        );
+        buffer.writeln("      return Right(models.map((model) => model.toDomain()).toList());");
+      }
       buffer.writeln("    } catch (e) {");
       buffer.writeln("      return Left(NoData(e.toString()));");
       buffer.writeln("    }");

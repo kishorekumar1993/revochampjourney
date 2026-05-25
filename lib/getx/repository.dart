@@ -165,7 +165,7 @@ String generaterepositoryClass(
         buffer.writeln(
           "      final data = res['${dropdownmodel.toLowerCase()}'];",
         );
-        buffer.writeln("      if (data is! List) {;");
+        buffer.writeln("      if (data is! List) {");
         buffer.writeln("      throw Exception('Invalid response format');");
         buffer.writeln("     }");
         buffer.writeln(

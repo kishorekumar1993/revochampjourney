@@ -14,35 +14,35 @@ JourneyConfig getInitialJourney() {
         description: "Please provide your basic information",
         nextStep: "vehicle",
         fields: [
-          JourneyField(
+          InputComponent(
             id: "fullName",
             label: "Full Name",
             type: "text",
             required: true,
             placeholder: "Enter full name",
           ),
-          JourneyField(
+          InputComponent(
             id: "dob",
             label: "Date of Birth",
             type: "date",
             required: true,
             placeholder: "DD/MM/YYYY",
           ),
-          JourneyField(
+          InputComponent(
             id: "mobile",
             label: "Mobile Number",
             type: "phone",
             required: true,
             placeholder: "Enter mobile number",
           ),
-          JourneyField(
+          InputComponent(
             id: "email",
             label: "Email Address",
             type: "text",
             required: false,
             placeholder: "Enter email address",
           ),
-          JourneyField(
+          OptionsComponent(
             id: "gender",
             label: "Gender",
             type: "radio",
@@ -50,7 +50,7 @@ JourneyConfig getInitialJourney() {
             options: ["Male", "Female", "Other"],
             defaultValue: "Male",
           ),
-          JourneyField(
+          OptionsComponent(
             id: "maritalStatus",
             label: "Marital Status",
             type: "dropdown",
@@ -58,7 +58,7 @@ JourneyConfig getInitialJourney() {
             placeholder: "Select marital status",
             options: ["Single", "Married", "Divorced", "Widowed"],
           ),
-          JourneyField(
+          InputComponent(
             id: "address",
             label: "Address",
             type: "textarea",
@@ -88,14 +88,14 @@ JourneyConfig getInitialJourney() {
         description: "Please provide vehicle information",
         nextStep: "nominee",
         fields: [
-          JourneyField(
+          InputComponent(
             id: "vehicleNum",
             label: "Vehicle Number",
             type: "text",
             required: true,
             placeholder: "e.g. MH-12-AB-1234",
           ),
-          JourneyField(
+          OptionsComponent(
             id: "vehicleMake",
             label: "Make",
             type: "dropdown",
@@ -103,14 +103,14 @@ JourneyConfig getInitialJourney() {
             placeholder: "Select manufacturer",
             options: ["Toyota", "Honda", "Hyundai", "Suzuki", "Tata"],
           ),
-          JourneyField(
+          InputComponent(
             id: "vehicleModel",
             label: "Model",
             type: "text",
             required: true,
             placeholder: "Enter vehicle model",
           ),
-          JourneyField(
+          OptionsComponent(
             id: "regYear",
             label: "Registration Year",
             type: "dropdown",
@@ -126,14 +126,14 @@ JourneyConfig getInitialJourney() {
         description: "Provide nominee description for coverage",
         nextStep: "documents",
         fields: [
-          JourneyField(
+          InputComponent(
             id: "nomineeName",
             label: "Nominee Full Name",
             type: "text",
             required: true,
             placeholder: "Enter nominee name",
           ),
-          JourneyField(
+          OptionsComponent(
             id: "nomineeRelation",
             label: "Relationship",
             type: "dropdown",
@@ -149,13 +149,13 @@ JourneyConfig getInitialJourney() {
         description: "Upload necessary documents",
         nextStep: "review",
         fields: [
-          JourneyField(
+          InputComponent(
             id: "panDoc",
             label: "PAN Card",
             type: "file",
             required: true,
           ),
-          JourneyField(
+          InputComponent(
             id: "drivingLicense",
             label: "Driving License",
             type: "file",
@@ -169,7 +169,7 @@ JourneyConfig getInitialJourney() {
         description: "Review your submitted data",
         nextStep: "payment",
         fields: [
-          JourneyField(
+          OptionsComponent(
             id: "termsAccepted",
             label: "I accept the policy terms and declarations",
             type: "switch",
@@ -184,7 +184,7 @@ JourneyConfig getInitialJourney() {
         description: "Enter premium payment details",
         nextStep: "success",
         fields: [
-          JourneyField(
+          OptionsComponent(
             id: "paymentMethod",
             label: "Select Payment Mode",
             type: "radio",
@@ -192,7 +192,7 @@ JourneyConfig getInitialJourney() {
             options: ["Credit Card", "Debit Card", "UPI", "Net Banking"],
             defaultValue: "Credit Card",
           ),
-          JourneyField(
+          InputComponent(
             id: "otpVerify",
             label: "Verification Code",
             type: "otp",
@@ -206,7 +206,7 @@ JourneyConfig getInitialJourney() {
         title: "Success",
         description: "Your policy generated successfully!",
         fields: [
-          JourneyField(
+          LayoutComponent(
             id: "successDiv",
             label: "Congratulations! Policy PDF has been sent to your email.",
             type: "divider",
@@ -570,6 +570,49 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
 
   void updateValue(String fieldId, dynamic value) {
     state = {...state, fieldId: value};
+  }
+
+  void updateValueByPath(List<dynamic> path, dynamic value) {
+    if (path.isEmpty) return;
+    final newState = Map<String, dynamic>.from(state);
+    _setNested(newState, path, value);
+    state = newState;
+  }
+
+  void _setNested(Map<String, dynamic> current, List<dynamic> path, dynamic value) {
+    if (path.length == 1) {
+      current[path.first.toString()] = value;
+      return;
+    }
+    
+    final key = path.first.toString();
+    final nextKey = path[1];
+    
+    if (nextKey is int) {
+      if (!current.containsKey(key) || current[key] is! List) {
+        current[key] = [];
+      }
+      final list = List<dynamic>.from(current[key]);
+      while (list.length <= nextKey) {
+        list.add(<String, dynamic>{});
+      }
+      if (path.length == 2) {
+        list[nextKey] = value;
+      } else {
+        if (list[nextKey] is! Map) list[nextKey] = <String, dynamic>{};
+        final nextMap = Map<String, dynamic>.from(list[nextKey]);
+        _setNested(nextMap, path.sublist(2), value);
+        list[nextKey] = nextMap;
+      }
+      current[key] = list;
+    } else {
+      if (!current.containsKey(key) || current[key] is! Map) {
+        current[key] = <String, dynamic>{};
+      }
+      final nextMap = Map<String, dynamic>.from(current[key]);
+      _setNested(nextMap, path.sublist(1), value);
+      current[key] = nextMap;
+    }
   }
 
   void clear() {

@@ -1516,7 +1516,6 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         'dataSource': 'api',
       };
       final updated = field.copy()
-        ..api = true
         ..dropdownApiUrl = urlText
         ..dropdownApiMethod = method
         ..dropdownApiHeaders = headers
@@ -1544,7 +1543,6 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     final config = _componentConfig(field);
     final sampleData = config['gridApiSampleData'];
     final updated = field.copy()
-      ..api = true
       ..dropdownApiUrl = config['gridApiUrl']?.toString()
       ..dropdownApiMethod = config['gridApiMethod']?.toString()
       ..dropdownApiHeaders = _gridApiHeaders(config['gridApiHeaders'])
