@@ -1,5 +1,6 @@
 // lib/bloc/generators/di_generator.dart
-// Uses combined use cases (${featureName}Usecases) – matches BLoC generator.
+// Fixed: duplicate registration guards, lazy singletons, UseCases naming,
+// LoadEvent moved to BLoC constructor, no event coupling in main
 
 import 'field_schema.dart';
 
@@ -48,49 +49,62 @@ class DiGenerator {
     buf.writeln('  final prefs = await SharedPreferences.getInstance();');
     if (hasCached) {
       buf.writeln(
-          '  getIt.registerSingleton<LocalStorageService>(LocalStorageService(prefs));');
+          '  if (!getIt.isRegistered<LocalStorageService>()) {');
+      buf.writeln(
+          '    getIt.registerSingleton<LocalStorageService>(LocalStorageService(prefs));');
+      buf.writeln('  }');
     }
     buf.writeln();
-    buf.writeln('  // ── Dio Client ───────────────────────────────────────────');
-    buf.writeln('  getIt.registerSingleton<DioClient>(DioClient(');
+    buf.writeln('  // ── Dio Client (lazy singleton) ─────────────────────────');
+    buf.writeln('  if (!getIt.isRegistered<DioClient>()) {');
+    buf.writeln('    getIt.registerLazySingleton<DioClient>(() => DioClient(');
     buf.writeln(
-        "    baseUrl: const String.fromEnvironment('API_BASE_URL',");
-    buf.writeln("        defaultValue: 'https://api.example.com'),");
-    buf.writeln('    extraInterceptors: [');
-    buf.writeln('      AuthInterceptor(');
+        "        baseUrl: const String.fromEnvironment('API_BASE_URL',");
+    buf.writeln("            defaultValue: 'https://api.example.com'),");
+    buf.writeln('        extraInterceptors: [');
+    buf.writeln('          AuthInterceptor(');
     buf.writeln(
-        '        getToken: () async => prefs.getString(\'auth_token\'),');
-    buf.writeln('      ),');
-    buf.writeln('    ],');
-    buf.writeln('  ));');
+        '            getToken: () async => prefs.getString(\'auth_token\'),');
+    buf.writeln('          ),');
+    buf.writeln('        ],');
+    buf.writeln('      ));');
+    buf.writeln('  }');
     buf.writeln();
     buf.writeln('  // ── DataSource ───────────────────────────────────────────');
+    buf.writeln('  if (!getIt.isRegistered<${featureName}RemoteDataSource>()) {');
     buf.writeln(
-        '  getIt.registerLazySingleton<${featureName}RemoteDataSource>(');
-    buf.writeln('    () => ${featureName}RemoteDataSourceImpl(');
-    buf.writeln('      client: getIt<DioClient>(),');
+        '    getIt.registerLazySingleton<${featureName}RemoteDataSource>(');
+    buf.writeln('      () => ${featureName}RemoteDataSourceImpl(');
+    buf.writeln('        client: getIt<DioClient>(),');
     if (hasCached) {
-      buf.writeln('      storage: getIt<LocalStorageService>(),');
+      buf.writeln('        storage: getIt<LocalStorageService>(),');
     }
-    buf.writeln('    ),');
-    buf.writeln('  );');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+    buf.writeln('  }');
     buf.writeln();
     buf.writeln('  // ── Repository ──────────────────────────────────────────');
+    buf.writeln('  if (!getIt.isRegistered<${featureName}Repository>()) {');
     buf.writeln(
-        '  getIt.registerLazySingleton<${featureName}Repository>(');
+        '    getIt.registerLazySingleton<${featureName}Repository>(');
     buf.writeln(
-        '    () => ${featureName}RepositoryImpl(getIt<${featureName}RemoteDataSource>()),');
-    buf.writeln('  );');
+        '      () => ${featureName}RepositoryImpl(getIt<${featureName}RemoteDataSource>()),');
+    buf.writeln('    );');
+    buf.writeln('  }');
     buf.writeln();
     buf.writeln('  // ── Use Cases (combined) ─────────────────────────────────');
-    buf.writeln('  getIt.registerLazySingleton(() =>');
+    buf.writeln('  if (!getIt.isRegistered<${featureName}UseCases>()) {');
+    buf.writeln('    getIt.registerLazySingleton(() =>');
     buf.writeln(
-        '      ${featureName}Usecases(getIt<${featureName}Repository>()));');
+        '        ${featureName}UseCases(getIt<${featureName}Repository>()));');
+    buf.writeln('  }');
     buf.writeln();
     buf.writeln('  // ── BLoC ────────────────────────────────────────────────');
-    buf.writeln('  getIt.registerFactory(() => ${featureName}Bloc(');
-    buf.writeln('    usecases: getIt<${featureName}Usecases>(),');
-    buf.writeln('  ));');
+    buf.writeln('  if (!getIt.isRegistered<${featureName}Bloc>()) {');
+    buf.writeln('    getIt.registerFactory(() => ${featureName}Bloc(');
+    buf.writeln('      useCases: getIt<${featureName}UseCases>(),');
+    buf.writeln('    ));');
+    buf.writeln('  }');
     buf.writeln('}');
 
     return buf.toString();
@@ -98,11 +112,7 @@ class DiGenerator {
 
   String generateMain() {
     final snakeName = toSnakeCase(featureName);
-    final hasAsyncDropdown = fields.any((f) => f.isAsyncDropdown);
-    final loadEventStr = hasAsyncDropdown
-        ? '\n               ..add(const Load${featureName}DataEvent())'
-        : '';
-
+    // LoadEvent removed from main – must be triggered inside BLoC constructor
     return '''
 // AUTO-GENERATED — do not edit
 import 'package:flutter/material.dart';
@@ -111,7 +121,6 @@ import 'core/observer/bloc_observer.dart';
 import 'injection.dart';
 import 'features/$baseName/presentation/screens/${snakeName}_screen.dart';
 import 'features/$baseName/presentation/bloc/${snakeName}_bloc.dart';
-import 'features/$baseName/presentation/events/${snakeName}_event.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -133,7 +142,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: BlocProvider(
-        create: (_) => getIt<${featureName}Bloc>()$loadEventStr,
+        create: (_) => getIt<${featureName}Bloc>(),
         child: const ${featureName}Screen(),
       ),
     );
@@ -210,30 +219,48 @@ class GlobalDiGenerator {
     buf.writeln();
     buf.writeln('Future<void> configureDependencies() async {');
     buf.writeln('  final prefs = await SharedPreferences.getInstance();');
+    
     if (anyCached) {
-      buf.writeln('  getIt.registerSingleton<LocalStorageService>(LocalStorageService(prefs));');
+      buf.writeln('  if (!getIt.isRegistered<LocalStorageService>()) {');
+      buf.writeln('    getIt.registerSingleton<LocalStorageService>(LocalStorageService(prefs));');
+      buf.writeln('  }');
     }
-    buf.writeln('  getIt.registerSingleton<DioClient>(DioClient(');
-    buf.writeln("    baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://api.example.com'),");
-    buf.writeln('    extraInterceptors: [AuthInterceptor(getToken: () async => prefs.getString(\\\'auth_token\\\'))],');
-    buf.writeln('  ));');
+    
+    buf.writeln('  if (!getIt.isRegistered<DioClient>()) {');
+    buf.writeln('    getIt.registerLazySingleton<DioClient>(() => DioClient(');
+    buf.writeln("        baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://api.example.com'),");
+    buf.writeln('        extraInterceptors: [AuthInterceptor(getToken: () async => prefs.getString(\'auth_token\'))],');
+    buf.writeln('      ));');
+    buf.writeln('  }');
 
     for (final feat in features) {
       final fn = feat.featureName;
       final hasCached = feat.fields.where((x) => x.isAsyncDropdown).any((x) => x.cacheKey != null || x.isLocalStorageEnabled);
+      
       buf.writeln();
       buf.writeln('  // -- $fn --');
-      buf.writeln('  getIt.registerLazySingleton<${fn}RemoteDataSource>(');
-      buf.writeln('    () => ${fn}RemoteDataSourceImpl(');
-      buf.writeln('      client: getIt<DioClient>(),');
-      if (hasCached) buf.writeln('      storage: getIt<LocalStorageService>(),');
-      buf.writeln('    ),');
-      buf.writeln('  );');
-      buf.writeln('  getIt.registerLazySingleton<${fn}Repository>(');
-      buf.writeln('    () => ${fn}RepositoryImpl(getIt<${fn}RemoteDataSource>()),');
-      buf.writeln('  );');
-      buf.writeln('  getIt.registerLazySingleton(() => ${fn}Usecases(getIt<${fn}Repository>()));');
-      buf.writeln('  getIt.registerFactory(() => ${fn}Bloc(usecases: getIt<${fn}Usecases>()));');
+      buf.writeln('  if (!getIt.isRegistered<${fn}RemoteDataSource>()) {');
+      buf.writeln('    getIt.registerLazySingleton<${fn}RemoteDataSource>(');
+      buf.writeln('      () => ${fn}RemoteDataSourceImpl(');
+      buf.writeln('        client: getIt<DioClient>(),');
+      if (hasCached) buf.writeln('        storage: getIt<LocalStorageService>(),');
+      buf.writeln('      ),');
+      buf.writeln('    );');
+      buf.writeln('  }');
+      
+      buf.writeln('  if (!getIt.isRegistered<${fn}Repository>()) {');
+      buf.writeln('    getIt.registerLazySingleton<${fn}Repository>(');
+      buf.writeln('      () => ${fn}RepositoryImpl(getIt<${fn}RemoteDataSource>()),');
+      buf.writeln('    );');
+      buf.writeln('  }');
+      
+      buf.writeln('  if (!getIt.isRegistered<${fn}UseCases>()) {');
+      buf.writeln('    getIt.registerLazySingleton(() => ${fn}UseCases(getIt<${fn}Repository>()));');
+      buf.writeln('  }');
+      
+      buf.writeln('  if (!getIt.isRegistered<${fn}Bloc>()) {');
+      buf.writeln('    getIt.registerFactory(() => ${fn}Bloc(useCases: getIt<${fn}UseCases>()));');
+      buf.writeln('  }');
     }
     buf.writeln('}');
     return buf.toString();
@@ -252,7 +279,6 @@ class GlobalDiGenerator {
       final bn = feat.baseName;
       buf.writeln("import 'features/$journeyNamespace/$bn/presentation/screens/${sn}_screen.dart';");
       buf.writeln("import 'features/$journeyNamespace/$bn/presentation/bloc/${sn}_bloc.dart';");
-      buf.writeln("import 'features/$journeyNamespace/$bn/presentation/events/${sn}_event.dart';");
     }
 
     buf.writeln();
@@ -274,10 +300,9 @@ class GlobalDiGenerator {
     
     if (features.isNotEmpty) {
       final firstFeat = features.first;
-      final hasAsync = firstFeat.fields.any((x) => x.isAsyncDropdown);
-      final loadStr = hasAsync ? '..add(const Load${firstFeat.featureName}DataEvent())' : '';
+      // LoadEvent removed – must be added inside BLoC constructor
       buf.writeln('      home: BlocProvider(');
-      buf.writeln('        create: (_) => getIt<${firstFeat.featureName}Bloc>()$loadStr,');
+      buf.writeln('        create: (_) => getIt<${firstFeat.featureName}Bloc>(),');
       buf.writeln('        child: const ${firstFeat.featureName}Screen(),');
       buf.writeln('      ),');
     } else {

@@ -5,55 +5,56 @@ String generateriverpodviewClass(
 ) {
   final buffer = StringBuffer();
 
-// ─── Shared helpers ───────────────────────────────────────────────
-String camel(String label) {
-  final n = label.trim().replaceAll(RegExp(r'\s+'), '');
-  return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);
-}
-
-String pascal(String label) {
-  final n = label.trim().replaceAll(RegExp(r'\s+'), '');
-  return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
-}
-
-String capitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-String singularize(String text) {
-  if (text.endsWith('ies')) {
-    return '${text.substring(0, text.length - 3)}y';
+  // ─── Shared helpers ───────────────────────────────────────────────
+  String camel(String label) {
+    final n = label.trim().replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);
   }
-  if (text.endsWith('s') && text.length > 1) {
-    return text.substring(0, text.length - 1);
-  }
-  return text;
-}
 
-String mapKeyboardType(String raw) {
-  switch (raw) {
-    case 'number':
-    case 'numeric':
-    case 'integer':
-    case 'int':
-      return 'number';
-    case 'decimal':
-    case 'double':
-    case 'float':
-    case 'decimalPad':
-      return 'decimalPad';
-    case 'phone':
-      return 'phone';
-    case 'email':
-    case 'emailAddress':
-      return 'emailAddress';
-    case 'url':
-      return 'url';
-    case 'multiline':
-      return 'multiline';
-    default:
-      return 'text';
+  String pascal(String label) {
+    final n = label.trim().replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
   }
-}
+
+  String capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  String singularize(String text) {
+    if (text.endsWith('ies')) {
+      return '${text.substring(0, text.length - 3)}y';
+    }
+    if (text.endsWith('s') && text.length > 1) {
+      return text.substring(0, text.length - 1);
+    }
+    return text;
+  }
+
+  String mapKeyboardType(String raw) {
+    switch (raw) {
+      case 'number':
+      case 'numeric':
+      case 'integer':
+      case 'int':
+        return 'number';
+      case 'decimal':
+      case 'double':
+      case 'float':
+      case 'decimalPad':
+        return 'decimalPad';
+      case 'phone':
+        return 'phone';
+      case 'email':
+      case 'emailAddress':
+        return 'emailAddress';
+      case 'url':
+        return 'url';
+      case 'multiline':
+        return 'multiline';
+      default:
+        return 'text';
+    }
+  }
+
   // ─── Recursive flatten ─────────────────────────────────────────
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
@@ -81,14 +82,11 @@ String mapKeyboardType(String raw) {
     }
   }
 
-  // ✅ FIX 1: flattenFields instead of raw fields loop
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(configList, flatFields);
 
-  // ─── Collect API dropdown model imports ───────────────────────
-  // ✅ FIX 2: label first, lowercase type, isApiDropdown guard
+  // ─── Collect API dropdown entity imports ───────────────────────
   final dropdownModels = <String>{};
-  final entityImports = <String>{};
 
   for (final field in flatFields) {
     final type = (field['type'] ?? '').toString().toLowerCase();
@@ -103,7 +101,6 @@ String mapKeyboardType(String raw) {
                 .toString()
                 .trim();
         dropdownModels.add(label);
-        entityImports.add(label);
       } else if (!useStatic && (staticOpts == null || staticOpts.isEmpty)) {
         final label =
             (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
@@ -117,18 +114,17 @@ String mapKeyboardType(String raw) {
   // ─── Imports ──────────────────────────────────────────────────
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:flutter_riverpod/flutter_riverpod.dart';");
-  buffer.writeln("import 'package:collection/collection.dart';");
-  buffer.writeln("import '../../../utils/widget/common_text_form.dart';");
-  buffer.writeln("import '../../../utils/widget/common_radiobutton.dart';");
+  // ✅ FIX 5: Removed unused collection import
+  buffer.writeln("import '/widget/common_text_form.dart';");
+  buffer.writeln("import '/widget/common_radiobutton.dart';");
   buffer.writeln(
-      "import '../../../utils/widget/common_dropdown_search.dart';");
+      "import '/widget/common_dropdown_search.dart';");
   buffer.writeln(
       "import '../provider/${fileName.toLowerCase().replaceAll(' ', '_')}_provider.dart';");
 
-  // ✅ FIX 3: entity imports from flatFields scan
   for (final model in dropdownModels) {
     final modelFile = model.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
-    buffer.writeln("import '../model/${modelFile}_model.dart';");
+    buffer.writeln("import '../../domain/entity/${modelFile}_entity.dart';");
   }
   buffer.writeln();
 
@@ -148,7 +144,6 @@ String mapKeyboardType(String raw) {
   buffer.writeln();
 
   // ─── TextEditingController declarations ───────────────────────
-  // ✅ FIX 4: iterate flatFields, lowercase type check
   for (final item in flatFields) {
     final type = (item['type'] ?? '').toString().toLowerCase();
     final rawLabel =
@@ -269,7 +264,6 @@ String mapKeyboardType(String raw) {
   buffer.writeln("              children: [");
 
   // ─── Field widgets ────────────────────────────────────────────
-  // ✅ FIX 5: iterate flatFields, full type coverage, isApiDropdown guard
   for (final field in flatFields) {
     final rawLabel =
         (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'Field')
@@ -300,7 +294,6 @@ String mapKeyboardType(String raw) {
     final errorMessage =
         (field['errorMessage'] ?? 'Invalid format').toString();
 
-    // ✅ isApiDropdown guard
     final useStatic = field['useStaticOptions'] == true;
     final hasApiUrl = field['dropdownApiUrl'] != null;
     final staticOpts = (field['options'] as List<dynamic>?) ??
@@ -309,6 +302,9 @@ String mapKeyboardType(String raw) {
         (type == 'dropdown' || type == 'api_dropdown') &&
             !useStatic &&
             hasApiUrl;
+
+    // ✅ FIX 3: define dropdownValue from field config
+    final dropdownValue = (field['dropdownValue'] ?? 'name').toString();
 
     // ── text / textfield / email / password / phone / number ────
     if (type == 'text' ||
@@ -430,14 +426,11 @@ String mapKeyboardType(String raw) {
       buffer.writeln("                  },");
       buffer.writeln("                ),");
 
-      // ── dropdown ──────────────────────────────────────────────
-      // ✅ FIX 6: isApiDropdown checked FIRST
+      // ── dropdown / api_dropdown ───────────────────────────────
     } else if (type == 'dropdown' || type == 'api_dropdown') {
       if (isApiDropdown) {
-        // ── API dropdown with Riverpod Consumer ───────────────
         final dropdowndata = field['dropdowndata'];
-        String listKey = 'data';
-        String entityClass = '${capitalLabel}Model';
+        String entityClass = '${capitalLabel}Entity';
 
         if (dropdowndata is Map<String, dynamic>) {
           for (final entry in dropdowndata.entries) {
@@ -445,23 +438,23 @@ String mapKeyboardType(String raw) {
             if (v is List &&
                 v.isNotEmpty &&
                 v.first is Map<String, dynamic>) {
-              listKey = entry.key;
               entityClass =
-                  '${capitalize(singularize(entry.key))}Model';
+                  '${capitalize(singularize(entry.key))}Entity';
               break;
             }
           }
         }
 
-        final dropdownValue =
-            (field['dropdownValue'] ?? 'title').toString();
         final lower = camel(rawLabel);
 
         buffer.writeln("                Consumer(");
         buffer.writeln(
             "                  builder: (context, ref, child) {");
+        // ✅ FIX 1 + FIX 2: use correct provider name and handle AsyncValue
         buffer.writeln(
-            "                    final ${lower}Items = ref.watch(${lower}DropdownProvider);");
+            "                    final ${lower}Async = ref.watch(${lower}Provider);");
+        buffer.writeln(
+            "                    final ${lower}Items =  ${lower}Async.asData?.value ?? [];");
         buffer.writeln(
             "                    final selected$capitalLabel = ref.watch(selected${capitalLabel}Provider);");
         buffer.writeln();
@@ -475,8 +468,9 @@ String mapKeyboardType(String raw) {
             "                      items: ${lower}Items,");
         buffer.writeln(
             "                      value: selected$capitalLabel,");
+        // ✅ FIX 3: use dynamic dropdownValue property
         buffer.writeln(
-            "                      itemAsString: (item) => item.$dropdownValue?.toString() ?? '',");
+            "                      itemAsString: (item) => (item.$dropdownValue).toString(),");
         if (isRequired) {
           buffer.writeln("                      validator: (value) {");
           buffer.writeln(
@@ -485,14 +479,16 @@ String mapKeyboardType(String raw) {
           buffer.writeln("                      },");
         }
         buffer.writeln("                      onChanged: (selected) {");
+        // ✅ FIX 4: null-safe select
+        buffer.writeln("                        if (selected != null) {");
         buffer.writeln(
-            "                        ref.read(selected${capitalLabel}Provider.notifier).select(selected!);");
+            "                          ref.read(selected${capitalLabel}Provider.notifier).select(selected);");
+        buffer.writeln("                        }");
         buffer.writeln("                      },");
         buffer.writeln("                    );");
         buffer.writeln("                  },");
         buffer.writeln("                ),");
       } else if (staticOpts != null && staticOpts.isNotEmpty) {
-        // ── Static dropdown ───────────────────────────────────
         final literalItems = staticOpts.map((opt) {
           if (opt is Map) {
             final k = (opt['key'] ?? opt['value'] ?? '')

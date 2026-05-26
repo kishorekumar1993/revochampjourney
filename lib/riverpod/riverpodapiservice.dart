@@ -9,15 +9,14 @@ import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// ─── Failure sealed classes ───────────────────────────────────────
-sealed class ApiFailure {
+sealed class ApiFailure implements Exception {
   final String message;
   final int? statusCode;
   final dynamic data;
-
   const ApiFailure({required this.message, this.statusCode, this.data});
 
   @override
-  String toString() => '\${runtimeType}: \$message (\${statusCode ?? 'No Status'})';
+  String toString() => '\$runtimeType: \$message (\${statusCode ?? 'No Status'})';
 }
 
 class NetworkFailure extends ApiFailure {

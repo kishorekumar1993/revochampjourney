@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Generates Equatable-based entity classes from a JSON map.
 /// Prevents duplicate nested class generation.

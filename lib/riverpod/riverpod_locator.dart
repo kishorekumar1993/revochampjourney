@@ -2,7 +2,7 @@ String generateLocatorInterface(
   String className,
   List<dynamic> configList,
   String fileName, {
-  int depthToCore = 5, // from domain/locator to lib/core
+  int depthToCore = 5,
 }) {
   final buffer = StringBuffer();
 
@@ -38,19 +38,14 @@ String generateLocatorInterface(
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(configList, flatFields);
 
-  // ─── Collect API dropdown fields ──────────────────────────────
+  // ─── Collect async dropdown fields ────────────────────────────
   final apiDropdownFields = <Map<String, dynamic>>[];
   for (final field in flatFields) {
     final type = (field['type'] ?? '').toString().toLowerCase();
     if (type == 'dropdown' || type == 'api_dropdown') {
       final useStatic = field['useStaticOptions'] == true;
-      final hasApiUrl = field['dropdownApiUrl'] != null;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
+      final hasApiUrl = (field['dropdownApiUrl'] ?? '').toString().isNotEmpty;
       if (!useStatic && hasApiUrl) {
-        apiDropdownFields.add(field);
-      } else if (!useStatic && (staticOpts == null || staticOpts.isEmpty)) {
         apiDropdownFields.add(field);
       }
     }
@@ -64,81 +59,45 @@ String generateLocatorInterface(
 
   // ─── Imports ──────────────────────────────────────────────────
   buffer.writeln("import 'package:flutter_riverpod/flutter_riverpod.dart';");
-  buffer.writeln("import '$corePath/network/api_service.dart';");
-  buffer.writeln(
-    "import '../../data/dataSource/${fileSnake}_data_source.dart';",
-  );
-  buffer.writeln(
-    "import '../../data/repositoryimpl/${fileSnake}_repositoryimpl.dart';",
-  );
+  buffer.writeln("import '/service/api_service.dart';");          // ✅ fixed path
+  buffer.writeln("import '../../data/dataSource/${fileSnake}_data_source.dart';");
+  buffer.writeln("import '../../data/repositoryimpl/${fileSnake}_repositoryimpl.dart';");
   buffer.writeln("import '../repository/${fileSnake}_repository.dart';");
-
-  // ✅ UseCase imports — one per API dropdown field
-  for (final field in apiDropdownFields) {
-    final rawLabel =
-        (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
-            .toString()
-            .trim();
-    final useCaseFile =
-        'get_all_${rawLabel.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}_usecase';
-    buffer.writeln("import '../usecase/$useCaseFile.dart';");
-  }
+  buffer.writeln("import '../usecases/${fileSnake}_usecases.dart';");      // ✅ plural 'usecases'
   buffer.writeln();
 
-  // ─── DataSource provider ───────────────────────────────────────
+  // ─── apiServiceProvider (top-level) ───────────────────────────
+  buffer.writeln("final apiServiceProvider = Provider<ApiService>((ref) {");
+  buffer.writeln("  return ApiService(baseUrl: 'https://your-api-base-url.com');");
+  buffer.writeln("});");
+  buffer.writeln();
+
+  // ─── DataSource provider ──────────────────────────────────────
   buffer.writeln("/// DataSource provider.");
-  buffer.writeln(
-    "final ${classLower}DataSourceProvider = Provider.autoDispose<${className}DataSource>((ref) {",
-  );
+  buffer.writeln("final ${classLower}DataSourceProvider = Provider.autoDispose<${className}DataSource>((ref) {");
   buffer.writeln("  final apiService = ref.watch(apiServiceProvider);");
   buffer.writeln("  return ${className}DataSourceImpl(apiService);");
   buffer.writeln("});");
   buffer.writeln();
 
-  // ─── Repository provider ───────────────────────────────────────
+  // ─── Repository provider ──────────────────────────────────────
   buffer.writeln("/// Repository provider.");
-  buffer.writeln(
-    "final ${classLower}RepositoryProvider = Provider.autoDispose<${className}Repository>((ref) {",
-  );
-  buffer.writeln(
-    "  final dataSource = ref.watch(${classLower}DataSourceProvider);",
-  );
+  buffer.writeln("final ${classLower}RepositoryProvider = Provider.autoDispose<${className}Repository>((ref) {");
+  buffer.writeln("  final dataSource = ref.watch(${classLower}DataSourceProvider);");
   buffer.writeln("  return ${className}RepoImpl(dataSource);");
   buffer.writeln("});");
   buffer.writeln();
 
-  // ─── UseCase providers (one per API dropdown) ──────────────────
+  // ─── Use‑case providers (one per async dropdown) ──────────────
   for (final field in apiDropdownFields) {
-    final rawLabel =
-        (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
-            .toString()
-            .trim();
-    final name = rawLabel.replaceAll(RegExp(r'\s+'), '');
-    final pascal = _pascal(name);
-    final lower = _toCamelCase(pascal);
+    final rawLabel = (field['label'] ?? field['id'] ?? 'field').toString().trim();
+    final pascalLabel = _pascal(rawLabel.replaceAll(RegExp(r'\s+'), ''));
+    final useCaseClass = 'Load${pascalLabel}ListUseCase';
+    final providerName = 'load${pascalLabel}ListUseCaseProvider';
 
-    // Derive entity class from dropdowndata keys
-    String entityClass = '${pascal}Entity';
-    final dropdowndata = field['dropdowndata'];
-    if (dropdowndata is Map<String, dynamic>) {
-      for (final entry in dropdowndata.entries) {
-        final v = entry.value;
-        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-          entityClass = '${_capitalize(_singularize(entry.key))}Entity';
-          break;
-        }
-      }
-    }
-
-    final useCaseClass = 'GetAll${pascal}UseCase';
-
-    buffer.writeln("/// UseCase provider for [$pascal].");
-    buffer.writeln(
-      "final ${lower}UseCaseProvider = Provider.autoDispose<$useCaseClass>((ref) {",
-    );
-    buffer.writeln(
-      "  final repository = ref.watch(${classLower}RepositoryProvider);",
-    );
+    buffer.writeln("/// UseCase provider for [$rawLabel] dropdown.");
+    buffer.writeln("final $providerName = Provider.autoDispose<$useCaseClass>((ref) {");
+    buffer.writeln("  final repository = ref.watch(${classLower}RepositoryProvider);");
     buffer.writeln("  return $useCaseClass(repository);");
     buffer.writeln("});");
     buffer.writeln();
@@ -147,7 +106,9 @@ String generateLocatorInterface(
   return buffer.toString();
 }
 
-// ─── Helpers (consistent with previous generators) ───────────────
+// ─── Helper functions ────────────────────────────────────────────
+
+/// Converts a string to camelCase (first letter lowercase).
 String _toCamelCase(String s) {
   if (s.isEmpty) return s;
   if (s.contains(RegExp(r'[a-z]'))) {
@@ -159,18 +120,12 @@ String _toCamelCase(String s) {
       parts.skip(1).map((p) => _capitalize(p)).join();
 }
 
+/// Converts a string to PascalCase (first letter uppercase).
 String _pascal(String label) {
   final n = label.trim().replaceAll(RegExp(r'\s+'), '');
   return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
 }
 
+/// Capitalises the first letter of a string.
 String _capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-String _singularize(String text) {
-  if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
-  if (text.endsWith('s') && text.length > 1) {
-    return text.substring(0, text.length - 1);
-  }
-  return text;
-}

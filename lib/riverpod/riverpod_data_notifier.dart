@@ -1,216 +1,228 @@
-String generateNotifierImplInterface(
-  String className,
-  List<dynamic> configList,
-  String fileName, {
-  int depthToDomain = 3, // from presentation/notifier to domain folder
-  int depthToCore = 5, // kept for consistency (not used here)
-}) {
-  final buffer = StringBuffer();
+// import 'dart:core';
 
-  // ─── Recursive flatten (same as other generators) ──────────────
-  void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
-    if (source == null) return;
-    if (source is List) {
-      for (final item in source) flattenFields(item, result);
-      return;
-    }
-    if (source is! Map<String, dynamic>) return;
-    if (source.containsKey('steps')) {
-      flattenFields(source['steps'], result);
-      return;
-    }
-    if (source.containsKey('fields')) {
-      flattenFields(source['fields'], result);
-      return;
-    }
-    if (source.containsKey('type')) {
-      result.add(source);
-      flattenFields(source['nestedFields'], result);
-      final config = source['componentConfig'];
-      if (config is Map) {
-        flattenFields(config['fields'], result);
-        flattenFields(config['columns'], result);
-      }
-    }
-  }
+// // ═══════════════════════════════════════════════════════════════════
+// //  Helper functions (must be top-level)
+// // ═══════════════════════════════════════════════════════════════════
 
-  final flatFields = <Map<String, dynamic>>[];
-  flattenFields(configList, flatFields);
+// String _pluralize(String word) {
+//   if (word.endsWith('y') && !word.endsWith('ey')) {
+//     return word.substring(0, word.length - 1) + 'ies';
+//   }
+//   if (word.endsWith('s')) return word;
+//   return word + 's';
+// }
 
-  // ─── Collect dynamic dropdown fields ──────────────────────────
-  final dynamicDropdowns = <Map<String, dynamic>>[];
+// String _toSnakeCase(String text) =>
+//     text.trim().replaceAll(RegExp(r'\s+'), '_').toLowerCase();
 
-  for (final field in flatFields) {
-    final type = (field['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown' || type == 'api_dropdown') {
-      final useStatic = field['useStaticOptions'] == true;
-      final hasApiUrl = field['dropdownApiUrl'] != null;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
+// String _toPascalCase(String text) => text
+//     .split(RegExp(r'\s+'))
+//     .where((s) => s.isNotEmpty)
+//     .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+//     .join();
 
-      if (!useStatic && hasApiUrl) {
-        dynamicDropdowns.add(field);
-      } else if (!useStatic && (staticOpts == null || staticOpts.isEmpty)) {
-        dynamicDropdowns.add(field);
-      }
-    }
-  }
+// String _lowerFirst(String s) =>
+//     s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
 
-  if (dynamicDropdowns.isEmpty) {
-    return '// No dynamic dropdown notifiers to generate.';
-  }
+// String _capitalize(String s) =>
+//     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
-  // ─── Base imports ──────────────────────────────────────────────
-  buffer.writeln(
-    "import 'package:riverpod_annotation/riverpod_annotation.dart';",
-  );
-  // Build relative path to domain/locator
-  final domainPath = '../' * depthToDomain + 'domain';
-  buffer.writeln(
-    "import '$domainPath/locator/${_toSnakeCase(fileName)}_locator.dart';",
-  );
+// String _singularize(String text) {
+//   if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
+//   if (text.endsWith('s') && text.length > 1) {
+//     return text.substring(0, text.length - 1);
+//   }
+//   return text;
+// }
 
-  // ─── Unique entity imports ─────────────────────────────────────
-  final entityImports = <String>{};
+// // ═══════════════════════════════════════════════════════════════════
+// //  Notifier generator (fixed)
+// // ═══════════════════════════════════════════════════════════════════
 
-  for (final item in dynamicDropdowns) {
-    final listEntity = item['listEntity']?.toString().trim();
-    if (listEntity != null && listEntity.isNotEmpty) {
-      final entityFile = _toSnakeCase(listEntity.replaceAll('Entity', ''));
-      entityImports.add("import '../domain/entity/${entityFile}_entity.dart';");
-    } else {
-      final rawLabel =
-          (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'model')
-              .toString()
-              .trim();
-      final dropdowndata = item['dropdowndata'];
-      String entityFile;
-      if (dropdowndata is Map<String, dynamic>) {
-        String? derived;
-        for (final entry in dropdowndata.entries) {
-          final v = entry.value;
-          if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-            derived = _toSnakeCase(_singularize(entry.key));
-            break;
-          }
-        }
-        entityFile = derived ?? _toSnakeCase(rawLabel);
-      } else {
-        entityFile = _toSnakeCase(rawLabel);
-      }
-      entityImports.add("import '../domain/entity/${entityFile}_entity.dart';");
-    }
-  }
+// String generateNotifierImplInterface(
+//   String className,
+//   List<dynamic> configList,
+//   String fileName, {
+//   int depthToDomain = 2,   // ✅ default changed to 2 (../../)
+//   int depthToCore = 5,
+// }) {
+//   final buffer = StringBuffer();
 
-  for (final imp in entityImports) {
-    buffer.writeln(imp);
-  }
+//   // ─── Recursive flatten ──────────────────────────────────────────
+//   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
+//     if (source == null) return;
+//     if (source is List) {
+//       for (final item in source) flattenFields(item, result);
+//       return;
+//     }
+//     if (source is! Map<String, dynamic>) return;
+//     if (source.containsKey('steps')) {
+//       flattenFields(source['steps'], result);
+//       return;
+//     }
+//     if (source.containsKey('fields')) {
+//       flattenFields(source['fields'], result);
+//       return;
+//     }
+//     if (source.containsKey('type')) {
+//       result.add(source);
+//       flattenFields(source['nestedFields'], result);
+//       final config = source['componentConfig'];
+//       if (config is Map) {
+//         flattenFields(config['fields'], result);
+//         flattenFields(config['columns'], result);
+//       }
+//     }
+//   }
 
-  final notifierFileName = _toSnakeCase(fileName);
-  buffer.writeln("part '${notifierFileName}_notifier.g.dart';\n");
+//   final flatFields = <Map<String, dynamic>>[];
+//   flattenFields(configList, flatFields);
 
-  // ─── Generate one notifier per API dropdown field ──────────────
-  for (final item in dynamicDropdowns) {
-    final rawLabel = (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'field')
-        .toString()
-        .trim();
-    if (rawLabel.isEmpty) continue;
+//   // ─── Collect dynamic dropdown fields ──────────────────────────
+//   final dynamicDropdowns = <Map<String, dynamic>>[];
+//   for (final field in flatFields) {
+//     final type = (field['type'] ?? '').toString().toLowerCase();
+//     if (type == 'dropdown' || type == 'api_dropdown') {
+//       final useStatic = field['useStaticOptions'] == true;
+//       final hasApiUrl = field['dropdownApiUrl'] != null;
+//       final staticOpts = (field['options'] as List<dynamic>?) ??
+//           (field['staticOptions'] as List<dynamic>?);
+//       if (!useStatic && hasApiUrl) {
+//         dynamicDropdowns.add(field);
+//       } else if (!useStatic && (staticOpts == null || staticOpts.isEmpty)) {
+//         dynamicDropdowns.add(field);
+//       }
+//     }
+//   }
 
-    final pascal = _toPascalCase(rawLabel);
-    final camelClass = _lowerFirst(className);
-    final name = rawLabel.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+//   if (dynamicDropdowns.isEmpty) {
+//     return '// No dynamic dropdown notifiers to generate.';
+//   }
 
-    // Resolve entity class name
-    String entityClass;
-    final listEntity = item['listEntity']?.toString().trim();
-    if (listEntity != null && listEntity.isNotEmpty) {
-      entityClass = listEntity;
-    } else {
-      final dropdowndata = item['dropdowndata'];
-      if (dropdowndata is Map<String, dynamic>) {
-        String? derived;
-        for (final entry in dropdowndata.entries) {
-          final v = entry.value;
-          if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-            derived = '${_capitalize(_singularize(entry.key))}Entity';
-            break;
-          }
-        }
-        entityClass = derived ?? '${pascal}Entity';
-      } else {
-        entityClass = '${pascal}Entity';
-      }
-    }
+//   // ─── Base imports ──────────────────────────────────────────────
+//   buffer.writeln(
+//     "import 'package:riverpod_annotation/riverpod_annotation.dart';",
+//   );
+//   buffer.writeln(
+//     "import 'package:flutter_riverpod/flutter_riverpod.dart';",
+//   );
+//   final prefix = '../' * depthToDomain;   // ✅ build relative path once
+//   final safeFileName = fileName.trim().isEmpty ? 'userjourney_form' : _toSnakeCase(fileName);
+//   buffer.writeln(
+//     "import '${prefix}domain/locator/${safeFileName}_locator.dart';",
+//   );
 
-    // API method name (configurable, else auto-generated)
-    final apiMethod = (item['apiMethod']?.toString().trim().isNotEmpty == true)
-        ? item['apiMethod'].toString().trim()
-        : 'getAll${_capitalize(name)}s';
+//   // ─── Unique entity imports (always based on raw label) ─────────
+//   final entityImports = <String>{};
+//   for (final item in dynamicDropdowns) {
+//     final rawLabel = (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'model')
+//         .toString()
+//         .trim();
+//     if (rawLabel.isEmpty) continue;
+//     final entityFile = _toSnakeCase(rawLabel);   // ✅ e.g., "post_title"
+//     entityImports.add("import '${prefix}domain/entity/${entityFile}_entity.dart';");
+//   }
+//   for (final imp in entityImports) {
+//     buffer.writeln(imp);
+//   }
 
-    // Determine if the response is a single object or a list
-    final isSingleObject =
-        item['dropdowndata'] is Map &&
-        !(item['dropdowndata'] as Map).values.any((v) => v is List);
-    final asyncType = isSingleObject
-        ? 'AsyncValue<$entityClass>'
-        : 'AsyncValue<List<$entityClass>>';
-    final returnType = isSingleObject
-        ? 'Future<$entityClass>'
-        : 'Future<List<$entityClass>>';
+//   final notifierFileName = safeFileName;
+//   buffer.writeln("part '${notifierFileName}_notifier.g.dart';\n");
 
-    buffer.writeln('''
-/// ===============================================
-/// $pascal NOTIFIER
-/// ===============================================
-@riverpod
-class ${pascal}Notifier extends _\$${pascal}Notifier {
+//   // ─── Generate one notifier per API dropdown field ──────────────
+//   for (final item in dynamicDropdowns) {
+//     final rawLabel = (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'field')
+//         .toString()
+//         .trim();
+//     if (rawLabel.isEmpty) continue;
 
-  @override
-  $asyncType build() async {
-    return AsyncValue.data(await fetch());
-  }
+//     final pascal = _toPascalCase(rawLabel);   // e.g., "PostTitle"
+//     if (pascal.isEmpty) continue;
 
-  $returnType fetch() async {
-    // Use the repository provider from the locator
-    final result = await ref.read(${camelClass}RepositoryProvider).$apiMethod();
+// final camelClass = _lowerFirst(className);
 
-    return result.fold(
-      (failure) => throw failure,
-      (data) => data,
-    );
-  }
+// /// Root response entity
+// final rootEntityClass = '${pascal}Entity';
 
-  Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(fetch);
-  }
-}
-''');
-  }
+// /// Actual dropdown item entity
+// String itemEntityClass = rootEntityClass;
 
-  return buffer.toString();
-}
+// /// Response field name
+// String responseFieldName = '';
 
-// ─── Helpers ──────────────────────────────────────────────────────
-String _toSnakeCase(String text) =>
-    text.trim().replaceAll(RegExp(r'\s+'), '_').toLowerCase();
+// final dropdowndata = item['dropdowndata'];
 
-String _toPascalCase(String text) => text
-    .split(RegExp(r'\s+'))
-    .where((s) => s.isNotEmpty)
-    .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
-    .join();
+// /// Detect list response dynamically
+// if (dropdowndata is Map<String, dynamic>) {
+//   for (final entry in dropdowndata.entries) {
+//     if (entry.value is List) {
+//       responseFieldName = entry.key;
 
-String _lowerFirst(String s) =>
-    s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
+//       itemEntityClass =
+//           '${_capitalize(_singularize(entry.key))}Entity';
 
-String _capitalize(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+//       break;
+//     }
+//   }
+// }
 
-String _singularize(String text) {
-  if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
-  if (text.endsWith('s') && text.length > 1)
-    return text.substring(0, text.length - 1);
-  return text;
-}
+// /// Determine if API returns single object or list
+// final isSingleObject =
+//     responseFieldName.isEmpty;
+
+// /// Correct notifier generic type
+// final notifierExtends = isSingleObject
+//     ? 'AsyncNotifier<$rootEntityClass>'
+//     : 'AsyncNotifier<List<$itemEntityClass>>';
+
+// /// Correct fetch return type
+// final fetchReturnType = isSingleObject
+//     ? 'Future<$rootEntityClass>'
+//     : 'Future<List<$itemEntityClass>>';
+
+// /// API method name
+// final apiMethod =
+//     (item['apiMethod']?.toString().trim().isNotEmpty == true)
+//         ? item['apiMethod'].toString().trim()
+//        : 'getAll${_pluralize(pascal)}';
+//         // : 'getAll$pascal';
+
+// buffer.writeln('''
+// /// ===============================================
+// /// $pascal Notifier
+// /// ===============================================
+// @riverpod
+// class ${pascal}Notifier extends $notifierExtends {
+
+//   @override
+//   $fetchReturnType build() async {
+//     ref.watch(${camelClass}RepositoryProvider);
+//     return await _fetchData();
+//   }
+
+//   $fetchReturnType _fetchData() async {
+//     final result = await ref
+//         .read(${camelClass}RepositoryProvider)
+//         .$apiMethod();
+
+//     return result.fold(
+//       (failure) => throw Exception(failure.toString()),
+//       (data) {
+//         ${isSingleObject ? 'return data;' : 'return data.$responseFieldName;'}
+//       },
+//     );
+//   }
+
+//   Future<void> refresh() async {
+//     state = const AsyncValue.loading();
+
+//     state = await AsyncValue.guard(
+//       () => _fetchData(),
+//     );
+//   }
+// }
+// ''');
+//   }
+
+//   return buffer.toString();
+// }
