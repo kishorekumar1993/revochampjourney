@@ -1,19 +1,25 @@
 // lib/bloc/revochamp_bloc_generator.dart
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║  RevochampBlocGenerator  v4 — Unified Orchestrator                       ║
+// ║  RevochampBlocGenerator  v5 — Unified Architecture                       ║
 // ║                                                                          ║
-// ║  Generates THREE complete architecture patterns per step:                ║
-// ║  1. BLoC   → lib/bloc/features/{journey}/{step}/                        ║
-// ║  2. GetX   → lib/getx/features/{journey}/{step}/                        ║
-// ║  3. Riverpod → lib/riverpod/features/{journey}/{step}/                  ║
+// ║  ONE shared feature folder per step:                                     ║
+// ║    lib/features/{journey}/{step}/                                        ║
+// ║      ┣ data/        ← shared (datasource, repository_impl)              ║
+// ║      ┣ domain/      ← shared (entity, repository, usecase)              ║
+// ║      ┗ presentation/                                                     ║
+// ║          ┣ bloc/    ← BLoC-specific (bloc, event, state, screen)        ║
+// ║          ┗ riverpod/← Riverpod-specific (provider, notifier, view)      ║
 // ║                                                                          ║
-// ║  Shared core files (runtime, network, widgets) generated ONCE.          ║
+// ║  No duplication of entities / repositories / datasources.               ║
+// ║  GetX removed.                                                           ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 import 'dart:convert';
 import 'dart:js' as js;
 
 import 'package:flutter/material.dart';
+
+// Shared / common generators
 import 'package:revojourneytryone/blocnew/api_client_generator.dart';
 import 'package:revojourneytryone/blocnew/barrel_generator.dart';
 import 'package:revojourneytryone/blocnew/bloc_generator.dart';
@@ -33,30 +39,16 @@ import 'package:revojourneytryone/blocnew/test_generator.dart';
 import 'package:revojourneytryone/blocnew/validation_generator.dart';
 import 'package:revojourneytryone/blocnew/widget_generator.dart';
 
-// GetX generators
-import 'package:revojourneytryone/getx/binding.dart';
-import 'package:revojourneytryone/getx/controller.dart';
-import 'package:revojourneytryone/getx/repository.dart';
-import 'package:revojourneytryone/getx/viewscreen.dart';
-import 'package:revojourneytryone/getx/getx_model.dart';
-
-// Riverpod generators
-import 'package:revojourneytryone/riverpod/riverpod_data_datasource.dart';
-import 'package:revojourneytryone/riverpod/riverpod_data_notifier.dart';
-import 'package:revojourneytryone/riverpod/riverpod_data_repositoryimpl.dart';
-import 'package:revojourneytryone/riverpod/riverpod_domain_repository.dart';
-import 'package:revojourneytryone/riverpod/riverpod_enitity_class.dart';
-import 'package:revojourneytryone/riverpod/riverpod_locator.dart';
-import 'package:revojourneytryone/riverpod/riverpod_presentation.dart';
-import 'package:revojourneytryone/riverpod/riverpod_provider.dart';
-import 'package:revojourneytryone/riverpod/riverpod_temp_model.dart';
-import 'package:revojourneytryone/riverpod/riverpodapiservice.dart';
+// Riverpod presentation-only generators
+import 'package:revojourneytryone/common/riverpod/riverpodapiservice.dart';
+import 'package:revojourneytryone/common/riverpod/riverpod_presentation.dart';
+import 'package:revojourneytryone/common/riverpod/riverpod_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Architecture enum — which patterns to generate
+// Architecture enum — BLoC and Riverpod only; GetX removed
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum Architecture { bloc, getx, riverpod }
+enum Architecture { bloc, riverpod,getx }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main entry point called from dashboard_screen.dart
@@ -66,13 +58,11 @@ void generateAndSaveAllFiles({
   required dynamic journeyConfig,
   Set<Architecture> architectures = const {
     Architecture.bloc,
-    Architecture.getx,
     Architecture.riverpod,
   },
 }) {
   if (journeyConfig.steps.isEmpty) return;
 
-  // "Motor Insurance Journey" → "motorInsurance"
   final journeyNamespace = _toJourneyNamespace(
     journeyConfig.journeyName as String? ?? 'journey',
   );
@@ -103,36 +93,35 @@ void generateAndSaveAllFiles({
 
     debugPrint('  📋 Step: $screenName (${rawFields.length} fields)');
 
-    // ── 1. BLoC ───────────────────────────────────────────────────────────
+    // ── STEP 1: Shared common files (entity, repository, datasource, usecase) ──
+    // Generated ONCE per step — neither BLoC nor Riverpod duplicates these.
+    final commonFiles = _generateCommonFiles(
+      screenName:       screenName,
+      journeyNamespace: journeyNamespace,
+      rawFields:        rawFields,
+      addCoreFiles:     !coreFilesAdded,
+    );
+    allFiles.addAll(commonFiles);
+
+    // ── STEP 2: BLoC presentation layer only ──────────────────────────────
     if (architectures.contains(Architecture.bloc)) {
-      final blocFiles = _generateBlocFiles(
+      final blocFiles = _generateBlocPresentationFiles(
         screenName:       screenName,
         journeyNamespace: journeyNamespace,
         rawFields:        rawFields,
-        addCoreFiles:     !coreFilesAdded,
       );
       allFiles.addAll(blocFiles);
-      
+
       blocFeaturesInfo.add(FeatureInfo(
         featureName: '${screenName}Form',
-        baseName: screenName.toLowerCase(),
-        fields: fieldsForDi,
+        baseName:    screenName.toLowerCase(),
+        fields:      fieldsForDi,
       ));
     }
 
-    // ── 2. GetX ───────────────────────────────────────────────────────────
-    if (architectures.contains(Architecture.getx)) {
-      final getxFiles = _generateGetxFiles(
-        screenName:       screenName,
-        journeyNamespace: journeyNamespace,
-        rawFields:        rawFields,
-      );
-      allFiles.addAll(getxFiles);
-    }
-
-    // ── 3. Riverpod ───────────────────────────────────────────────────────
+    // ── STEP 3: Riverpod presentation layer only ──────────────────────────
     if (architectures.contains(Architecture.riverpod)) {
-      final riverpodFiles = _generateRiverpodFiles(
+      final riverpodFiles = _generateRiverpodPresentationFiles(
         screenName:       screenName,
         journeyNamespace: journeyNamespace,
         rawFields:        rawFields,
@@ -143,18 +132,21 @@ void generateAndSaveAllFiles({
     coreFilesAdded = true;
   }
 
+  // ── Global BLoC DI (injection.dart + main.dart) ───────────────────────────
   if (architectures.contains(Architecture.bloc) && blocFeaturesInfo.isNotEmpty) {
     final globalDi = GlobalDiGenerator(blocFeaturesInfo, journeyNamespace);
-    allFiles.add({
-      'folderPath': 'lib/bloc',
-      'fileName': 'injection.dart',
-      'textContent': globalDi.generateInjection(),
-    });
-    allFiles.add({
-      'folderPath': 'lib/bloc',
-      'fileName': 'main.dart',
-      'textContent': globalDi.generateMain(),
-    });
+    allFiles.addAll([
+      {
+        'folderPath':  'lib/bloc',
+        'fileName':    'injection.dart',
+        'textContent': globalDi.generateInjection(),
+      },
+      {
+        'folderPath':  'lib/bloc',
+        'fileName':    'main.dart',
+        'textContent': globalDi.generateMain(),
+      },
+    ]);
   }
 
   if (allFiles.isEmpty) {
@@ -169,357 +161,358 @@ void generateAndSaveAllFiles({
 final List<FeatureInfo> blocFeaturesInfo = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. BLoC Generator
+// STEP 1 — Common / shared feature files
+// Placed at:  lib/features/{journey}/{step}/
+//   data/    — datasource, model, repository_impl
+//   domain/  — entity, repository, usecase
+//
+// Neither BLoC nor Riverpod should re-generate any of these.
 // ─────────────────────────────────────────────────────────────────────────────
 
-List<Map<String, String>> _generateBlocFiles({
+List<Map<String, String>> _generateCommonFiles({
   required String screenName,
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
   required bool addCoreFiles,
 }) {
-  final result = <Map<String, String>>[];
+  final result      = <Map<String, String>>[];
+  final baseName    = screenName.toLowerCase();
+  final featureName = '${screenName}Form';
+  final snakeName   = toSnakeCase(featureName);
+  final base        = 'lib/features/$journeyNamespace/$baseName';
 
-  final safeFields = _deepClone(rawFields);
-  final files = RevochampBlocGenerator(
-    screenName:   screenName,
-    modelName:    'Form',
-    fieldJsonRaw: safeFields,
-    generateTests:   true,
-    generateBarrels: true,
-  ).generate();
+  final fields     = rawFields.map(FieldSchema.fromJson).toList();
+  final flatFields = _flattenFields(rawFields).map(FieldSchema.fromJson).toList();
 
-  for (final entry in files.entries) {
-    final parts      = entry.key.split('/');
-    final fileName   = parts.last;
-    final origFolder = parts.take(parts.length - 1).join('/');
+  // ── Core runtime / network / widgets (first step only) ───────────────────
+  if (addCoreFiles) {
+    result.addAll(_buildCoreFiles());
+  }
 
-    // Shared core files — only from first step
-    final isCore = origFolder.startsWith('lib/bloc/core') ||
-        origFolder == 'lib/bloc' ||
-        origFolder.startsWith('test/');
-
-    if (isCore && !addCoreFiles) continue;
-
-    // Inject journey namespace into feature paths
-    final folder = isCore
-        ? origFolder
-        : origFolder.replaceFirst(
-            'lib/bloc/features/',
-            'lib/bloc/features/$journeyNamespace/',
-          );
+  // ── Per-dropdown entity + model files ────────────────────────────────────
+  for (final f in flatFields.where((f) => f.hasDropdownData)) {
+    final entitySnake = toSnakeCase(f.entityClassName.replaceAll('Entity', ''));
 
     result.add({
-      'folderPath':  folder,
-      'fileName':    fileName,
-      'textContent': entry.value,
+      'folderPath':  '$base/domain/entity',
+      'fileName':    '${entitySnake}_entity.dart',
+      'textContent': EntityGenerator(
+        className:  f.entityClassName,
+        sampleJson: f.dropdownData.first,
+      ).generate(),
+    });
+
+    result.add({
+      'folderPath':  '$base/data/model',
+      'fileName':    '${entitySnake}_model.dart',
+      'textContent': ModelGenerator(
+        modelClassName:  f.modelClassName,
+        entityClassName: f.entityClassName,
+        sampleJson:      f.dropdownData.first,
+        entityImportPath:
+            '../../domain/entity/${entitySnake}_entity.dart',
+      ).generate(),
     });
   }
 
-  return result;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. GetX Generator
-// ─────────────────────────────────────────────────────────────────────────────
-
-List<Map<String, String>> _generateGetxFiles({
-  required String screenName,
-  required String journeyNamespace,
-  required List<Map<String, dynamic>> rawFields,
-}) {
-  final result    = <Map<String, String>>[];
-  final baseName  = screenName.toLowerCase();
-  final className = '${screenName}Form';
-  final fileName  = '${baseName}_form';
-  final base      = 'lib/getx/features/$journeyNamespace/$baseName';
-
-  final flatFields = _flattenFields(rawFields);
-
-  // ── Generate GetX files ──────────────────────────────────────────────────
-  final binding    = generateBindingClass(
-    className, 
-    rawFields.isNotEmpty ? rawFields.first : <String, dynamic>{}, 
-    fileName,
-  );
-  final controller = generatecontrollerClass(className, rawFields, fileName);
-  final repository = generaterepositoryClass(className, rawFields, fileName);
-  final view       = generateviewClass(className, rawFields, fileName);
-
-  result.addAll([
-    {'folderPath': '$base/bindings',     'fileName': '${fileName}_binding.dart',    'textContent': binding},
-    {'folderPath': '$base/controllers',  'fileName': '${fileName}_controller.dart', 'textContent': controller},
-    {'folderPath': '$base/repository',   'fileName': '${fileName}_repository.dart', 'textContent': repository},
-    {'folderPath': '$base/presentation', 'fileName': '${fileName}_view.dart',       'textContent': view},
-  ]);
-
-  // ── GetX Model files (per dropdown field with data) ───────────────────────
-  for (final field in flatFields) {
-    final dropdownData = field['dropdowndata'];
-    if (dropdownData == null) continue;
-
-    List<dynamic> dataList = [];
-    if (dropdownData is List && dropdownData.isNotEmpty) {
-      dataList = dropdownData;
-    } else if (dropdownData is Map && dropdownData.isNotEmpty) {
-      dataList = [dropdownData];
-    } else {
-      continue;
-    }
-
-    final rawLabel    = field['label'] as String? ?? 'Unnamed';
-    final safeLabel   = rawLabel.trim().isEmpty ? 'Unnamed' : rawLabel;
-    final modelName   = '${safeLabel.replaceAll(' ', '')}Model';
-    final modelFile   = safeLabel.toLowerCase().replaceAll(' ', '_');
-    final sampleData  = dataList.first is Map
-        ? Map<String, dynamic>.from(dataList.first as Map)
-        : <String, dynamic>{};
-
-    final generated = generateClass(modelName, sampleData);
-
-    result.add({
-      'folderPath':  '$base/model',
-      'fileName':    '${modelFile}_model.dart',
-      'textContent': generated,
-    });
-  }
-
-  return result;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. Riverpod Generator
-// ─────────────────────────────────────────────────────────────────────────────
-
-List<Map<String, String>> _generateRiverpodFiles({
-  required String screenName,
-  required String journeyNamespace,
-  required List<Map<String, dynamic>> rawFields,
-}) {
-  final result   = <Map<String, String>>[];
-  final baseName = screenName.toLowerCase();
-  final className = '${screenName}Form';
-  final fileName  = '${baseName}_form';
-  final base      = 'lib/riverpod/features/$journeyNamespace/$baseName';
-
-  final flatFields = _flattenFields(rawFields);
-
-  // ── Riverpod model + entity files (per dropdown field) ───────────────────
-  for (final field in flatFields) {
-    final dropdownData = field['dropdowndata'];
-    if (dropdownData == null) continue;
-
-    List<dynamic> dataList = [];
-    if (dropdownData is List && dropdownData.isNotEmpty) {
-      dataList = dropdownData;
-    } else if (dropdownData is Map && dropdownData.isNotEmpty) {
-      dataList = [dropdownData];
-    } else {
-      continue;
-    }
-
-    final rawLabel   = field['label'] as String? ?? 'Unnamed';
-    final safeLabel  = rawLabel.trim().isEmpty ? 'Unnamed' : rawLabel;
-    final modelName  = safeLabel.replaceAll(' ', '');
-    final modelFile  = safeLabel.toLowerCase().replaceAll(' ', '_');
-    final sampleData = dataList.first is Map
-        ? Map<String, dynamic>.from(dataList.first as Map)
-        : <String, dynamic>{};
-
-    final modelContent  = riverpodModelGenerateClass(modelName, sampleData, modelFile);
-    final entityContent = generateEquatableEntityClass('${modelName}Entity', sampleData, modelFile);
-
-    result.addAll([
-      {'folderPath': '$base/data/model',       'fileName': '${modelFile}_model.dart',  'textContent': modelContent},
-      {'folderPath': '$base/domain/entity',    'fileName': '${modelFile}_entity.dart', 'textContent': entityContent},
-    ]);
-  }
-
-  // ── Riverpod architecture files ───────────────────────────────────────────
-  final domainRepo    = generateRepositoryInterface(className, rawFields, fileName);
-  final repoImpl      = generateRepositoryImplInterface(className, rawFields, fileName);
-  final notifier      = generateNotifierImplInterface(className, rawFields, fileName);
-  final apiService    = generateApiServiceInterface();
-  final locator       = generateLocatorInterface(className, rawFields, fileName);
-  final dataSource    = generateDataSourceInterface(className, rawFields, fileName);
-  final provider      = generateProviderInterface(className, rawFields, fileName);
-  final view          = generateriverpodviewClass(className, rawFields, fileName);
-
-  result.addAll([
-    {'folderPath': '$base/domain/repository',        'fileName': '${fileName}_repository.dart',     'textContent': domainRepo},
-    {'folderPath': '$base/data/repositoryimpl',      'fileName': '${fileName}_repositoryimpl.dart', 'textContent': repoImpl},
-    {'folderPath': '$base/presentation/controller',  'fileName': '${fileName}_notifier.dart',       'textContent': notifier},
-    {'folderPath': '$base/data/dataSource',          'fileName': '${fileName}_data_source.dart',    'textContent': dataSource},
-    {'folderPath': '$base/domain/locator',           'fileName': '${fileName}_locator.dart',        'textContent': locator},
-    {'folderPath': '$base/presentation/provider',    'fileName': '${fileName}_provider.dart',       'textContent': provider},
-    {'folderPath': '$base/presentation/view',        'fileName': '${fileName}_view.dart',           'textContent': view},
-    // ── api_service.dart shared once at core level
-    {'folderPath': 'lib/core/service',               'fileName': 'api_service.dart',                'textContent': apiService},
-  ]);
-
-  return result;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BLoC inner class (unchanged from v3)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class RevochampBlocGenerator {
-  RevochampBlocGenerator({
-    required this.screenName,
-    required this.modelName,
-    required this.fieldJsonRaw,
-    this.generateTests   = true,
-    this.generateBarrels = true,
+  // ── Feature entity ────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/domain/entity',
+    'fileName':    '${snakeName}_entity.dart',
+    'textContent': FeatureEntityGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
   });
 
-  final String                     screenName;
-  final String                     modelName;
-  final List<Map<String, dynamic>> fieldJsonRaw;
-  final bool                       generateTests;
-  final bool                       generateBarrels;
+  // ── Domain repository interface ───────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/domain/repository',
+    'fileName':    '${snakeName}_repository.dart',
+    'textContent': DomainRepositoryGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
+  });
 
-  Map<String, String> generate() {
-    final featureName = '$screenName$modelName';
-    final baseName    = screenName.toLowerCase();
-    final snakeName   = toSnakeCase(featureName);
-    final resultData  = '${featureName}ResultData';
-    final featBase    = 'lib/bloc/features/$baseName';
+  // ── Use-case ──────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/domain/usecase',
+    'fileName':    '${snakeName}_usecase.dart',
+    'textContent': UseCaseGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
+  });
 
-    final fields = fieldJsonRaw.map(FieldSchema.fromJson).toList();
-    final files  = <String, String>{};
+  // ── Data source ───────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/data/datasource',
+    'fileName':    '${snakeName}_datasource.dart',
+    'textContent': DataSourceGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
+  });
 
-    _addRuntime(files);
-    _addNetworkLayer(files);
-    files['lib/bloc/core/storage/local_storage_service.dart'] = ApiClientSources.localStorageService;
-    _addCoreWidgets(files);
-    files['lib/bloc/core/observer/bloc_observer.dart'] = const ObserverGenerator().generate();
+  // ── Repository impl ───────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/data/repository_impl',
+    'fileName':    '${snakeName}_repository_impl.dart',
+    'textContent': RepositoryImplGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
+  });
 
-    for (final f in fields.where((f) => f.hasDropdownData)) {
-      final entitySnake = toSnakeCase(f.entityClassName.replaceAll('Entity', ''));
-      files['$featBase/domain/entities/${entitySnake}_entity.dart'] =
-          EntityGenerator(className: f.entityClassName, sampleJson: f.dropdownData.first).generate();
-      files['$featBase/data/model/${entitySnake}_model.dart'] =
-          ModelGenerator(
-            modelClassName: f.modelClassName,
-            entityClassName: f.entityClassName,
-            sampleJson: f.dropdownData.first,
-            entityImportPath: '../../domain/entities/${entitySnake}_entity.dart',
-          ).generate();
-    }
+  // ── Result model ─────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$base/domain/result',
+    'fileName':    '${snakeName}_result.dart',
+    'textContent': ResultModelGenerator(featureName: featureName).generate(),
+  });
 
-    files['$featBase/domain/entities/${snakeName}_entity.dart'] =
-        FeatureEntityGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/domain/result/${snakeName}_result.dart'] =
-        ResultModelGenerator(featureName: featureName).generate();
-    files['$featBase/domain/repositories/${snakeName}_repository.dart'] =
-        DomainRepositoryGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/domain/usecases/${snakeName}_usecases.dart'] =
-        UseCaseGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/data/datasources/${snakeName}_datasource.dart'] =
-        DataSourceGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/data/repositories/${snakeName}_repository_impl.dart'] =
-        RepositoryImplGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/presentation/validation/${snakeName}_validators.dart'] =
-        ValidationGenerator(featureName: featureName, fields: fields).generate();
-    files['$featBase/presentation/events/${snakeName}_event.dart'] =
-        EventGenerator(
-          featureName: featureName,
-          fields: fields,
-          hasAsyncDropdown: fields.any((f) => f.isAsyncDropdown),
-        ).generate();
-    files['$featBase/presentation/state/${snakeName}_feature_state.dart'] =
-        StateGenerator(
-          featureName: featureName,
-          fields: fields,
-          resultDataClass: resultData,
-          runtimeImportPrefix: '../../../../../core/runtime',
-        ).generate();
-    files['$featBase/presentation/mapper/${snakeName}_mapper.dart'] =
-        MapperGenerator(
-          featureName: featureName,
-          fields: fields,
-          entityClassName: '${featureName}Entity',
-          stateName: '${featureName}FeatureState',
-        ).generate();
-//     files['$featBase/presentation/bloc/${snakeName}_bloc.dart'] =
-//         BlocGenerator(
-//   featureName: featureName,
-//   configList: fields,
-//   generateAsyncValueSeparately: false,
-//   hasSubmit: false,
-// ).generate();
-final blocFiles = BlocGenerator(
-  featureName: featureName,
-  configList: fields,
-  generateAsyncValueSeparately: false,
-  hasSubmit: false,
-).generateAll(); // Changed from .generate() to .generateAll()
-
-blocFiles.forEach((key, value) {
-  files['$featBase/presentation/bloc/$key'] = value;
-});
-    files['$featBase/presentation/screens/${snakeName}_screen.dart'] =
-        ScreenGenerator(featureName: featureName, fields: fields).generate();
-
-    // Removed single injection.dart and main.dart to use GlobalDiGenerator
-
-    if (generateBarrels) {
-      final barrelGen = BarrelGenerator(featureName: featureName, fields: fields, baseName: baseName);
-      for (final entry in barrelGen.generateAll().entries) {
-        files['$featBase/${entry.key}'] = entry.value;
-      }
-    }
-
-    if (generateTests) {
-      files['test/features/$baseName/${snakeName}_bloc_test.dart'] =
-          TestGenerator(featureName: featureName, fields: fields, baseName: baseName).generate();
-    }
-
-    return files;
-  }
-
-  void _addRuntime(Map<String, String> files) {
-    const base = 'lib/bloc/core/runtime';
-    files['$base/failure.dart']            = RuntimeSources.failure;
-    files['$base/validation_error.dart']   = RuntimeSources.validationError;
-    files['$base/validator.dart']          = RuntimeSources.validator;
-    files['$base/reactive_value.dart']     = RuntimeSources.reactiveValue;
-    files['$base/async_state.dart']        = RuntimeSources.asyncState;
-    files['$base/base_reactive_bloc.dart'] = RuntimeSources.baseReactiveBloc;
-  }
-
-  void _addNetworkLayer(Map<String, String> files) {
-    const base = 'lib/bloc/core/network';
-    files['$base/app_exception.dart']                    = ApiClientSources.appException;
-    files['$base/api_response.dart']                     = ApiClientSources.apiResponse;
-    files['$base/dio_client.dart']                       = ApiClientSources.dioClient;
-    files['$base/failure_mapper.dart']                   = ApiClientSources.failureMapper;
-    files['$base/interceptors/auth_interceptor.dart']    = ApiClientSources.authInterceptor;
-    files['$base/interceptors/logging_interceptor.dart'] = ApiClientSources.loggingInterceptor;
-    files['$base/interceptors/error_interceptor.dart']   = ApiClientSources.errorInterceptor;
-  }
-
-  void _addCoreWidgets(Map<String, String> files) {
-    const base = 'lib/bloc/core/widgets';
-    files['$base/form_field_wrapper.dart']       = ReusableWidgetSources.formFieldWrapper;
-    files['$base/app_text_field.dart']           = ReusableWidgetSources.appTextField;
-    files['$base/app_dropdown_field.dart']       = ReusableWidgetSources.appDropdownField;
-    files['$base/app_async_dropdown_field.dart'] = ReusableWidgetSources.appAsyncDropdownField;
-    files['$base/app_checkbox_field.dart']       = ReusableWidgetSources.appCheckboxField;
-    files['$base/app_date_picker_field.dart']    = ReusableWidgetSources.appDatePickerField;
-    files['$base/app_radio_group_field.dart']    = ReusableWidgetSources.appRadioGroupField;
-    files['$base/app_file_upload_field.dart']    = ReusableWidgetSources.appFileUploadField;
-    files['$base/app_multi_select_field.dart']   = ReusableWidgetSources.appMultiSelectField;
-    files['$base/app_form_button.dart']          = ReusableWidgetSources.appFormButton;
-    files['$base/app_error_widget.dart']         = ReusableWidgetSources.appErrorWidget;
-    files['$base/app_loading_widget.dart']       = ReusableWidgetSources.appLoadingWidget;
-    files['$base/widgets.dart']                  = ReusableWidgetSources.widgetsBarrel;
-  }
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Convenience wrapper — still usable from old call sites
+// STEP 2 — BLoC presentation layer ONLY
+// Placed at:  lib/features/{journey}/{step}/presentation/bloc/
+//
+// Generates:  bloc, event, state, screen, validation, mapper, barrel, test
+// Does NOT generate: entity, repository, datasource, model (those are common)
+// ─────────────────────────────────────────────────────────────────────────────
+
+List<Map<String, String>> _generateBlocPresentationFiles({
+  required String screenName,
+  required String journeyNamespace,
+  required List<Map<String, dynamic>> rawFields,
+}) {
+  final result      = <Map<String, String>>[];
+  final baseName    = screenName.toLowerCase();
+  final featureName = '${screenName}Form';
+  final snakeName   = toSnakeCase(featureName);
+  final resultData  = '${featureName}ResultData';
+
+  // Presentation lives inside the unified feature folder
+  final presBase = 'lib/features/$journeyNamespace/$baseName/presentation/bloc';
+
+  final fields     = rawFields.map(FieldSchema.fromJson).toList();
+  final flatFields = _flattenFields(rawFields).map(FieldSchema.fromJson).toList();
+
+  // ── Validation ────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/validation',
+    'fileName':    '${snakeName}_validators.dart',
+    'textContent': ValidationGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+    ).generate(),
+  });
+
+  // ── Event ─────────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/event',
+    'fileName':    '${snakeName}_event.dart',
+    'textContent': EventGenerator(
+      featureName:       featureName,
+      fields:            flatFields,
+      hasAsyncDropdown:  flatFields.any((f) => f.isAsyncDropdown),
+    ).generate(),
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/state',
+    'fileName':    '${snakeName}_feature_state.dart',
+    'textContent': StateGenerator(
+      featureName:         featureName,
+      fields:              flatFields,
+      resultDataClass:     resultData,
+      // Import path from bloc/state/ up to core/runtime
+      runtimeImportPrefix: '../../../../../../core/runtime',
+    ).generate(),
+  });
+
+  // ── Mapper ────────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/mapper',
+    'fileName':    '${snakeName}_mapper.dart',
+    'textContent': MapperGenerator(
+      featureName:    featureName,
+      fields:         flatFields,
+      entityClassName:'${featureName}Entity',
+      stateName:      '${featureName}FeatureState',
+    ).generate(),
+  });
+
+  // ── BLoC (split files via generateAll) ───────────────────────────────────
+  final blocFiles = BlocGenerator(
+    featureName:                 featureName,
+    configList:                  fields,
+    generateAsyncValueSeparately:false,
+    hasSubmit:                   false,
+  ).generateAll();
+
+  blocFiles.forEach((key, value) {
+    result.add({
+      'folderPath':  '$presBase/bloc',
+      'fileName':    key,
+      'textContent': value,
+    });
+  });
+
+  // ── Screen ────────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/screen',
+    'fileName':    '${snakeName}_screen.dart',
+    'textContent': ScreenGenerator(
+      featureName: featureName,
+      fields:      fields,
+    ).generate(),
+  });
+
+  // ── Barrel files ──────────────────────────────────────────────────────────
+  final barrelGen = BarrelGenerator(
+    featureName: featureName,
+    fields:      flatFields,
+    baseName:    baseName,
+  );
+  barrelGen.generateAll().forEach((key, value) {
+    result.add({
+      'folderPath':  '$presBase/$key'.replaceAll('/$key', ''),
+      'fileName':    key.split('/').last,
+      'textContent': value,
+    });
+  });
+
+  // ── Test ──────────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  'test/features/$journeyNamespace/$baseName',
+    'fileName':    '${snakeName}_bloc_test.dart',
+    'textContent': TestGenerator(
+      featureName: featureName,
+      fields:      flatFields,
+      baseName:    baseName,
+    ).generate(),
+  });
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 3 — Riverpod presentation layer ONLY
+// Placed at:  lib/features/{journey}/{step}/presentation/riverpod/
+//
+// Generates:  provider, notifier, view
+// Does NOT generate: entity, repository, datasource, model (those are common)
+// ─────────────────────────────────────────────────────────────────────────────
+
+List<Map<String, String>> _generateRiverpodPresentationFiles({
+  required String screenName,
+  required String journeyNamespace,
+  required List<Map<String, dynamic>> rawFields,
+}) {
+  final result      = <Map<String, String>>[];
+  final baseName    = screenName.toLowerCase();
+  final featureName = '${screenName}Form';
+  final fileName    = '${baseName}_form';
+
+  final presBase =
+      'lib/features/$journeyNamespace/$baseName/presentation/riverpod';
+
+  // ── Notifier (controller) ─────────────────────────────────────────────────
+  // result.add({
+  //   'folderPath':  '$presBase/controller',
+  //   'fileName':    '${fileName}_notifier.dart',
+  //   'textContent': generateNotifierImplInterface(
+  //     featureName, rawFields, fileName,
+  //   ),
+  // });
+
+  // ── Provider ──────────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/provider',
+    'fileName':    '${fileName}_provider.dart',
+    'textContent': generateProviderInterface(
+      featureName, rawFields, fileName,
+    ),
+  });
+
+  // ── View (screen) ─────────────────────────────────────────────────────────
+  result.add({
+    'folderPath':  '$presBase/view',
+    'fileName':    '${fileName}_view.dart',
+    'textContent': generateriverpodviewClass(
+      featureName, rawFields, fileName,
+    ),
+  });
+
+  // ── Shared api_service.dart — written once at core level ─────────────────
+  result.add({
+    'folderPath':  'lib/core/service',
+    'fileName':    'api_service.dart',
+    'textContent': generateApiServiceInterface(),
+  });
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core runtime / network / widgets helper
+// Returns a flat list; called only for the first step.
+// ─────────────────────────────────────────────────────────────────────────────
+
+List<Map<String, String>> _buildCoreFiles() {
+  const runtime  = 'lib/core/runtime';
+  const network  = 'lib/core/network';
+  const widgets  = 'lib/core/widgets';
+  const storage  = 'lib/core/storage';
+  const observer = 'lib/core/observer';
+
+  return [
+    // Runtime
+    {'folderPath': runtime, 'fileName': 'failure.dart',            'textContent': RuntimeSources.failure},
+    {'folderPath': runtime, 'fileName': 'validation_error.dart',   'textContent': RuntimeSources.validationError},
+    {'folderPath': runtime, 'fileName': 'validator.dart',          'textContent': RuntimeSources.validator},
+    {'folderPath': runtime, 'fileName': 'reactive_value.dart',     'textContent': RuntimeSources.reactiveValue},
+    {'folderPath': runtime, 'fileName': 'async_state.dart',        'textContent': RuntimeSources.asyncState},
+    {'folderPath': runtime, 'fileName': 'base_reactive_bloc.dart', 'textContent': RuntimeSources.baseReactiveBloc},
+
+    // Network
+    {'folderPath': network,              'fileName': 'app_exception.dart',    'textContent': ApiClientSources.appException},
+    {'folderPath': network,              'fileName': 'api_response.dart',     'textContent': ApiClientSources.apiResponse},
+    {'folderPath': network,              'fileName': 'dio_client.dart',       'textContent': ApiClientSources.dioClient},
+    {'folderPath': network,              'fileName': 'failure_mapper.dart',   'textContent': ApiClientSources.failureMapper},
+    {'folderPath': '$network/interceptors', 'fileName': 'auth_interceptor.dart',    'textContent': ApiClientSources.authInterceptor},
+    {'folderPath': '$network/interceptors', 'fileName': 'logging_interceptor.dart', 'textContent': ApiClientSources.loggingInterceptor},
+    {'folderPath': '$network/interceptors', 'fileName': 'error_interceptor.dart',   'textContent': ApiClientSources.errorInterceptor},
+
+    // Storage
+    {'folderPath': storage,  'fileName': 'local_storage_service.dart', 'textContent': ApiClientSources.localStorageService},
+
+    // Observer
+    {'folderPath': observer, 'fileName': 'bloc_observer.dart', 'textContent': const ObserverGenerator().generate()},
+
+    // Widgets
+    {'folderPath': widgets, 'fileName': 'form_field_wrapper.dart',       'textContent': ReusableWidgetSources.formFieldWrapper},
+    {'folderPath': widgets, 'fileName': 'app_text_field.dart',           'textContent': ReusableWidgetSources.appTextField},
+    {'folderPath': widgets, 'fileName': 'app_dropdown_field.dart',       'textContent': ReusableWidgetSources.appDropdownField},
+    {'folderPath': widgets, 'fileName': 'app_async_dropdown_field.dart', 'textContent': ReusableWidgetSources.appAsyncDropdownField},
+    {'folderPath': widgets, 'fileName': 'app_checkbox_field.dart',       'textContent': ReusableWidgetSources.appCheckboxField},
+    {'folderPath': widgets, 'fileName': 'app_date_picker_field.dart',    'textContent': ReusableWidgetSources.appDatePickerField},
+    {'folderPath': widgets, 'fileName': 'app_radio_group_field.dart',    'textContent': ReusableWidgetSources.appRadioGroupField},
+    {'folderPath': widgets, 'fileName': 'app_file_upload_field.dart',    'textContent': ReusableWidgetSources.appFileUploadField},
+    {'folderPath': widgets, 'fileName': 'app_multi_select_field.dart',   'textContent': ReusableWidgetSources.appMultiSelectField},
+    {'folderPath': widgets, 'fileName': 'app_form_button.dart',          'textContent': ReusableWidgetSources.appFormButton},
+    {'folderPath': widgets, 'fileName': 'app_error_widget.dart',         'textContent': ReusableWidgetSources.appErrorWidget},
+    {'folderPath': widgets, 'fileName': 'app_loading_widget.dart',       'textContent': ReusableWidgetSources.appLoadingWidget},
+    {'folderPath': widgets, 'fileName': 'widgets.dart',                  'textContent': ReusableWidgetSources.widgetsBarrel},
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Convenience wrapper — still usable from old call-sites
 // ─────────────────────────────────────────────────────────────────────────────
 
 List<Map<String, String>> generateFileDataArray({
@@ -528,40 +521,36 @@ List<Map<String, String>> generateFileDataArray({
   required List<Map<String, dynamic>> fieldJsonRaw,
   bool generateTests   = true,
   bool generateBarrels = true,
+  String journeyNamespace = 'journey',
 }) {
   final safeFields = _deepClone(fieldJsonRaw);
-  final files = RevochampBlocGenerator(
-    screenName:      screenName,
-    modelName:       modelName,
-    fieldJsonRaw:    safeFields,
-    generateTests:   generateTests,
-    generateBarrels: generateBarrels,
-  ).generate();
 
-  return files.entries.map((e) {
-    final parts      = e.key.split('/');
-    final fileName   = parts.last;
-    final folderPath = parts.take(parts.length - 1).join('/');
-    return {
-      'folderPath':  folderPath,
-      'fileName':    fileName,
-      'textContent': e.value,
-    };
-  }).toList();
+  final all = <Map<String, String>>[];
+  all.addAll(_generateCommonFiles(
+    screenName:       screenName,
+    journeyNamespace: journeyNamespace,
+    rawFields:        safeFields,
+    addCoreFiles:     true,
+  ));
+  all.addAll(_generateBlocPresentationFiles(
+    screenName:       screenName,
+    journeyNamespace: journeyNamespace,
+    rawFields:        safeFields,
+  ));
+  return all;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Deep-clone via JSON round-trip: eliminates all JSArray/JSObject remnants
-List<Map<String, dynamic>> _deepClone(List<Map<String, dynamic>> input) {
-  return (jsonDecode(jsonEncode(input)) as List<dynamic>)
-      .map((e) => Map<String, dynamic>.from(e as Map))
-      .toList();
-}
+/// Deep-clone via JSON round-trip — eliminates all JSArray/JSObject remnants.
+List<Map<String, dynamic>> _deepClone(List<Map<String, dynamic>> input) =>
+    (jsonDecode(jsonEncode(input)) as List<dynamic>)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
 
-/// Flattens nested fields so models for inner dropdowns are generated
+/// Recursively flattens nested / component fields.
 List<Map<String, dynamic>> _flattenFields(List<Map<String, dynamic>> source) {
   final result = <Map<String, dynamic>>[];
   void flatten(dynamic item) {
@@ -571,7 +560,6 @@ List<Map<String, dynamic>> _flattenFields(List<Map<String, dynamic>> source) {
       return;
     }
     if (item is! Map<String, dynamic>) return;
-
     if (item.containsKey('type')) {
       result.add(item);
       flatten(item['nestedFields']);
@@ -585,23 +573,6 @@ List<Map<String, dynamic>> _flattenFields(List<Map<String, dynamic>> source) {
   flatten(source);
   return result;
 }
-
- // ── Helper functions ─────────────────────────────────────────────────────
-  String toSnakeCase(String text) {
-    if (text.isEmpty) return text;
-    final buffer = StringBuffer();
-    buffer.write(text[0].toLowerCase());
-    for (int i = 1; i < text.length; i++) {
-      final char = text[i];
-      if (char.toUpperCase() == char && char != char.toLowerCase()) {
-        // It's an uppercase letter
-        buffer.write('_${char.toLowerCase()}');
-      } else {
-        buffer.write(char);
-      }
-    }
-    return buffer.toString();
-  }
 
 /// "Motor Insurance Journey" → "motorInsurance"
 String _toJourneyNamespace(String name) {
@@ -624,4 +595,19 @@ String _toJourneyNamespace(String name) {
           .skip(1)
           .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
           .join();
+}
+
+/// camelCase / PascalCase → snake_case
+String toSnakeCase(String text) {
+  if (text.isEmpty) return text;
+  final buffer = StringBuffer()..write(text[0].toLowerCase());
+  for (int i = 1; i < text.length; i++) {
+    final char = text[i];
+    if (char.toUpperCase() == char && char != char.toLowerCase()) {
+      buffer.write('_${char.toLowerCase()}');
+    } else {
+      buffer.write(char);
+    }
+  }
+  return buffer.toString();
 }
