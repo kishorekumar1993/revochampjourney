@@ -1,4 +1,5 @@
 // Riverpod generators
+import 'package:revojourneytryone/common/common_usecas_bloc_generator.dart';
 import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
 import 'package:revojourneytryone/common/common_datasource.dart';
 import 'package:revojourneytryone/common/common_data_repositoryimpl.dart';
@@ -6,7 +7,7 @@ import 'package:revojourneytryone/common/common_domain_repository.dart';
 import 'package:revojourneytryone/common/common_enitity_class.dart';
 import 'package:revojourneytryone/common/common_locator.dart';
 import 'package:revojourneytryone/common/common_temp_model.dart';
-import 'package:revojourneytryone/common/common_usecase_generator.dart';
+
 import 'package:revojourneytryone/common/commonapiservice.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ List<Map<String, String>> generateCommonCleanArchiFiles({
  // ── Use‑case generator ─────────────────────────────────────────────
 // ── Use‑case generator ─────────────────────────────────────────────
 final repositoryClassName = '${className}Repository';
-final useCaseGen = JourneyUseCaseGenerator(journeyJson, repositoryClassName: repositoryClassName);
+final useCaseGen = JourneyBlocUseCaseGenerator(journeyJson, repositoryClassName: repositoryClassName);
 final useCasesCode = useCaseGen.generate();
 
 result.add({

@@ -1,32 +1,30 @@
 // lib/bloc/generators/validation/validation_generator.dart
-// v5: Fixes import path and handles dropdowns without entity classes.
-
-import 'package:revojourneytryone/blocnew/field_schema.dart';
+// Generates validators for a map‑based form state.
 
 class ValidationGenerator {
+  /// [featureName] – PascalCase feature name (e.g., "UserjourneyForm")
+  /// [fields] – flattened field maps from JSON (output of flattenBlocFields)
   ValidationGenerator({
     required this.featureName,
     required this.fields,
   });
 
   final String featureName;
-  final List<FieldSchema> fields;
+  final List<Map<String, dynamic>> fields;
 
   String generate() {
     final validatorsName = '${featureName}Validators';
     final buf = StringBuffer();
     final importedEntities = <String>{};
 
-    // Import entity classes only for dropdowns that have a non‑empty entityClassName
-    for (final f in fields.where((f) => f.isAsyncDropdown || f.isStaticDropdown)) {
-      final entityClass = f.entityClassName;
-      if (entityClass.isEmpty) continue; // static string dropdown – no entity
+    // Import entities only for async dropdowns that have dropdowndata
+    for (final f in fields.where(_isAsyncDropdown)) {
+      final entityClass = _resolveEntityClass(f);
+      if (entityClass.isEmpty) continue;
       if (importedEntities.contains(entityClass)) continue;
       importedEntities.add(entityClass);
-      final baseName = entityClass.replaceAll('Entity', '');
-      final snake = toSnakeCase(baseName);
-      // Correct relative path: from presentation/validation/ to domain/entities/
-      buf.writeln("import '../../domain/entities/${snake}_entity.dart';");
+      final snake = _toSnakeCase(entityClass.replaceAll('Entity', ''));
+      // buf.writeln("import '../../domain/entity/${snake}_entity.dart';");
     }
     if (importedEntities.isNotEmpty) buf.writeln();
 
@@ -34,7 +32,8 @@ class ValidationGenerator {
     buf.writeln('abstract final class $validatorsName {');
     buf.writeln();
 
-    for (final f in fields) {
+    // Generate a validator for each field that is a real input (skip card/group)
+    for (final f in fields.where(_isFormField)) {
       _writeValidator(buf, f);
     }
 
@@ -42,105 +41,120 @@ class ValidationGenerator {
     return buf.toString();
   }
 
-  void _writeValidator(StringBuffer buf, FieldSchema f) {
-    final methodName = 'validate${toCap(f.fieldName)}';
-    final paramType = _validatorParamType(f);
+  void _writeValidator(StringBuffer buf, Map<String, dynamic> field) {
+    final fieldKey = _fieldName(field);            // e.g., "postTitle"
+    final methodName = 'validate${_cap(fieldKey)}';
+    final paramType = _validatorParamType(field); // String?, bool?, etc.
     final paramName = 'value';
 
     buf.writeln('  static String? $methodName($paramType $paramName) {');
 
     final errors = <String>[];
+    final label = (field['label'] ?? fieldKey).toString();
+    final isRequired = field['required'] == true;
+    final type = (field['type'] ?? '').toString().toLowerCase();
 
-    // Required check
-    if (f.isRequired) {
-      switch (f.fieldType) {
-        case FieldType.checkbox:
+    // --- Required validation ---
+    if (isRequired) {
+      switch (type) {
+        case 'checkbox':
+        case 'switch':
           errors.add(
             "    if (value != true) {\n"
-            "      return '${f.label} must be accepted';\n"
+            "      return '$label must be accepted';\n"
             "    }");
-        case FieldType.dropdown:
-        case FieldType.asyncDropdown:
-          // For dropdowns without entity (static strings), value is String?
-          // For entity dropdowns, value is Entity?; both can be checked with null.
+          break;
+        case 'dropdown':
+        case 'api_dropdown':
+        case 'radio':
           errors.add(
             "    if (value == null) {\n"
-            "      return 'Please select ${f.label.toLowerCase()}';\n"
+            "      return 'Please select ${label.toLowerCase()}';\n"
             "    }");
-        case FieldType.file:
-        case FieldType.image:
+          break;
+        case 'file':
+        case 'image':
           errors.add(
             "    if (value == null) {\n"
-            "      return '${f.label} is required';\n"
+            "      return '$label is required';\n"
             "    }");
-        case FieldType.multiSelect:
+          break;
+        case 'multiselect':
+        case 'multi_select':
           errors.add(
-            "    if (value == null || value.isEmpty) {\n"
-            "      return '${f.label} is required';\n"
+            "    if (value == null || (value as List).isEmpty) {\n"
+            "      return '$label is required';\n"
             "    }");
+          break;
         default:
           errors.add(
-            "    if (value == null || value.trim().isEmpty) {\n"
-            "      return '${f.label} is required';\n"
+            "    if (value == null || value.toString().trim().isEmpty) {\n"
+            "      return '$label is required';\n"
             "    }");
       }
     }
 
-    // String-specific validations
-    if (_isStringField(f)) {
-      if (f.minLength != null) {
+    // --- String validations (minLength, maxLength, email, phone, regex) ---
+    if (_isStringField(field)) {
+      final minLen = field['minLength'];
+      if (minLen != null) {
         errors.add(
-          "    if (value != null && value.length < ${f.minLength}) {\n"
-          "      return '${f.label} must be at least ${f.minLength} characters';\n"
+          "    if (value != null && value.length < $minLen) {\n"
+          "      return '$label must be at least $minLen characters';\n"
           "    }");
       }
-      if (f.maxLength != null) {
+      final maxLen = field['maxLength'];
+      if (maxLen != null) {
         errors.add(
-          "    if (value != null && value.length > ${f.maxLength}) {\n"
-          "      return '${f.label} must be at most ${f.maxLength} characters';\n"
+          "    if (value != null && value.length > $maxLen) {\n"
+          "      return '$label must be at most $maxLen characters';\n"
           "    }");
       }
-      if (f.fieldType == FieldType.email) {
+      if (type == 'email') {
         errors.add(
           "    if (value != null && value.isNotEmpty && "
           "!RegExp(r'^[\\w\\.\\+\\-]+@[\\w\\-]+\\.[a-zA-Z]{2,}\$').hasMatch(value)) {\n"
           "      return 'Enter a valid email address';\n"
           "    }");
       }
-      if (f.fieldType == FieldType.phone) {
+      if (type == 'phone') {
         errors.add(
           "    if (value != null && value.isNotEmpty && "
           "!RegExp(r'^\\+?[0-9\\s\\-\\(\\)]{7,15}\$').hasMatch(value)) {\n"
           "      return 'Enter a valid phone number';\n"
           "    }");
       }
-      if (f.regex != null) {
-        final errMsg = f.regexError ?? 'Invalid ${f.label}';
+      final regex = field['regex'];
+      if (regex != null) {
+        final errMsg = field['regexError'] ?? 'Invalid $label';
         errors.add(
           "    if (value != null && value.isNotEmpty && "
-          "!RegExp(r'${_escapeRegex(f.regex!)}').hasMatch(value)) {\n"
+          "!RegExp(r'${_escapeRegex(regex)}').hasMatch(value)) {\n"
           "      return '$errMsg';\n"
           "    }");
       }
     }
 
-    // Numeric validations
-    if (_isNumericField(f)) {
-      if (f.minValue != null) {
+    // --- Numeric validations (minValue, maxValue) ---
+    if (_isNumericField(field)) {
+      final minVal = field['minValue'];
+      final maxVal = field['maxValue'];
+      final numType = (type == 'decimal' || type == 'double') ? 'double' : 'int';
+      if (minVal != null) {
         errors.add(
           "    if (value != null && value.isNotEmpty) {\n"
-          "      final n = ${f.fieldType == FieldType.decimal ? 'double' : 'int'}.tryParse(value);\n"
-          "      if (n != null && n < ${f.minValue}) {\n"
-          "        return '${f.label} must be >= ${f.minValue}';\n"
+          "      final n = $numType.tryParse(value);\n"
+          "      if (n != null && n < $minVal) {\n"
+          "        return '$label must be >= $minVal';\n"
           "      }\n"
           "    }");
       }
-      if (f.maxValue != null) {
+      if (maxVal != null) {
         errors.add(
           "    if (value != null && value.isNotEmpty) {\n"
-          "      final n = ${f.fieldType == FieldType.decimal ? 'double' : 'int'}.tryParse(value);\n"
-          "      if (n != null && n > ${f.maxValue}) {\n"
-          "        return '${f.label} must be <= ${f.maxValue}';\n"
+          "      final n = $numType.tryParse(value);\n"
+          "      if (n != null && n > $maxVal) {\n"
+          "        return '$label must be <= $maxVal';\n"
           "      }\n"
           "    }");
       }
@@ -155,42 +169,95 @@ class ValidationGenerator {
     buf.writeln();
   }
 
-  // ── Param type per field type ─────────────────────────────────────────────
-  String _validatorParamType(FieldSchema f) {
-    if (f.isFileUpload || f.fieldType == FieldType.image) return 'dynamic';
-    if (f.fieldType == FieldType.checkbox) return 'bool?';
-    if (f.fieldType == FieldType.date || f.fieldType == FieldType.dateTime) {
-      return 'DateTime?';
+  // --- Helper: Determine validator parameter type ---
+  String _validatorParamType(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    switch (type) {
+      case 'checkbox':
+      case 'switch':
+        return 'bool?';
+      case 'date':
+      case 'datetime':
+      case 'date time':
+        return 'DateTime?';
+      case 'multiselect':
+      case 'multi_select':
+        return 'List<String>?';
+      case 'file':
+      case 'image':
+        return 'dynamic';
+      default:
+        return 'String?';
     }
-    if (f.fieldType == FieldType.multiSelect) return 'List<String>?';
-    if (f.fieldType == FieldType.dropdown || f.fieldType == FieldType.asyncDropdown) {
-      // If entityClassName is empty (static string dropdown), use String?
-      return  'String?';
-  //  return f.entityClassName.isNotEmpty ? '${f.entityClassName}?' : 'String?';
-    }
-    return 'String?';
   }
 
-  bool _isStringField(FieldSchema f) =>
-      !f.isFileUpload &&
-      f.fieldType != FieldType.checkbox &&
-      f.fieldType != FieldType.date &&
-      f.fieldType != FieldType.dateTime &&
-      f.fieldType != FieldType.multiSelect &&
-      f.fieldType != FieldType.dropdown &&
-      f.fieldType != FieldType.asyncDropdown &&
-      f.fieldType != FieldType.image &&
-      !_isNumericField(f);
+  // --- Classify field types ---
+  bool _isStringField(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    const stringTypes = {'text', 'textfield', 'textarea', 'email', 'password', 'phone', 'otp', 'formula'};
+    return stringTypes.contains(type);
+  }
 
-  bool _isNumericField(FieldSchema f) =>
-      f.fieldType == FieldType.number || f.fieldType == FieldType.decimal;
+  bool _isNumericField(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    return type == 'number' || type == 'integer' || type == 'int' || type == 'decimal' || type == 'double';
+  }
 
-  // ── Helper functions ──────────────────────────────────────────────────
-  String toSnakeCase(String input) {
+  bool _isAsyncDropdown(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    if (type != 'dropdown' && type != 'api_dropdown') return false;
+    final useStatic = field['useStaticOptions'] == true;
+    final hasApiUrl = field['dropdownApiUrl'] != null;
+    return !useStatic && hasApiUrl;
+  }
+
+  bool _isFormField(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    // Skip container types that hold no value
+    const skipTypes = {'card', 'group', 'section', 'step', 'tab', 'container'};
+    return !skipTypes.contains(type);
+  }
+
+  // --- Entity class resolution (same as in bloc generator) ---
+  String _resolveEntityClass(Map<String, dynamic> field) {
+    final dropdowndata = field['dropdowndata'];
+    if (dropdowndata is Map<String, dynamic>) {
+      for (final entry in dropdowndata.entries) {
+        final v = entry.value;
+        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+          return '${_cap(_singularize(entry.key))}Entity';
+        }
+      }
+    }
+    // Fallback – but for async dropdowns this shouldn't happen
+    final label = field['label'] ?? field['id'] ?? 'item';
+    return '${_cap(_singularize(label))}Entity';
+  }
+
+  // --- Common utilities (matching bloc generator) ---
+  String _fieldName(Map<String, dynamic> f) {
+    final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field').toString().trim();
+    final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
+  }
+
+  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  String _singularize(String text) {
+    if (text.endsWith('ies')) {
+      return '${text.substring(0, text.length - 3)}y';
+    }
+    if (text.endsWith('s') && text.length > 1) {
+      return text.substring(0, text.length - 1);
+    }
+    return text;
+  }
+
+  String _toSnakeCase(String input) {
     if (input.isEmpty) return input;
     final buffer = StringBuffer();
     buffer.write(input[0].toLowerCase());
-    for (var i = 1; i < input.length; i++) {
+    for (int i = 1; i < input.length; i++) {
       final char = input[i];
       if (char.toUpperCase() == char && RegExp(r'[A-Z]').hasMatch(char)) {
         buffer.write('_${char.toLowerCase()}');
@@ -199,11 +266,6 @@ class ValidationGenerator {
       }
     }
     return buffer.toString();
-  }
-
-  String toCap(String input) {
-    if (input.isEmpty) return input;
-    return input[0].toUpperCase() + input.substring(1);
   }
 
   String _escapeRegex(String pattern) {

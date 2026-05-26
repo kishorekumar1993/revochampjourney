@@ -69,7 +69,7 @@ String generateRepositoryInterface(
 
   // ─── Imports ────────────────────────────────────────────────
   buffer.writeln("import 'package:dartz/dartz.dart';");
-  buffer.writeln("import '/core/error/failures.dart';");
+  buffer.writeln("import '/core/runtime/failure.dart';");
   for (final fileBase in dropdownFileNames) {
     buffer.writeln("import '../entity/${fileBase}_entity.dart';");
   }

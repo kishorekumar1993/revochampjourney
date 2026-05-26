@@ -1,14 +1,13 @@
 // lib/blocnew/bloc_generator.dart
 
-// ─── Recursive flatten — same as all other generators ─────────────
+
+// ─── Recursive flatten ─────────────────────────────────────────────
 List<Map<String, dynamic>> flattenBlocFields(dynamic source) {
   final result = <Map<String, dynamic>>[];
   void traverse(dynamic node) {
     if (node == null) return;
     if (node is List) {
-      for (final item in node) {
-        traverse(item);
-      }
+      for (final item in node) traverse(item);
       return;
     }
     if (node is! Map<String, dynamic>) return;
@@ -34,7 +33,7 @@ List<Map<String, dynamic>> flattenBlocFields(dynamic source) {
   return result;
 }
 
-// ─── isApiDropdown guard — same as all other generators ───────────
+// ─── isApiDropdown guard ──────────────────────────────────────────
 bool _isApiDropdown(Map<String, dynamic> field) {
   final type = (field['type'] ?? '').toString().toLowerCase();
   if (type != 'dropdown' && type != 'api_dropdown') return false;
@@ -49,8 +48,9 @@ bool _isApiDropdown(Map<String, dynamic> field) {
 
 // ─── Resolve names from JSON field ────────────────────────────────
 String _fieldName(Map<String, dynamic> f) {
-  final raw =
-      (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field').toString().trim();
+  final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field')
+      .toString()
+      .trim();
   final n = raw.replaceAll(RegExp(r'\s+'), '');
   return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
 }
@@ -60,30 +60,101 @@ String _fieldPascal(Map<String, dynamic> f) {
   return n.isEmpty ? 'Field' : n[0].toUpperCase() + n.substring(1);
 }
 
-String _resolveEntityClass(Map<String, dynamic> field) {
-  final dropdowndata = field['dropdowndata'];
-  if (dropdowndata is Map<String, dynamic>) {
-    for (final entry in dropdowndata.entries) {
-      final v = entry.value;
-      if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-        return '${_cap(_singularize(entry.key))}Entity';
-      }
-    }
-  }
-  return '${_fieldPascal(field)}Entity';
+String _toPascalCase(String raw) {
+  return raw
+      .split(RegExp(r'[\s_-]+'))
+      .where((e) => e.isNotEmpty)
+      .map((e) => e[0].toUpperCase() + e.substring(1).toLowerCase())
+      .join();
 }
 
-String _resolveEntityFile(Map<String, dynamic> field) {
-  final dropdowndata = field['dropdowndata'];
-  if (dropdowndata is Map<String, dynamic>) {
-    for (final entry in dropdowndata.entries) {
-      final v = entry.value;
-      if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-        return _snake(_singularize(entry.key));
-      }
-    }
+String _singularize(String text) {
+  final lower = text.toLowerCase();
+  if (lower.endsWith('ies')) {
+    return '${text.substring(0, text.length - 3)}y';
   }
-  return _snake(_fieldName(field));
+  if (lower.endsWith('s') && !lower.endsWith('ss')) {
+    return text.substring(0, text.length - 1);
+  }
+  return text;
+}
+
+/// Resolve entity class name – correctly handles "Post Title" → "PostTitleEntity"
+// String _resolveEntityClass(Map<String, dynamic> field) {
+//   // 1. Explicit entityName override (best practice)
+//   final explicit = field['entityName'] ?? field['referenceEntity'];
+//   if (explicit != null && explicit.toString().trim().isNotEmpty) {
+//     var value = explicit.toString().trim();
+//     if (!value.endsWith('Entity')) value = '${value}Entity';
+//     return value;
+//   }
+
+//   // 2. Derive from dropdowndata (if present)
+//   final dropdowndata = field['dropdowndata'];
+//   if (dropdowndata is Map<String, dynamic>) {
+//     for (final entry in dropdowndata.entries) {
+//       final v = entry.value;
+//       if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
+//         String name = _singularize(entry.key);
+//         return '${_toPascalCase(name)}Entity';
+//       }
+//     }
+//   }
+
+//   // 3. Derive from label or id – do NOT singularize, keep full name
+//   String raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'Item')
+//       .toString()
+//       .trim();
+//   if (raw.isEmpty) raw = 'Item';
+//   final pascal = _toPascalCase(raw); // "User Details" → "UserDetails"
+//   return '${pascal}Entity';
+// }
+
+
+String _resolveEntityClass(Map<String, dynamic> field) {
+  final explicit = field['entityName'] ?? field['referenceEntity'];
+
+  if (explicit != null && explicit.toString().trim().isNotEmpty) {
+    var value = explicit.toString().trim();
+
+    if (!value.endsWith('Entity')) {
+      value = '${value}Entity';
+    }
+
+    return value;
+  }
+
+  String raw = (
+    field['label'] ??
+    field['id'] ??
+    field['fieldId'] ??
+    'Item'
+  ).toString().trim();
+
+  if (raw.isEmpty) {
+    raw = 'Item';
+  }
+
+  return '${_toPascalCase(raw)}Entity';
+}
+
+
+/// Returns snake_case file name (e.g., "user_details")
+String _resolveEntityFile(Map<String, dynamic> field) {
+  final entity = _resolveEntityClass(field);
+  final clean = entity.replaceAll('Entity', '');
+  return _toSnakeCase(clean);
+}
+
+String _toSnakeCase(String input) {
+  return input
+      .replaceAllMapped(
+        RegExp(r'([a-z0-9])([A-Z])'),
+        (m) => '${m.group(1)}_${m.group(2)}',
+      )
+      .replaceAll(' ', '_')
+      .replaceAll('-', '_')
+      .toLowerCase();
 }
 
 String _snake(String s) {
@@ -93,8 +164,7 @@ String _snake(String s) {
   return out.startsWith('_') ? out.substring(1) : out;
 }
 
-String _cap(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 String _esc(String s) => s.replaceAll("'", "\\'");
 
@@ -105,19 +175,22 @@ String _lit(dynamic v) {
   return 'null';
 }
 
-String _singularize(String text) {
-  if (text.endsWith('ies')) {
-    return '${text.substring(0, text.length - 3)}y';
-  }
-  if (text.endsWith('s') && text.length > 1) {
-    return text.substring(0, text.length - 1);
-  }
-  return text;
-}
-
-// ─── No double-s guard ────────────────────────────────────────────
 String _withS(String name) {
   return name.toLowerCase().endsWith('s') ? name : '${name}s';
+}
+
+String _listFieldName(Map<String, dynamic> field) {
+  final explicit = field['listFieldName'];
+  if (explicit != null && explicit.toString().isNotEmpty) {
+    return explicit.toString();
+  }
+  final entityClass = _resolveEntityClass(field);
+  final base = entityClass.replaceAll('Entity', '');
+  return _snake(_withS(base));
+}
+
+bool _returnsList(Map<String, dynamic> field) {
+  return field['returnsList'] == true;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -126,46 +199,45 @@ String _withS(String name) {
 class BlocGenerator {
   BlocGenerator({
     required this.featureName,
-    // ✅ FIX 1: accept raw JSON configList instead of FieldSchema list
     required this.configList,
-    // ✅ FIX 3: hasSubmit driven by caller — not always generated
-    this.hasSubmit = false,
-    // ✅ FIX 7: honour the flag
     this.generateAsyncValueSeparately = false,
+    this.entityImportPrefix = '../../domain/entity/',
+    this.usecaseImportPrefix = '../../domain/usecases/',
+    this.asyncValueImportPath = './async_value.dart',
   });
 
   final String featureName;
   final List<dynamic> configList;
-  final bool hasSubmit;
   final bool generateAsyncValueSeparately;
+  final String entityImportPrefix;
+  final String usecaseImportPrefix;
+  final String asyncValueImportPath;
 
-  // ── derived from JSON ──────────────────────────────────────────
-  late final List<Map<String, dynamic>> _flatFields =
-      flattenBlocFields(configList);
+  late final List<Map<String, dynamic>> _flatFields = flattenBlocFields(configList);
 
-  late final List<Map<String, dynamic>> _asyncFields =
-      _flatFields.where((f) => _isApiDropdown(f)).toList();
+  List<Map<String, dynamic>> get _uniqueAsyncFields {
+    final seen = <String>{};
+    return _flatFields.where(_isApiDropdown).where((f) {
+      final name = _fieldName(f);
+      if (seen.contains(name)) return false;
+      seen.add(name);
+      return true;
+    }).toList();
+  }
 
-  bool get _hasAsync => _asyncFields.isNotEmpty;
+  bool get _hasAsync => _uniqueAsyncFields.isNotEmpty;
 
-  // ── public API ─────────────────────────────────────────────────
   Map<String, String> generateAll() {
     final snake = _snake(featureName);
     final files = <String, String>{
       '${snake}_bloc.dart': generateBloc(),
       '${snake}_event.dart': generateEvent(),
       '${snake}_state.dart': generateState(),
+      'async_value.dart': generateAsyncValue(),
     };
-    // ✅ FIX 7: only emit async_value.dart when NOT separate
-    if (!generateAsyncValueSeparately) {
-      files['async_value.dart'] = generateAsyncValue();
-    }
     return files;
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // 1. BLOC
-  // ════════════════════════════════════════════════════════════════
   String generateBloc() {
     final b = StringBuffer();
     final snake = _snake(featureName);
@@ -173,386 +245,236 @@ class BlocGenerator {
     b.writeln("import 'package:flutter_bloc/flutter_bloc.dart';");
     b.writeln("import '${snake}_event.dart';");
     b.writeln("import '${snake}_state.dart';");
-    b.writeln("import 'async_value.dart';");
-    // ✅ FIX 6: single shared usecases import — not one per field
-    b.writeln(
-        "import '../../domain/usecases/${snake}_usecases.dart';");
+    b.writeln("import '$asyncValueImportPath';");
+    b.writeln("import '$usecaseImportPrefix${snake}_usecases.dart';");
 
-    if (hasSubmit) {
-      b.writeln(
-          "import '../../domain/entities/${snake}_entity.dart';");
-    }
-
-    // ✅ FIX 1: entity imports derived from JSON dropdowndata keys
     final importedEntityFiles = <String>{};
-    for (final f in _asyncFields) {
+    for (final f in _uniqueAsyncFields) {
       final eFile = _resolveEntityFile(f);
-      if (importedEntityFiles.add(eFile)) {
-        b.writeln(
-            "import '../../domain/entities/${eFile}_entity.dart';");
+      final importPath = '$entityImportPrefix${eFile}_entity.dart';
+      if (importedEntityFiles.add(importPath)) {
+        b.writeln("import '$importPath';");
       }
     }
     b.writeln();
 
-    // class declaration
-    b.writeln(
-        'class ${featureName}Bloc extends Bloc<${featureName}Event, ${featureName}State> {');
-    b.writeln('  final ${featureName}Usecases usecases;');
+    b.writeln("class ${featureName}Bloc extends Bloc<${featureName}Event, ${featureName}State> {");
+    b.writeln("  final ${featureName}Usecases usecases;");
     b.writeln();
-
-    // constructor — single usecases param; no per-field use case injection
-    // ✅ FIX 6: usecases facade handles all operations
-    b.writeln(
-        '  ${featureName}Bloc({required this.usecases})');
-    b.writeln(
-        '      : super(${featureName}State.initial()) {');
-
-    b.writeln(
-        '    on<${featureName}FieldChangedEvent>(_onFieldChanged);');
-    b.writeln(
-        '    on<${featureName}BatchUpdateEvent>(_onBatchUpdate);');
+    b.writeln("  ${featureName}Bloc({required this.usecases})");
+    b.writeln("      : super(${featureName}State.initial()) {");
+    b.writeln("    on<${featureName}FieldChangedEvent>(_onFieldChanged);");
+    b.writeln("    on<${featureName}BatchUpdateEvent>(_onBatchUpdate);");
     if (_hasAsync) {
-      b.writeln(
-          '    on<Load${featureName}DataEvent>(_onLoadData);');
+      b.writeln("    on<Load${featureName}DataEvent>(_onLoadData);");
     }
-    // ✅ FIX 3: submit handler only when hasSubmit
-    if (hasSubmit) {
-      b.writeln(
-          '    on<Submit${featureName}Event>(_onSubmit);');
-    }
-    b.writeln(
-        '    on<Reset${featureName}Event>(_onReset);');
-    b.writeln('  }');
-    b.writeln();
-
-    // _onFieldChanged
-    b.writeln('  void _onFieldChanged(');
-    b.writeln(
-        '    ${featureName}FieldChangedEvent event,');
-    b.writeln(
-        '    Emitter<${featureName}State> emit,');
-    b.writeln('  ) {');
-    b.writeln(
-        '    emit(state.copyWithValue(event.fieldName, event.value));');
-    b.writeln('  }');
-    b.writeln();
-
-    // _onBatchUpdate
-    b.writeln('  void _onBatchUpdate(');
-    b.writeln(
-        '    ${featureName}BatchUpdateEvent event,');
-    b.writeln(
-        '    Emitter<${featureName}State> emit,');
-    b.writeln('  ) {');
-    b.writeln('    var s = state;');
-    b.writeln(
-        '    event.updates.forEach((key, val) {');
-    b.writeln('      s = s.copyWithValue(key, val);');
-    b.writeln('    });');
-    b.writeln('    emit(s);');
-    b.writeln('  }');
-    b.writeln();
-
-    // _onLoadData — ✅ FIX 6: calls usecases.load*() not separate use cases
+    b.writeln("    on<Reset${featureName}Event>(_onReset);");
     if (_hasAsync) {
-      b.writeln('  Future<void> _onLoadData(');
-      b.writeln(
-          '    Load${featureName}DataEvent event,');
-      b.writeln(
-          '    Emitter<${featureName}State> emit,');
-      b.writeln('  ) async {');
+      b.writeln("    add(Load${featureName}DataEvent());");
+    }
+    b.writeln("  }");
+    b.writeln();
 
-      for (final f in _asyncFields) {
+    b.writeln("  void _onFieldChanged(");
+    b.writeln("    ${featureName}FieldChangedEvent event,");
+    b.writeln("    Emitter<${featureName}State> emit,");
+    b.writeln("  ) {");
+    b.writeln("    emit(state.copyWithValue(event.fieldName, event.value));");
+    b.writeln("  }");
+    b.writeln();
+
+    b.writeln("  void _onBatchUpdate(");
+    b.writeln("    ${featureName}BatchUpdateEvent event,");
+    b.writeln("    Emitter<${featureName}State> emit,");
+    b.writeln("  ) {");
+    b.writeln("    final updated = Map<String, dynamic>.from(state.formValues)");
+    b.writeln("      ..addAll(event.updates);");
+    b.writeln("    emit(state.copyWith(formValues: updated));");
+    b.writeln("  }");
+    b.writeln();
+
+    if (_hasAsync) {
+      b.writeln("  Future<void> _onLoadData(");
+      b.writeln("    Load${featureName}DataEvent event,");
+      b.writeln("    Emitter<${featureName}State> emit,");
+      b.writeln("  ) async {");
+      for (final f in _uniqueAsyncFields) {
         final fName = _fieldName(f);
         final fPascal = _fieldPascal(f);
-        final method = _withS('load${fPascal}');
+        final method = _withS('load$fPascal');
+        final returnsList = _returnsList(f);
 
-        b.writeln(
-            '    emit(state.copyWith(${fName}Async: const AsyncValue.loading()));');
-        b.writeln(
-            '    final ${fName}Result = await usecases.$method();');
-        b.writeln('    ${fName}Result.fold(');
-        b.writeln(
-            '      (failure) => emit(state.copyWith(');
-        b.writeln(
-            '        ${fName}Async: AsyncValue.error(failure),');
-        b.writeln('      )),');
-        b.writeln(
-            '      (data) => emit(state.copyWith(');
-        b.writeln(
-            '        ${fName}Async: AsyncValue.data(data),');
-        b.writeln('      )),');
-        b.writeln('    );');
+        b.writeln("    emit(state.copyWith(${fName}Async: const AsyncValue.loading()));");
+        b.writeln("    final ${fName}Result = await usecases.$method();");
+        b.writeln("    ${fName}Result.fold(");
+        b.writeln("      (failure) => emit(state.copyWith(");
+        b.writeln("        ${fName}Async: AsyncValue.error(failure),");
+        b.writeln("      )),");
+        b.writeln("      (data) => emit(state.copyWith(");
+        b.writeln("        ${fName}Async: AsyncValue.data(data),");
+        b.writeln("      )),");
+        b.writeln("    );");
       }
-      b.writeln('  }');
+      b.writeln("  }");
       b.writeln();
     }
 
-    // _onSubmit — ✅ FIX 3 + FIX 5: only when hasSubmit
-    if (hasSubmit) {
-      b.writeln('  Future<void> _onSubmit(');
-      b.writeln(
-          '    Submit${featureName}Event event,');
-      b.writeln(
-          '    Emitter<${featureName}State> emit,');
-      b.writeln('  ) async {');
-      b.writeln(
-          '    emit(state.copyWith(submissionAsync: const AsyncValue.loading()));');
-      b.writeln(
-          '    final payload = ${featureName}Entity.fromJson(state.formValues);');
-      b.writeln(
-          '    final result = await usecases.execute(payload);');
-      b.writeln('    result.fold(');
-      b.writeln('      (failure) => emit(state.copyWith(');
-      b.writeln(
-          '        submissionAsync: AsyncValue.error(failure),');
-      b.writeln('      )),');
-      b.writeln('      (data) => emit(state.copyWith(');
-      b.writeln(
-          '        submissionAsync: AsyncValue.data(data),');
-      b.writeln('      )),');
-      b.writeln('    );');
-      b.writeln('  }');
-      b.writeln();
-    }
-
-    // _onReset
-    b.writeln('  void _onReset(');
-    b.writeln(
-        '    Reset${featureName}Event event,');
-    b.writeln(
-        '    Emitter<${featureName}State> emit,');
-    b.writeln('  ) {');
-    b.writeln(
-        '    emit(${featureName}State.initial());');
-    b.writeln('  }');
-    b.writeln('}');
+    b.writeln("  void _onReset(");
+    b.writeln("    Reset${featureName}Event event,");
+    b.writeln("    Emitter<${featureName}State> emit,");
+    b.writeln("  ) {");
+    b.writeln("    emit(${featureName}State.initial());");
+    b.writeln("  }");
+    b.writeln("}");
 
     return b.toString();
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // 2. EVENT
-  // ════════════════════════════════════════════════════════════════
   String generateEvent() {
     final b = StringBuffer();
-
     b.writeln("import 'package:equatable/equatable.dart';");
     b.writeln();
-
-    // abstract base
-    b.writeln(
-        'abstract class ${featureName}Event extends Equatable {');
-    b.writeln('  const ${featureName}Event();');
-    b.writeln('  @override');
-    b.writeln('  List<Object?> get props => [];');
-    b.writeln('}');
+    b.writeln("abstract class ${featureName}Event extends Equatable {");
+    b.writeln("  const ${featureName}Event();");
+    b.writeln("  @override");
+    b.writeln("  List<Object?> get props => [];");
+    b.writeln("}");
     b.writeln();
-
-    // ✅ renamed: ComponentUpdated → FieldChanged (cleaner)
-    b.writeln(
-        'class ${featureName}FieldChangedEvent extends ${featureName}Event {');
-    b.writeln('  final String fieldName;');
-    b.writeln('  final dynamic value;');
-    b.writeln(
-        '  const ${featureName}FieldChangedEvent({');
-    b.writeln('    required this.fieldName,');
-    b.writeln('    required this.value,');
-    b.writeln('  });');
-    b.writeln('  @override');
-    b.writeln(
-        '  List<Object?> get props => [fieldName, value];');
-    b.writeln('}');
+    b.writeln("class ${featureName}FieldChangedEvent extends ${featureName}Event {");
+    b.writeln("  final String fieldName;");
+    b.writeln("  final dynamic value;");
+    b.writeln("  const ${featureName}FieldChangedEvent({");
+    b.writeln("    required this.fieldName,");
+    b.writeln("    required this.value,");
+    b.writeln("  });");
+    b.writeln("  @override");
+    b.writeln("  List<Object?> get props => [fieldName, value];");
+    b.writeln("}");
     b.writeln();
-
-    // BatchUpdate
-    b.writeln(
-        'class ${featureName}BatchUpdateEvent extends ${featureName}Event {');
-    b.writeln('  final Map<String, dynamic> updates;');
-    b.writeln(
-        '  const ${featureName}BatchUpdateEvent({');
-    b.writeln('    required this.updates,');
-    b.writeln('  });');
-    b.writeln('  @override');
-    b.writeln('  List<Object?> get props => [updates];');
-    b.writeln('}');
+    b.writeln("class ${featureName}BatchUpdateEvent extends ${featureName}Event {");
+    b.writeln("  final Map<String, dynamic> updates;");
+    b.writeln("  const ${featureName}BatchUpdateEvent({");
+    b.writeln("    required this.updates,");
+    b.writeln("  });");
+    b.writeln("  @override");
+    b.writeln("  List<Object?> get props => [updates];");
+    b.writeln("}");
     b.writeln();
-
-    // LoadData
     if (_hasAsync) {
-      b.writeln(
-          'class Load${featureName}DataEvent extends ${featureName}Event {');
-      b.writeln(
-          '  const Load${featureName}DataEvent();');
-      b.writeln('}');
+      b.writeln("class Load${featureName}DataEvent extends ${featureName}Event {");
+      b.writeln("  const Load${featureName}DataEvent();");
+      b.writeln("}");
       b.writeln();
     }
-
-    // Submit — ✅ FIX 3: only when hasSubmit
-    if (hasSubmit) {
-      b.writeln(
-          'class Submit${featureName}Event extends ${featureName}Event {');
-      b.writeln(
-          '  const Submit${featureName}Event();');
-      b.writeln('}');
-      b.writeln();
-    }
-
-    // Reset
-    b.writeln(
-        'class Reset${featureName}Event extends ${featureName}Event {');
-    b.writeln(
-        '  const Reset${featureName}Event();');
-    b.writeln('}');
-
+    b.writeln("class Reset${featureName}Event extends ${featureName}Event {");
+    b.writeln("  const Reset${featureName}Event();");
+    b.writeln("}");
     return b.toString();
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // 3. STATE
-  // ════════════════════════════════════════════════════════════════
   String generateState() {
     final b = StringBuffer();
     final snake = _snake(featureName);
 
+    b.writeln("import 'dart:convert';");
     b.writeln("import 'package:equatable/equatable.dart';");
-    b.writeln("import 'async_value.dart';");
+    b.writeln("import '$asyncValueImportPath';");
 
-    // ✅ FIX 8: no FieldSchema in state — use plain Map<String, dynamic>
-    // Entity imports for async dropdown types
     final importedEntityFiles = <String>{};
-    for (final f in _asyncFields) {
-      final eFile = _resolveEntityFile(f);
-      if (importedEntityFiles.add(eFile)) {
-        b.writeln(
-            "import '../../domain/entities/${eFile}_entity.dart';");
+    for (final f in _uniqueAsyncFields) {
+      final entityFile = _resolveEntityFile(f);
+      final importPath = '$entityImportPrefix${entityFile}_entity.dart';
+      if (importedEntityFiles.add(importPath)) {
+        b.writeln("import '$importPath';");
       }
     }
-    if (hasSubmit) {
-      b.writeln(
-          "import '../../domain/entities/${snake}_entity.dart';");
-    }
     b.writeln();
 
-    b.writeln(
-        'class ${featureName}State extends Equatable {');
-
-    // async slots for dropdowns
-    for (final f in _asyncFields) {
+    b.writeln("class ${featureName}State extends Equatable {");
+    for (final f in _uniqueAsyncFields) {
       final fName = _fieldName(f);
       final entityClass = _resolveEntityClass(f);
-      b.writeln(
-          '  final AsyncValue<List<$entityClass>> ${fName}Async;');
+      final returnsList = _returnsList(f);
+      if (returnsList) {
+        b.writeln("  final AsyncValue<List<$entityClass>> ${fName}Async;");
+      } else {
+        b.writeln("  final AsyncValue<$entityClass> ${fName}Async;");
+      }
     }
-
-    // submission slot — only when hasSubmit
-    if (hasSubmit) {
-      b.writeln(
-          '  final AsyncValue<${featureName}Entity?> submissionAsync;');
-    }
-
-    // ✅ FIX 8: plain Map<String, dynamic> instead of FieldSchema
-    b.writeln(
-        '  final Map<String, dynamic> formValues;');
+    b.writeln("  final Map<String, dynamic> formValues;");
     b.writeln();
 
-    // const constructor
-    b.writeln('  const ${featureName}State({');
-    for (final f in _asyncFields) {
+    b.writeln("  const ${featureName}State({");
+    for (final f in _uniqueAsyncFields) {
       final fName = _fieldName(f);
-      b.writeln('    required this.${fName}Async,');
+      b.writeln("    required this.${fName}Async,");
     }
-    if (hasSubmit) {
-      b.writeln('    required this.submissionAsync,');
-    }
-    b.writeln('    required this.formValues,');
-    b.writeln('  });');
+    b.writeln("    required this.formValues,");
+    b.writeln("  });");
     b.writeln();
 
-    // factory initial
-    b.writeln('  factory ${featureName}State.initial() {');
-    b.writeln('    return ${featureName}State(');
-    for (final f in _asyncFields) {
+    b.writeln("  factory ${featureName}State.initial() {");
+    b.writeln("    return ${featureName}State(");
+    for (final f in _uniqueAsyncFields) {
       final fName = _fieldName(f);
-      // ✅ FIX 4: initial state is idle not loading
-      b.writeln(
-          '      ${fName}Async: const AsyncValue.idle(),');
+      b.writeln("      ${fName}Async: const AsyncValue.idle(),");
     }
-    if (hasSubmit) {
-      b.writeln(
-          '      submissionAsync: const AsyncValue.idle(),');
-    }
-
-    // ✅ FIX 1: formValues derived from JSON flatFields — includes nested
-    b.writeln('      formValues: {');
-    for (final f in _flatFields) {
-      final fName = _fieldName(f);
+    b.writeln("      formValues: {");
+    final seenKeys = <String>{};
+    for (final f in _flatFields.where(_isFormField)) {
+      final key = _fieldName(f);
+      if (seenKeys.contains(key)) continue;
+      seenKeys.add(key);
       final type = (f['type'] ?? '').toString().toLowerCase();
       final defaultVal = _resolveDefault(f, type);
-      b.writeln("        '$fName': $defaultVal,");
+      b.writeln("        '$key': $defaultVal,");
     }
-    b.writeln('      },');
-    b.writeln('    );');
-    b.writeln('  }');
+    b.writeln("      },");
+    b.writeln("    );");
+    b.writeln("  }");
     b.writeln();
 
-    // copyWith
-    b.writeln('  ${featureName}State copyWith({');
-    for (final f in _asyncFields) {
+    b.writeln("  ${featureName}State copyWith({");
+    for (final f in _uniqueAsyncFields) {
       final fName = _fieldName(f);
       final entityClass = _resolveEntityClass(f);
-      b.writeln(
-          '    AsyncValue<List<$entityClass>>? ${fName}Async,');
+      final returnsList = _returnsList(f);
+      if (returnsList) {
+        b.writeln("    AsyncValue<List<$entityClass>>? ${fName}Async,");
+      } else {
+        b.writeln("    AsyncValue<$entityClass>? ${fName}Async,");
+      }
     }
-    if (hasSubmit) {
-      b.writeln(
-          '    AsyncValue<${featureName}Entity?>? submissionAsync,');
-    }
-    b.writeln(
-        '    Map<String, dynamic>? formValues,');
-    b.writeln('  }) {');
-    b.writeln('    return ${featureName}State(');
-    for (final f in _asyncFields) {
+    b.writeln("    Map<String, dynamic>? formValues,");
+    b.writeln("  }) {");
+    b.writeln("    return ${featureName}State(");
+    for (final f in _uniqueAsyncFields) {
       final fName = _fieldName(f);
-      b.writeln(
-          '      ${fName}Async: ${fName}Async ?? this.${fName}Async,');
+      b.writeln("      ${fName}Async: ${fName}Async ?? this.${fName}Async,");
     }
-    if (hasSubmit) {
-      b.writeln(
-          '      submissionAsync: submissionAsync ?? this.submissionAsync,');
-    }
-    b.writeln(
-        '      formValues: formValues ?? this.formValues,');
-    b.writeln('    );');
-    b.writeln('  }');
+    b.writeln("      formValues: formValues ?? this.formValues,");
+    b.writeln("    );");
+    b.writeln("  }");
     b.writeln();
 
-    // ✅ copyWithValue — clean helper used by _onFieldChanged
-    b.writeln(
-        '  ${featureName}State copyWithValue(String key, dynamic value) {');
-    b.writeln(
-        '    final updated = Map<String, dynamic>.from(formValues)..[key] = value;');
-    b.writeln('    return copyWith(formValues: updated);');
-    b.writeln('  }');
+    b.writeln("  ${featureName}State copyWithValue(String key, dynamic value) {");
+    b.writeln("    final updated = Map<String, dynamic>.from(formValues)..[key] = value;");
+    b.writeln("    return copyWith(formValues: updated);");
+    b.writeln("  }");
     b.writeln();
 
-    // props
-    b.writeln('  @override');
-    b.writeln('  List<Object?> get props => [');
-    for (final f in _asyncFields) {
-      b.writeln('    ${_fieldName(f)}Async,');
+    b.writeln("  @override");
+    b.writeln("  List<Object?> get props => [");
+    for (final f in _uniqueAsyncFields) {
+      b.writeln("    ${_fieldName(f)}Async,");
     }
-    if (hasSubmit) b.writeln('    submissionAsync,');
-    b.writeln('    formValues,');
-    b.writeln('  ];');
-    b.writeln('}');
+    b.writeln("    jsonEncode(formValues),");
+    b.writeln("  ];");
+    b.writeln("}");
 
     return b.toString();
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // 4. ASYNC VALUE — ✅ FIX 4: added idle() factory
-  // ════════════════════════════════════════════════════════════════
   String generateAsyncValue() => """
 import 'package:equatable/equatable.dart';
 
@@ -612,47 +534,27 @@ class AsyncError<T> extends AsyncValue<T> {
 }
 """;
 
-  // ── Default value resolver ─────────────────────────────────────
+  bool _isFormField(Map<String, dynamic> field) {
+    final type = (field['type'] ?? '').toString().toLowerCase();
+    const skipTypes = {'card', 'group', 'section', 'step', 'tab', 'container'};
+    return !skipTypes.contains(type);
+  }
+
   String _resolveDefault(Map<String, dynamic> field, String type) {
     final defaultVal = field['defaultValue'];
     if (defaultVal != null) return _lit(defaultVal);
-
     switch (type) {
-      case 'text':
-      case 'textfield':
-      case 'textarea':
-      case 'email':
-      case 'password':
-      case 'phone':
-      case 'otp':
-      case 'date':
-      case 'datetime':
-      case 'date time':
-      case 'time':
-      case 'formula':
+      case 'text': case 'textfield': case 'textarea': case 'email':
+      case 'password': case 'phone': case 'otp': case 'formula':
         return "''";
-      case 'number':
-      case 'integer':
-      case 'int':
+      case 'number': case 'integer': case 'int':
         return '0';
-      case 'decimal':
-      case 'double':
-      case 'float':
-      case 'slider':
-      case 'range slider':
+      case 'decimal': case 'double': case 'float':
         return '0.0';
-      case 'checkbox':
-      case 'switch':
+      case 'checkbox': case 'switch':
         return 'false';
-      case 'multiselect':
-      case 'multi select':
-      case 'multi_select':
+      case 'multiselect': case 'multi_select':
         return '<String>[]';
-      case 'dropdown':
-      case 'api_dropdown':
-      case 'radio':
-      case 'radio buttons':
-        return 'null';
       default:
         return 'null';
     }

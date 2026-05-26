@@ -17,7 +17,9 @@ String generateProviderInterface(
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;
@@ -170,10 +172,10 @@ String generateProviderInterface(
 
 String _pluralize(String word) {
   if (word.endsWith('y') && !word.endsWith('ey')) {
-    return word.substring(0, word.length - 1) + 'ies';
+    return '${word.substring(0, word.length - 1)}ies';
   }
   if (word.endsWith('s')) return word;
-  return word + 's';
+  return '${word}s';
 }
 
 String _toSnakeCase(String text) =>
@@ -193,8 +195,9 @@ String _capitalize(String s) =>
 
 String _singularize(String text) {
   if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
-  if (text.endsWith('s') && text.length > 1)
+  if (text.endsWith('s') && text.length > 1) {
     return text.substring(0, text.length - 1);
+  }
   return text;
 }
 

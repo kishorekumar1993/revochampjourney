@@ -78,6 +78,8 @@ String generateRepositoryImplInterface(
 
   // 1. dartz
   buffer.writeln("import 'package:dartz/dartz.dart';");
+  buffer.writeln("import '/core/network/failure_mapper.dart';");
+  buffer.writeln("import '/core/runtime/failure.dart';");
 
   // 2. Package-based entity import (first field only, if packageName given)
   if (packageName != null &&
@@ -89,7 +91,6 @@ String generateRepositoryImplInterface(
   }
 
   // 3. Core failures import
-  buffer.writeln("import '$coreImportBase/$failuresSubPath';");
 
   // 4. Datasource import (single, using exact path)
   buffer.writeln(
@@ -165,7 +166,7 @@ String generateRepositoryImplInterface(
 
     buffer.writeln("    } catch (e) {");
     buffer.writeln(
-      "      return Left(ServerFailure(e.toString(), message: ''));",
+      "      return Left(mapExceptionToFailure(e));",
     );
     buffer.writeln("    }");
     buffer.writeln("  }");

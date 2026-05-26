@@ -2,9 +2,9 @@ String generateDataSourceInterface(
   String className,
   List<dynamic> configList,
   String fileName, {
-  String? packageName,   // e.g. 'testenv'
-  String? featurePath,   // e.g. 'features/new/userjourney/data'
-  String coreImportBase = '/core', // e.g. '/core' or 'package:myapp/core'
+  String? packageName,
+  String? featurePath,
+  String coreImportBase = '/core',         // e.g. '/core' or 'package:myapp/core'
   String apiServiceSubPath = 'service/api_service.dart',
   String failuresSubPath = 'errors/failures.dart',
 }) {
@@ -68,6 +68,11 @@ String generateDataSourceInterface(
 
   // ─── Imports ──────────────────────────────────────────────────
   buffer.writeln("import '/service/api_service.dart';");
+  // Import app_exceptions (ServerException, ParseException)
+  buffer.writeln("import '$coreImportBase/network/app_exception.dart';");
+  // Import debugPrint
+  buffer.writeln("import 'package:flutter/foundation.dart';");
+  buffer.writeln();
 
   for (final modelFile in modelImports) {
     if (packageName != null && featurePath != null) {
@@ -136,13 +141,17 @@ String generateDataSourceInterface(
       buffer.writeln();
       buffer.writeln("      if (response == null) {");
       buffer.writeln(
-        "        throw ServerFailure(message: 'Null response from server');",
+        "        throw const ServerException(",
       );
+      buffer.writeln("          message: 'Null response from server',");
+      buffer.writeln("        );");
       buffer.writeln("      }");
       buffer.writeln("      if (response is! Map<String, dynamic>) {");
       buffer.writeln(
-        "        throw ServerFailure(message: 'Expected a JSON object');",
+        "        throw const ParseException(",
       );
+      buffer.writeln("          message: 'Expected a JSON object',");
+      buffer.writeln("        );");
       buffer.writeln("      }");
       buffer.writeln("      return $modelClass.fromJson(response);");
     } else {
@@ -155,8 +164,10 @@ String generateDataSourceInterface(
       buffer.writeln();
       buffer.writeln("      if (response == null) {");
       buffer.writeln(
-        "        throw ServerFailure(message: 'Null response from server');",
+        "        throw const ServerException(",
       );
+      buffer.writeln("          message: 'Null response from server',");
+      buffer.writeln("        );");
       buffer.writeln("      }");
       buffer.writeln();
       buffer.writeln("      final List<dynamic> dataList;");
@@ -168,14 +179,18 @@ String generateDataSourceInterface(
       );
       buffer.writeln("        if (listValue == null) {");
       buffer.writeln(
-        "          throw ServerFailure(message: 'No list found in response');",
+        "          throw const ParseException(",
       );
+      buffer.writeln("            message: 'No list found in response',");
+      buffer.writeln("          );");
       buffer.writeln("        }");
       buffer.writeln("        dataList = listValue;");
       buffer.writeln("      } else {");
       buffer.writeln(
-        "        throw ServerFailure(message: 'Unexpected response shape');",
+        "        throw const ParseException(",
       );
+      buffer.writeln("          message: 'Unexpected response shape',");
+      buffer.writeln("        );");
       buffer.writeln("      }");
       buffer.writeln();
       buffer.writeln("      return dataList");
@@ -187,14 +202,21 @@ String generateDataSourceInterface(
 
     buffer.writeln("    } on ApiFailure catch (e) {");
     buffer.writeln(
-      "      throw ServerFailure(message: e.message, statusCode: e.statusCode);",
+      "      throw ServerException(",
     );
+    buffer.writeln("        message: e.message,");
+    buffer.writeln("        statusCode: e.statusCode,");
+    buffer.writeln("      );");
     buffer.writeln("    } catch (e, stack) {");
     buffer.writeln("      assert(() {");
-    buffer.writeln("        print('DataSource [$name]: \$e\\n\$stack');");
+    buffer.writeln("        debugPrint('DataSource [$name]: \$e\\n\$stack');");
     buffer.writeln("        return true;");
     buffer.writeln("      }());");
-    buffer.writeln("      throw ServerFailure(message: e.toString());");
+    buffer.writeln(
+      "      throw ServerException(",
+    );
+    buffer.writeln("        message: e.toString(),");
+    buffer.writeln("      );");
     buffer.writeln("    }");
     buffer.writeln("  }");
     buffer.writeln();
@@ -211,7 +233,6 @@ bool _needsS(String name) {
   return !lower.endsWith('s');
 }
 
-/// Always derives model class name from the field label, not dropdowndata key.
 String _resolveModelClass(Map<String, dynamic> field) {
   final rawLabel = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
       .toString()
@@ -220,7 +241,6 @@ String _resolveModelClass(Map<String, dynamic> field) {
   return '${labelPascal}Model';
 }
 
-/// Always derives model file name from the field label, not dropdowndata key.
 String _resolveModelFileName(Map<String, dynamic> field) {
   final rawLabel = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
       .toString()
@@ -239,4 +259,3 @@ String _capPascal(String text) {
       .map((w) => w[0].toUpperCase() + w.substring(1))
       .join();
 }
-

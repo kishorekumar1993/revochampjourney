@@ -20,7 +20,7 @@ import 'package:revojourneytryone/filegegnerator/common_bloc_generator.dart';
 import 'package:revojourneytryone/filegegnerator/getx_generator.dart';
 import 'package:revojourneytryone/filegegnerator/riverpodgenerator.dart';
 
-import 'bloc_generator.dart';
+import 'bloc_files_generator.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Architecture enum — which patterns to generate
