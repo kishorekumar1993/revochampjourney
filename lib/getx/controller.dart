@@ -73,8 +73,19 @@ String generatecontrollerClass(
   );
   buffer.writeln("import 'dart:convert';");
   buffer.writeln("import 'package:flutter/material.dart';");
+  buffer.writeln("import 'package:flutter/scheduler.dart';");
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln("import 'package:http/http.dart' as http;");
+  buffer.writeln("import 'dart:async';");
+  buffer.writeln("import 'dart:io';");
+  buffer.writeln("import '/getx/validation_engine.dart';");
+  buffer.writeln("import '/getx/form_state_manager.dart';");
+  buffer.writeln("import '/getx/api_executor.dart';");
+  buffer.writeln("import '/getx/worker_manager.dart';");
+  buffer.writeln("import '/getx/ui_state.dart';");
+  buffer.writeln("import '/getx/dependency_resolver.dart';");
+  buffer.writeln("import '/getx/navigation_coordinator.dart';");
+  buffer.writeln("import '/getx/serialization_service.dart';");
   buffer.writeln(
     "import '../repository/${fileName.toLowerCase().replaceAll(' ', '_')}_repository.dart';",
   );
@@ -99,11 +110,16 @@ String generatecontrollerClass(
 
   buffer.writeln();
   buffer.writeln("class ${className}Controller extends GetxController {");
-  buffer.writeln("  final ${className}Repository repository;");
-  buffer.writeln("  ${className}Controller(this.repository);");
+  buffer.writeln("  final \${className}Repository repository;");
+  buffer.writeln("  \${className}Controller({\${className}Repository? repository}) : repository = repository ?? Get.find<\${className}Repository>();");
   buffer.writeln();
   buffer.writeln("  final isLoading = false.obs;");
   buffer.writeln("  final isExecuting = false.obs;");
+  buffer.writeln("  final isDirty = false.obs;");
+  buffer.writeln("  final WorkerManager _workerManager = WorkerManager();");
+  buffer.writeln("  final fieldErrors = <String, Rx<String>>{};");
+  buffer.writeln("  final fieldVisibility = <String, RxBool>{};");
+  buffer.writeln("  dynamic routeArgs;");
   buffer.writeln();
   stepMeta.writeStepConstants(buffer);
   buffer.writeln();
@@ -630,12 +646,14 @@ String generatecontrollerClass(
   buffer.writeln();
   buffer.writeln('  Future<void> onPrimaryAction() async {');
   buffer.writeln('    if (isExecuting.value) return;');
+  buffer.writeln('    if (!(formKey.currentState?.validate() ?? true)) return;');
+  buffer.writeln('    if (!validateStep()) return;');
   buffer.writeln('    isExecuting.value = true;');
   buffer.writeln('    try {');
-  buffer.writeln('      if (!validateStep()) return;');
   buffer.writeln("      await executeStepApis(trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}');");
   stepMeta.writeNavigateNextGetX(buffer, indent: '      ');
-  buffer.writeln('    } catch (e) {');
+  buffer.writeln('    } catch (e, st) {');
+  buffer.writeln("      debugPrint('Error executing step: \$e');");
   buffer.writeln("      Get.snackbar('Error', e.toString());");
   buffer.writeln('    } finally {');
   buffer.writeln('      isExecuting.value = false;');
@@ -658,15 +676,28 @@ void _writeGetxValidation(
     buffer.writeln('  }');
     return;
   }
+  
+  // Ensure error map keys exist and are cleared
+  for (final _f in flatFields) {
+    final _id = (_f['label'] ?? _f['id'] ?? _f['fieldId'] ?? '').toString().replaceAll("'", "\\'");
+    if (_id.isNotEmpty) {
+      buffer.writeln("    fieldErrors['$_id'] = fieldErrors['$_id'] ?? ''.obs;");
+      buffer.writeln("    fieldErrors['$_id']!.value = '';");
+    }
+  }
+
   for (final v in stepMeta.validations) {
     final type = v['type']?.toString() ?? 'required';
     final field = v['field']?.toString() ?? '';
     final message = v['message']?.toString().replaceAll("'", "\\'") ?? 'Required';
     if (type == 'required' && field.isNotEmpty) {
-      buffer.writeln('    final v = _formValue(\'$field\');');
-      buffer.writeln('    if (v == null || v.toString().trim().isEmpty) {');
-      buffer.writeln("      Get.snackbar('Validation', '$message');");
+      buffer.writeln('    final _v = _formValue(\'$field\');');
+      buffer.writeln("    if (_v == null || _v.toString().trim().isEmpty) {");
+      buffer.writeln("      fieldErrors['$field'] = fieldErrors['$field'] ?? ''.obs;");
+      buffer.writeln("      fieldErrors['$field']!.value = '$message';");
       buffer.writeln('      return false;');
+      buffer.writeln('    } else {');
+      buffer.writeln("      fieldErrors['$field']!.value = '';");
       buffer.writeln('    }');
     }
   }

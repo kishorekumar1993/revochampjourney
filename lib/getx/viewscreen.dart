@@ -50,7 +50,7 @@ String generateviewClass(
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase().replaceAll(' ', '_')}_controller.dart';",
   );
-  buffer.writeln("import '/core/widgets/widgets.dart';");
+  buffer.writeln("import '/core/widgets.dart';");
 
   // ✅ Model imports derived from dropdowndata keys — not from label
   final emittedModelFiles = <String>{};
@@ -89,8 +89,8 @@ String generateviewClass(
   buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  Widget build(BuildContext context) {");
-  buffer.writeln("    final controller = Get.find<${className}Controller>();");
-  buffer.writeln("    final formKey = GlobalKey<FormState>();");
+  buffer.writeln("    final controller = Get.isRegistered<${className}Controller>() ? Get.find<${className}Controller>() : Get.put(${className}Controller());");
+
   buffer.writeln();
   buffer.writeln("    return Scaffold(");
   buffer.writeln("      backgroundColor: const Color(0xFFF8FAFC),");
@@ -123,7 +123,7 @@ String generateviewClass(
   );
   buffer.writeln("                ),");
   buffer.writeln("                child: Form(");
-  buffer.writeln("                  key: formKey,");
+  buffer.writeln("                  key: controller.formKey,");
   buffer.writeln(
     "                  autovalidateMode: AutovalidateMode.onUserInteraction,",
   );
@@ -278,7 +278,7 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          buffer.writeln("                  errorText: null,");
+          buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
           buffer.writeln("                )),");
         } else if (staticOpts != null && staticOpts.isNotEmpty) {
           final optionsList = staticOpts.map((o) {
@@ -301,7 +301,7 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          buffer.writeln("                  errorText: null,");
+          buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
           buffer.writeln("                )),");
         }
       } else if (type == 'radio' || type == 'radio buttons') {
@@ -316,7 +316,7 @@ String generateviewClass(
 
         buffer.writeln("                Obx(() => AppRadioGroupField(");
         buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  errorText: null,");
+        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
         buffer.writeln(
           "                  value: controller.selected$capitalLabel.value?.toString(),",
         );
@@ -436,7 +436,7 @@ String generateviewClass(
         buffer.writeln(
           "                  onChanged: (val) => controller.${name}Value.value = val ?? false,",
         );
-        buffer.writeln("                  errorText: null,");
+        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
         buffer.writeln("                )),");
       } else if (type == 'number' || type == 'integer' || type == 'int') {
         _writeTextFormField(
@@ -545,7 +545,7 @@ String generateviewClass(
         buffer.writeln(
           "                  selectedValues: controller.${name}Selected.toList(),",
         );
-        buffer.writeln("                  errorText: null,");
+        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
         buffer.writeln("                  onChanged: (values) {");
         buffer.writeln("                    controller.${name}Selected.assignAll(values);");
         buffer.writeln("                  },");
@@ -1053,21 +1053,23 @@ String generateviewClass(
         buffer.writeln(
           "                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {",
         );
-        buffer.writeln("                    return AppTextField(");
+        buffer.writeln("                    return Obx(() => AppTextField(");
         buffer.writeln("                      label: '$rawLabel',");
         buffer.writeln("                      hint: '$hint',");
         buffer.writeln("                      controller: textController,");
         buffer.writeln("                      focusNode: focusNode,");
-        buffer.writeln("                      errorText: null,");
+        buffer.writeln("                      errorText: controller.fieldErrors['$rawLabel']?.value,");
         buffer.writeln("                      validator: (value) {");
+        buffer.writeln("                        controller.fieldErrors['$rawLabel'] = controller.fieldErrors['$rawLabel'] ?? ''.obs;");
+        buffer.writeln("                        controller.fieldErrors['$rawLabel']!.value = '';");
         if (isRequired) {
           buffer.writeln(
-            "                        if (value == null || value.isEmpty) return '$rawLabel is required';",
+            "                        if (value == null || value.isEmpty) { controller.fieldErrors['$rawLabel']!.value = '$rawLabel is required'; return controller.fieldErrors['$rawLabel']!.value; }",
           );
         }
         buffer.writeln("                        return null;");
         buffer.writeln("                      },");
-        buffer.writeln("                    );");
+        buffer.writeln("                    ));");
         buffer.writeln("                  },");
         buffer.writeln("                ),");
       } else if (type == 'signature') {
@@ -1194,7 +1196,7 @@ String generateviewClass(
           "                  controller: TextEditingController(text: controller.$name.value),",
         );
         buffer.writeln("                  readOnly: true,");
-        buffer.writeln("                  errorText: null,");
+        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
         buffer.writeln("                  validator: (value) => null,");
         buffer.writeln("                )),");
       } else {
@@ -1248,7 +1250,7 @@ void _writeTextFormField(
   int? maxLines,
   int? minLines,
 }) {
-  buffer.writeln("                AppTextField(");
+  buffer.writeln("                Obx(() => AppTextField(");
   buffer.writeln("                  label: '$label',");
   buffer.writeln("                  hint: '$hint',");
   buffer.writeln("                  controller: controller.${name}Controller,");
@@ -1272,35 +1274,38 @@ void _writeTextFormField(
   if (minLines != null) {
     buffer.writeln("                  minLines: $minLines,");
   }
-  buffer.writeln("                  errorText: null,");
+  buffer.writeln("                  errorText: controller.fieldErrors['$label']?.value,");
   buffer.writeln("                  validator: (value) {");
   buffer.writeln("                    try {");
+  buffer.writeln("                      controller.fieldErrors['$label'] = controller.fieldErrors['$label'] ?? ''.obs;");
+  buffer.writeln("                      controller.fieldErrors['$label']!.value = '';");
   if (isRequired) {
     buffer.writeln(
-      "                      if (value == null || value.isEmpty) return '$label is required';",
+      "                      if (value == null || value.isEmpty) { controller.fieldErrors['$label']!.value = '$label is required'; return controller.fieldErrors['$label']!.value; }",
     );
   }
   if (minLength > 0) {
     buffer.writeln(
-      "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';",
+      "                      if (value != null && value.length < $minLength) { controller.fieldErrors['$label']!.value = 'Minimum $minLength characters'; return controller.fieldErrors['$label']!.value; }",
     );
   }
   if (maxLength > 0) {
     buffer.writeln(
-      "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';",
+      "                      if (value != null && value.length > $maxLength) { controller.fieldErrors['$label']!.value = 'Maximum $maxLength characters'; return controller.fieldErrors['$label']!.value; }",
     );
   }
   if (pattern.isNotEmpty) {
     buffer.writeln(
-      "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
+      "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) { controller.fieldErrors['$label']!.value = '$errorMessage'; return controller.fieldErrors['$label']!.value; }",
     );
   }
   buffer.writeln("                      return null;");
   buffer.writeln("                    } catch (e) {");
-  buffer.writeln("                      return 'Invalid input';");
+  buffer.writeln("                      controller.fieldErrors['$label']!.value = 'Invalid input';");
+  buffer.writeln("                      return controller.fieldErrors['$label']!.value;");
   buffer.writeln("                    }");
   buffer.writeln("                  },");
-  buffer.writeln("                ),");
+  buffer.writeln("                )),");
 }
 
 void _writeDatePickerField(
@@ -1316,7 +1321,7 @@ void _writeDatePickerField(
   buffer.writeln(
     "                  value: _parseDateInput(controller.${name}Controller.text),",
   );
-  buffer.writeln("                  errorText: null,");
+  buffer.writeln("                  errorText: controller.fieldErrors['$label']?.value,");
   buffer.writeln("                  enabled: ${!isReadOnly},");
   buffer.writeln("                  onChanged: (picked) {");
   buffer.writeln("                    if (picked != null) {");
