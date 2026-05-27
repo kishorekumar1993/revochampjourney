@@ -8,16 +8,24 @@ import 'package:http/http.dart' as http;
 import '../../../../core/theme.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
+import '../../application/journey_draft_store.dart';
+import '../../application/journey_execution_engine.dart';
+import '../../domain/journey_execution_models.dart';
 
 class JourneyRunnerScreen extends ConsumerStatefulWidget {
-  const JourneyRunnerScreen({super.key});
+  const JourneyRunnerScreen({super.key, this.initialStepId});
+
+  final String? initialStepId;
 
   @override
   ConsumerState<JourneyRunnerScreen> createState() => _JourneyRunnerScreenState();
 }
 
 class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
+  final _engine = JourneyExecutionEngine();
   String? _runnerStepId;
+  List<String> _stepHistory = [];
+  bool _isExecuting = false;
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> _errors = {};
   final Map<String, List<Map<String, dynamic>>> _gridRows = {};
@@ -34,105 +42,243 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   @override
   void initState() {
     super.initState();
-    // Start with the first step of the journey configuration
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final config = ref.read(journeyConfigProvider);
-      if (config.steps.isNotEmpty) {
-        setState(() {
-          _runnerStepId = config.steps.first.id;
-        });
-        ref.read(formValuesProvider.notifier).resetWithDefaults(config.steps.first);
-      }
+      _bootstrapRunner();
     });
   }
 
-  void _validateAndNext(JourneyStep step, List<JourneyStep> allSteps) {
+  void _bootstrapRunner() {
+    final config = ref.read(journeyConfigProvider);
+    if (config.steps.isEmpty) return;
+
+    final draft = ref.read(journeyDraftStoreProvider)[config.journeyName];
+    if (draft != null) {
+      _offerResumeDraft(config, draft);
+      return;
+    }
+
+    final initialStepId = widget.initialStepId;
+    final step = initialStepId != null
+        ? config.steps.firstWhere(
+            (s) => s.id == initialStepId,
+            orElse: () => config.steps.first,
+          )
+        : config.steps.first;
+
     setState(() {
-      _errors.clear();
+      _runnerStepId = step.id;
+      _stepHistory = [];
+    });
+    ref.read(formValuesProvider.notifier).mergeStepDefaults(step);
+  }
+
+  Future<void> _offerResumeDraft(JourneyConfig config, JourneyDraft draft) async {
+    if (!mounted) return;
+    final resume = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: RevoTheme.cardBg,
+        title: const Text('Resume Journey?'),
+        content: Text(
+          'A saved draft was found for "${config.journeyName}" '
+          '(step: ${draft.currentStepId}).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Start Fresh'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Resume'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (resume == true) {
+      await _runAction(
+        JourneyAction.resume,
+        config.steps.firstWhere(
+          (s) => s.id == draft.currentStepId,
+          orElse: () => config.steps.first,
+        ),
+        config,
+        draftToResume: draft,
+      );
+      return;
+    }
+
+    ref.read(journeyDraftStoreProvider.notifier).clearDraft(config.journeyName);
+    final first = config.steps.first;
+    setState(() {
+      _runnerStepId = first.id;
+      _stepHistory = [];
+    });
+    ref.read(formValuesProvider.notifier).mergeStepDefaults(first);
+  }
+
+  void _syncRoute(String stepId) {
+    if (!mounted) return;
+    final current = GoRouterState.of(context).uri.queryParameters['step'];
+    if (current == stepId) return;
+    context.go(Uri(path: '/runner', queryParameters: {'step': stepId}).toString());
+  }
+
+  Future<void> _runAction(
+    JourneyAction action,
+    JourneyStep currentStep,
+    JourneyConfig config, {
+    JourneyDraft? draftToResume,
+  }) async {
+    if (_isExecuting || _engine.isLocked) return;
+
+    setState(() {
+      _isExecuting = true;
+      if (action != JourneyAction.resume) {
+        _errors.clear();
+      }
     });
 
     final values = ref.read(formValuesProvider);
-    bool isValid = true;
+    final result = await _engine.execute(
+      JourneyExecutionRequest(
+        action: action,
+        config: config,
+        currentStep: currentStep,
+        formValues: values,
+        stepHistory: _stepHistory,
+        draftToResume: draftToResume,
+      ),
+    );
 
-    // Run dynamic validation rules
-    for (var val in step.validations) {
-      final field = EngineHelper.flattenFields(step.fields).firstWhere((f) => f.id == val.field);
-      // Only validate if field is visible
-      if (EngineHelper.isFieldVisible(field, values)) {
-        final fieldVal = values[val.field]?.toString() ?? '';
-        if (val.type == 'required' && fieldVal.trim().isEmpty) {
-          isValid = false;
-          _errors[val.field] = val.message;
-        }
-      }
-    }
+    if (!mounted) return;
 
-    if (!isValid) {
+    setState(() => _isExecuting = false);
+
+    if (result.status == JourneyExecutionStatus.busy) return;
+
+    if (result.status == JourneyExecutionStatus.validationFailed) {
+      setState(() {
+        _errors
+          ..clear()
+          ..addAll(result.fieldErrors);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Please correct validation errors on this page."),
+          content: Text(result.message ?? 'Validation failed.'),
           backgroundColor: RevoTheme.error,
         ),
       );
       return;
     }
 
-    // Resolve routing logic & condition checks
-    String? nextId = step.nextStep;
-    
-    // Check if nextStepIf conditions are met
-    for (var cond in step.conditions) {
-      if (cond.type == 'nextStepIf' && EngineHelper.evaluateCondition(cond, values)) {
-        nextId = cond.targetStep;
-      }
-    }
-
-    if (nextId != null) {
-      final nextStepIndex = allSteps.indexWhere((s) => s.id == nextId);
-      if (nextStepIndex != -1) {
-        setState(() {
-          _runnerStepId = nextId;
-        });
-        ref.read(formValuesProvider.notifier).resetWithDefaults(allSteps[nextStepIndex]);
-      }
-    } else {
-      // Record the run simulation log dynamically
-      final config = ref.read(journeyConfigProvider);
-      final currentRuns = ref.read(journeyRunsProvider);
-      final nextRunNumber = 1050 + currentRuns.length;
-      final userEmail = values['email']?.toString() ?? values['mobile']?.toString() ?? 'anonymous@revo.com';
-
-      ref.read(journeyRunsProvider.notifier).addRun({
-        'id': 'RUN-$nextRunNumber',
-        'journeyName': config.journeyName,
-        'user': userEmail,
-        'status': 'Completed',
-        'currentStep': step.title,
-        'progress': 1.0,
-        'stepsCount': '${config.steps.length}/${config.steps.length}',
-        'started': 'Just now',
-        'data': Map<String, dynamic>.from(values),
-      });
-
-      // Completed last step, show success banner
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: RevoTheme.cardBg,
-          title: const Text("Journey Completed!"),
-          content: const Text("All steps have been completed and validated successfully."),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.pop();
-              },
-              child: const Text("Back to Dashboard"),
-            ),
-          ],
+    if (result.status == JourneyExecutionStatus.apiFailed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'API execution failed.'),
+          backgroundColor: RevoTheme.error,
         ),
       );
+      return;
     }
+
+    if (result.status == JourneyExecutionStatus.notFound ||
+        result.status == JourneyExecutionStatus.noDraft) {
+      if (result.message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message!)),
+        );
+      }
+      return;
+    }
+
+    if (result.savedDraft != null) {
+      ref
+          .read(journeyDraftStoreProvider.notifier)
+          .saveDraft(result.savedDraft!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'Draft saved.'),
+          backgroundColor: RevoTheme.secondary,
+        ),
+      );
+      return;
+    }
+
+    ref.read(formValuesProvider.notifier).restoreSession(
+          values: result.formValues,
+          step: result.targetStepId != null
+              ? config.steps.firstWhere(
+                  (s) => s.id == result.targetStepId,
+                  orElse: () => currentStep,
+                )
+              : null,
+        );
+
+    if (result.journeyCompleted) {
+      ref.read(journeyDraftStoreProvider.notifier).clearDraft(config.journeyName);
+      _recordCompletedRun(config, currentStep, result.formValues);
+      _showCompletionDialog();
+      return;
+    }
+
+    if (result.targetStepId != null) {
+      setState(() {
+        _runnerStepId = result.targetStepId;
+        _stepHistory = result.stepHistory;
+      });
+      _syncRoute(result.targetStepId!);
+    }
+  }
+
+  void _recordCompletedRun(
+    JourneyConfig config,
+    JourneyStep step,
+    Map<String, dynamic> values,
+  ) {
+    final currentRuns = ref.read(journeyRunsProvider);
+    final nextRunNumber = 1050 + currentRuns.length;
+    final userEmail =
+        values['email']?.toString() ??
+        values['mobile']?.toString() ??
+        'anonymous@revo.com';
+
+    ref.read(journeyRunsProvider.notifier).addRun({
+      'id': 'RUN-$nextRunNumber',
+      'journeyName': config.journeyName,
+      'user': userEmail,
+      'status': 'Completed',
+      'currentStep': step.title,
+      'progress': 1.0,
+      'stepsCount': '${config.steps.length}/${config.steps.length}',
+      'started': 'Just now',
+      'data': Map<String, dynamic>.from(values),
+    });
+  }
+
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: RevoTheme.cardBg,
+        title: const Text('Journey Completed!'),
+        content: const Text(
+          'All steps have been completed and validated successfully.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.pop();
+            },
+            child: const Text('Back to Dashboard'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -149,6 +295,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     final activeStepIndex = config.steps.indexWhere((s) => s.id == activeId);
     final activeStep = activeStepIndex != -1 ? config.steps[activeStepIndex] : config.steps.first;
     final formValues = ref.watch(formValuesProvider);
+    final showSubmit = _engine.shouldShowSubmit(activeStep, formValues);
 
     return Scaffold(
       backgroundColor: RevoTheme.background,
@@ -216,30 +363,73 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                if (activeStepIndex > 0)
+                                if (_stepHistory.isNotEmpty)
                                   OutlinedButton(
-                                    onPressed: () {
-                                      final prevStep = config.steps[activeStepIndex - 1];
-                                      setState(() {
-                                        _runnerStepId = prevStep.id;
-                                      });
-                                      ref.read(formValuesProvider.notifier).resetWithDefaults(prevStep);
-                                    },
+                                    onPressed: _isExecuting
+                                        ? null
+                                        : () => _runAction(
+                                              JourneyAction.previous,
+                                              activeStep,
+                                              config,
+                                            ),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 16,
+                                      ),
                                     ),
-                                    child: const Text("Back"),
+                                    child: const Text('Back'),
                                   )
                                 else
                                   const SizedBox.shrink(),
-                                ElevatedButton(
-                                  onPressed: () => _validateAndNext(activeStep, config.steps),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                  ),
-                                  child: Text(
-                                    activeStepIndex == config.steps.length - 1 ? "Submit" : "Next",
-                                  ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    OutlinedButton(
+                                      onPressed: _isExecuting
+                                          ? null
+                                          : () => _runAction(
+                                                JourneyAction.saveDraft,
+                                                activeStep,
+                                                config,
+                                              ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                      child: const Text('Save Draft'),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ElevatedButton(
+                                      onPressed: _isExecuting
+                                          ? null
+                                          : () => _runAction(
+                                                showSubmit
+                                                    ? JourneyAction.submit
+                                                    : JourneyAction.next,
+                                                activeStep,
+                                                config,
+                                              ),
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 32,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                      child: _isExecuting
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(showSubmit ? 'Submit' : 'Next'),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

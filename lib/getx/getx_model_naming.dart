@@ -51,6 +51,18 @@ String resolveGetxModelFileBase(Map<String, dynamic> field) {
 
 String getxModelImportPath(String fileBase) => '../model/${fileBase}_model.dart';
 
+/// File base from class name, e.g. `CountryModel` → `country`.
+String getxModelFileBaseFromClassName(String modelClassName) {
+  final base = modelClassName.endsWith('Model')
+      ? modelClassName.substring(0, modelClassName.length - 5)
+      : modelClassName;
+  final snake = base.replaceAllMapped(
+    RegExp(r'[A-Z]'),
+    (m) => '_${m.group(0)!.toLowerCase()}',
+  );
+  return snake.startsWith('_') ? snake.substring(1) : snake;
+}
+
 /// Sample JSON row for [generateClass] from dropdown field config.
 Map<String, dynamic> getxModelSampleJson(Map<String, dynamic> field) {
   final dropdownData = field['dropdowndata'];

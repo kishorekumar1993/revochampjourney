@@ -1,17 +1,19 @@
 // lib/bloc/generators/screen/screen_generator.dart
 
-import 'dart:convert';
+import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
 
 class ScreenGenerator {
   ScreenGenerator({
     required this.featureName,
     required this.flatFields,
     required this.hasSubmit,
+    this.stepJson,
   });
 
   final String featureName;
   final List<Map<String, dynamic>> flatFields;
   final bool hasSubmit;
+  final Map<String, dynamic>? stepJson;
 
   List<Map<String, dynamic>> get _asyncFields =>
       flatFields.where(_isApiDropdown).toList();
@@ -22,6 +24,7 @@ class ScreenGenerator {
     final snakeName = _toSnakeCase(featureName);
     final stateName = '${featureName}State';
     final blocName = '${featureName}Bloc';
+    final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
     final buf = StringBuffer();
 
     // ─── Imports ──────────────────────────────────────────────────────────
@@ -30,9 +33,10 @@ class ScreenGenerator {
     buf.writeln("import '../bloc/${snakeName}_bloc.dart';");
     buf.writeln("import '../bloc/${snakeName}_state.dart';");
     buf.writeln("import '../bloc/${snakeName}_event.dart';");
-    buf.writeln("import '/core/widgets/widgets.dart';"); // adjust path
-    buf.writeln("import '/core/runtime/async_state.dart';"); // important!
-    buf.writeln("import '/core/runtime/failure.dart';");
+    buf.writeln("import '../../../../../core/widgets/widgets.dart';");
+    buf.writeln("import '/core/runtime/async_state.dart' as runtime;");
+    buf.writeln("import '../../presentation/bloc/async_value.dart' as asyncv;");
+    buf.writeln("import '../../../../../core/runtime/failure.dart';");
 
     // Import both wrapper and inner entities for API dropdowns
     final wrapperImports = <String>{};
@@ -65,28 +69,64 @@ class ScreenGenerator {
     buf.writeln();
 
     // ─── Helper: convert AsyncValue → AsyncState (matching your AsyncState class) ──
-    buf.writeln("AsyncState<T> _toAsyncState<T>(AsyncValue<T> asyncValue) {");
-    buf.writeln("  return asyncValue.when(");
-    buf.writeln("    idle: () => AsyncIdle<T>(),");
-    buf.writeln("    loading: () => AsyncLoading<T>(),");
-    buf.writeln("    data: (data) =>  AsyncSuccess<T>(data),");
-    buf.writeln(
-      "    error: (err) => AsyncFailure<T>(Failure(message: err.toString())),",
-    );
-    buf.writeln("  );");
-    buf.writeln("}");
-    buf.writeln();
+    // buf.writeln("AsyncState<T> _toAsyncState<T>(AsyncValue<T> asyncValue) {");
+    // buf.writeln("  return asyncValue.when(");
+    // buf.writeln("    idle: () => AsyncIdle<T>(),");
+    // buf.writeln("    loading: () => AsyncLoading<T>(),");
+    // buf.writeln("    data: (data) =>  AsyncSuccess<T>(data),");
+    // buf.writeln(
+    //   "    error: (err) => AsyncFailure<T>(Failure(message: err.toString())),",
+    // );
+    // buf.writeln("  );");
+    // buf.writeln("}");
+    // buf.writeln();
+
+    buf.writeln("""
+runtime.AsyncState<T> _toAsyncState<T>(
+  asyncv.AsyncValue<T> asyncValue,
+) {
+  return asyncValue.when(
+    idle: () => runtime.AsyncIdle<T>(),
+    loading: () => runtime.AsyncLoading<T>(),
+    data: (data) => runtime.AsyncSuccess<T>(data),
+    error: (err) => runtime.AsyncFailure<T>(
+      runtime.Failure(
+        message: err.toString(),
+      ),
+    ),
+  );
+}
+
+""");
 
     // ─── Screen widget ────────────────────────────────────────────────────
     buf.writeln('class ${featureName}Screen extends StatelessWidget {');
     buf.writeln('  const ${featureName}Screen({super.key});');
     buf.writeln('  @override');
     buf.writeln('  Widget build(BuildContext context) {');
-    buf.writeln('    return Scaffold(');
+    buf.writeln('    return BlocListener<$blocName, $stateName>(');
+    buf.writeln('      listenWhen: (prev, curr) =>');
+    buf.writeln(
+      '          prev.navigationTargetStepId != curr.navigationTargetStepId,',
+    );
+    buf.writeln('      listener: (context, state) {');
+    buf.writeln('        final target = state.navigationTargetStepId;');
+    buf.writeln('        if (target != null && target.isNotEmpty) {');
+    buf.writeln(
+      "          Navigator.of(context).pushNamed('/journey/\$target');",
+    );
+    buf.writeln('        }');
+    buf.writeln('        if (state.errorMessage != null) {');
+    buf.writeln('          ScaffoldMessenger.of(context).showSnackBar(');
+    buf.writeln('            SnackBar(content: Text(state.errorMessage!)),');
+    buf.writeln('          );');
+    buf.writeln('        }');
+    buf.writeln('      },');
+    buf.writeln('      child: Scaffold(');
     buf.writeln("      backgroundColor: const Color(0xFFF8FAFC),");
     buf.writeln("      appBar: AppBar(");
     buf.writeln(
-      "        title: const Text('$featureName', style: TextStyle(fontWeight: FontWeight.w600)),",
+      "        title: const Text('${stepMeta.escapedTitle}', style: TextStyle(fontWeight: FontWeight.w600)),",
     );
     buf.writeln("        backgroundColor: Colors.transparent,");
     buf.writeln("        foregroundColor: const Color(0xFF0F172A),");
@@ -105,9 +145,10 @@ class ScreenGenerator {
     buf.writeln("        ],");
     buf.writeln("      ),");
     buf.writeln("      body: const SafeArea(child: _${featureName}Body()),");
-    buf.writeln("    );");
-    buf.writeln("  }");
-    buf.writeln("}");
+    buf.writeln('      ),');
+    buf.writeln('    );');
+    buf.writeln('  }');
+    buf.writeln('}');
     buf.writeln();
 
     // ─── Body widget ─────────────────────────────────────────────────────
@@ -134,6 +175,7 @@ class ScreenGenerator {
     buf.writeln('            child: Column(');
     buf.writeln('              crossAxisAlignment: CrossAxisAlignment.start,');
     buf.writeln('              children: [');
+    stepMeta.writeFlutterStepHeader(buf);
     for (final f in flatFields.where(_isFormField)) {
       final fieldKey = _fieldName(f);
       buf.writeln(
@@ -141,8 +183,7 @@ class ScreenGenerator {
       );
     }
     if (hasSubmit) {
-      buf.writeln('                const SizedBox(height: 24),');
-      buf.writeln('                _SubmitButton(),');
+      stepMeta.writeBlocActionButton(buf, featureName);
     }
     buf.writeln('              ],');
     buf.writeln('            ),');
@@ -160,30 +201,6 @@ class ScreenGenerator {
       buf.writeln();
     }
 
-    // ─── Submit button (placeholder) ─────────────────────────────────────
-    if (hasSubmit) {
-      buf.writeln('class _SubmitButton extends StatelessWidget {');
-      buf.writeln('  @override');
-      buf.writeln('  Widget build(BuildContext context) {');
-      buf.writeln('    return AppFormButton(');
-      buf.writeln("      label: 'Submit',");
-      buf.writeln("      loadingLabel: 'Submitting...',");
-      buf.writeln('      state: AppButtonState.idle,');
-      buf.writeln('      onPressed: () {');
-      buf.writeln(
-        '        // Submit logic goes here – add a submit event if required',
-      );
-      buf.writeln('        ScaffoldMessenger.of(context).showSnackBar(');
-      buf.writeln(
-        "          const SnackBar(content: Text('Submit pressed (not implemented)')),",
-      );
-      buf.writeln('        );');
-      buf.writeln('      },');
-      buf.writeln('    );');
-      buf.writeln('  }');
-      buf.writeln('}');
-    }
-
     return buf.toString();
   }
 
@@ -197,7 +214,6 @@ class ScreenGenerator {
     String blocName,
   ) {
     final type = (field['type'] ?? '').toString().toLowerCase();
-    final fieldKey = _fieldName(field);
 
     if (type == 'text' ||
         type == 'textfield' ||
@@ -232,6 +248,8 @@ class ScreenGenerator {
       _writeFileUpload(buf, field, stateName, blocName);
     } else if (type == 'multiselect' || type == 'multi_select') {
       _writeMultiSelect(buf, field, stateName, blocName);
+    } else if (type == 'divider') {
+      _writeDivider(buf, field);
     } else {
       _writePlaceholder(buf, field);
     }
@@ -252,7 +270,10 @@ class ScreenGenerator {
     final readOnly = field['readOnly'] == true;
     final enabled = field['disable'] != true;
     final obscure = field['obscureText'] == true;
-    final kbType = _flutterKeyboardType(field['keyboardType'] ?? '');
+    final rawType = (field['type'] ?? '').toString().toLowerCase();
+    final kbType = rawType == 'otp'
+        ? 'TextInputType.number'
+        : _flutterKeyboardType(field['keyboardType'] ?? '');
     final capType = _flutterCapitalization(field['textCapitalization'] ?? '');
     final inputAction = _flutterInputAction(field['textInputAction'] ?? '');
 
@@ -301,7 +322,11 @@ class ScreenGenerator {
     if (readOnly) buf.writeln('          readOnly: true,');
     if (!enabled) buf.writeln('          enabled: false,');
     if (obscure) buf.writeln('          obscureText: true,');
-    if (maxLen != null) buf.writeln('          maxLength: $maxLen,');
+    if (maxLen != null) {
+      buf.writeln('          maxLength: $maxLen,');
+    } else if (rawType == 'otp') {
+      buf.writeln('          maxLength: 6,');
+    }
     if (isArea) {
       buf.writeln('          maxLines: 5,');
       buf.writeln('          minLines: 3,');
@@ -406,7 +431,8 @@ class ScreenGenerator {
     //   '          data: (wrapper) => listAsync = AsyncValue.data(wrapper.$listField as List<$innerEntityClass>),',
     // );
     buf.writeln(
-  '          data: (wrapper) => listAsync = AsyncValue.data(wrapper.$listField),');
+      '          data: (wrapper) => listAsync = AsyncValue.data(wrapper.$listField),',
+    );
     buf.writeln('          error: (err) => listAsync = AsyncValue.error(err),');
     buf.writeln('        );');
     buf.writeln(
@@ -668,12 +694,53 @@ class ScreenGenerator {
     buf.writeln('}');
   }
 
+  void _writeDivider(StringBuffer buf, Map<String, dynamic> field) {
+    final fieldKey = _fieldName(field);
+    final label = (field['label'] ?? '').toString().trim();
+    buf.writeln('class _${_cap(fieldKey)}Field extends StatelessWidget {');
+    buf.writeln('  const _${_cap(fieldKey)}Field({super.key});');
+    buf.writeln('  @override');
+    buf.writeln('  Widget build(BuildContext context) {');
+    buf.writeln('    return Padding(');
+    buf.writeln('      padding: const EdgeInsets.symmetric(vertical: 12),');
+    buf.writeln('      child: Column(');
+    buf.writeln('        crossAxisAlignment: CrossAxisAlignment.start,');
+    buf.writeln('        children: [');
+    if (label.isNotEmpty) {
+      buf.writeln("          Text('${_escape(label)}'),");
+      buf.writeln('          const SizedBox(height: 8),');
+    }
+    buf.writeln('          const Divider(),');
+    buf.writeln('        ],');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+    buf.writeln('  }');
+    buf.writeln('}');
+  }
+
   // --------------------------------------------------------------------------
   // Helpers for names and types (unchanged)
   // --------------------------------------------------------------------------
   bool _isFormField(Map<String, dynamic> field) {
     final type = (field['type'] ?? '').toString().toLowerCase();
-    const skip = {'card', 'group', 'section', 'step', 'tab', 'container'};
+    final hidden = field['hidden'] == true;
+    final visible = field['visible'] != false;
+    const skip = {
+      'card',
+      'group',
+      'section',
+      'step',
+      'tab',
+      'tabs',
+      'container',
+      'row',
+      'column',
+      'accordion',
+      'table_grid',
+      'timeline',
+      'repeater',
+    };
+    if (hidden || !visible) return false;
     return !skip.contains(type);
   }
 
@@ -685,11 +752,30 @@ class ScreenGenerator {
     return !useStatic && hasApiUrl;
   }
 
+  bool _isAutoId(String? id) {
+    if (id == null) return true;
+    return RegExp(r'^field_\d+$').hasMatch(id.trim());
+  }
+
   String _fieldName(Map<String, dynamic> f) {
-    final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field')
-        .toString()
-        .trim();
+    final id = f['id']?.toString().trim();
+    final label = (f['label'] ?? f['fieldId'] ?? 'field').toString().trim();
+    if (_isAutoId(id)) return _labelToCamel(label);
+    final raw = (id ?? label);
     final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
+  }
+
+  String _labelToCamel(String label) {
+    final parts = label.trim().split(RegExp(r'[\s_\-]+'));
+    if (parts.isEmpty) return 'field';
+    final first = parts.first;
+    final rest = parts.skip(1).map((p) {
+      if (p.isEmpty) return '';
+      return p[0].toUpperCase() + p.substring(1);
+    }).join();
+    final camel = first[0].toLowerCase() + first.substring(1) + rest;
+    final n = camel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
   }
 

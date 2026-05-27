@@ -1,5 +1,6 @@
 // lib/blocnew/bloc_generator.dart
 
+import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
 
 // ─── Recursive flatten ─────────────────────────────────────────────
 List<Map<String, dynamic>> flattenBlocFields(dynamic source) {
@@ -47,11 +48,39 @@ bool _isApiDropdown(Map<String, dynamic> field) {
 }
 
 // ─── Resolve names from JSON field ────────────────────────────────
+// When id is an auto-generated slug like "field_1779698673548" we fall back
+// to the human-readable label so the Dart identifier stays meaningful.
+bool _isAutoId(String? id) {
+  if (id == null) return true;
+  return RegExp(r'^field_\d+$').hasMatch(id.trim());
+}
+
 String _fieldName(Map<String, dynamic> f) {
-  final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field')
-      .toString()
-      .trim();
+  final id = f['id']?.toString().trim();
+  final label = (f['label'] ?? f['fieldId'] ?? 'field').toString().trim();
+
+  if (_isAutoId(id)) {
+    // label-derived camelCase: "Post Title" → "postTitle"
+    return _labelToCamel(label);
+  }
+
+  // id-derived: preserve camelCase / strip spaces
+  final raw = (id ?? label);
   final n = raw.replaceAll(RegExp(r'\s+'), '');
+  return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
+}
+
+/// "Full Name" → "fullName", "vehicleNum" → "vehicleNum" (already camel)
+String _labelToCamel(String label) {
+  final parts = label.trim().split(RegExp(r'[\s_\-]+'));
+  if (parts.isEmpty) return 'field';
+  final first = parts.first;
+  final rest = parts.skip(1).map((p) {
+    if (p.isEmpty) return '';
+    return p[0].toUpperCase() + p.substring(1);
+  }).join();
+  final camel = first[0].toLowerCase() + first.substring(1) + rest;
+  final n = camel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
   return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
 }
 
@@ -200,6 +229,7 @@ class BlocGenerator {
   BlocGenerator({
     required this.featureName,
     required this.configList,
+    this.stepJson,
     this.generateAsyncValueSeparately = false,
     this.entityImportPrefix = '../../domain/entity/',
     this.usecaseImportPrefix = '../../domain/usecases/',
@@ -208,6 +238,7 @@ class BlocGenerator {
 
   final String featureName;
   final List<dynamic> configList;
+  final Map<String, dynamic>? stepJson;
   final bool generateAsyncValueSeparately;
   final String entityImportPrefix;
   final String usecaseImportPrefix;
@@ -241,8 +272,11 @@ class BlocGenerator {
   String generateBloc() {
     final b = StringBuffer();
     final snake = _snake(featureName);
+    final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
+    b.writeln("import 'dart:convert';");
     b.writeln("import 'package:flutter_bloc/flutter_bloc.dart';");
+    b.writeln("import 'package:http/http.dart' as http;");
     b.writeln("import '${snake}_event.dart';");
     b.writeln("import '${snake}_state.dart';");
     b.writeln("import '$asyncValueImportPath';");
@@ -269,10 +303,13 @@ class BlocGenerator {
       b.writeln("    on<Load${featureName}DataEvent>(_onLoadData);");
     }
     b.writeln("    on<Reset${featureName}Event>(_onReset);");
+    b.writeln("    on<${featureName}PrimaryActionEvent>(_onPrimaryAction);");
     if (_hasAsync) {
       b.writeln("    add(Load${featureName}DataEvent());");
     }
     b.writeln("  }");
+    stepMeta.writeStepConstants(b);
+    b.writeln();
     b.writeln();
 
     b.writeln("  void _onFieldChanged(");
@@ -302,8 +339,6 @@ class BlocGenerator {
         final fName = _fieldName(f);
         final fPascal = _fieldPascal(f);
         final method = _withS('load$fPascal');
-        final returnsList = _returnsList(f);
-
         b.writeln("    emit(state.copyWith(${fName}Async: const AsyncValue.loading()));");
         b.writeln("    final ${fName}Result = await usecases.$method();");
         b.writeln("    ${fName}Result.fold(");
@@ -324,6 +359,60 @@ class BlocGenerator {
     b.writeln("    Emitter<${featureName}State> emit,");
     b.writeln("  ) {");
     b.writeln("    emit(${featureName}State.initial());");
+    b.writeln("  }");
+    b.writeln();
+    JourneyStepCodegen.writeHttpHelper(b);
+    stepMeta.writeApiExecutionMethods(b);
+    b.writeln();
+    b.writeln("  Future<void> _onPrimaryAction(");
+    b.writeln("    ${featureName}PrimaryActionEvent event,");
+    b.writeln("    Emitter<${featureName}State> emit,");
+    b.writeln("  ) async {");
+    b.writeln("    if (state.isExecuting) return;");
+    b.writeln("    emit(state.copyWith(isExecuting: true));");
+    b.writeln("    try {");
+    if (stepMeta.hasValidations) {
+      for (final v in stepMeta.validations) {
+        final type = v['type']?.toString().toLowerCase() ?? '';
+        final field = v['field']?.toString() ?? '';
+        final msg = v['message']?.toString().replaceAll("'", "\\'") ?? 'Validation failed';
+        if (field.isEmpty) continue;
+        if (type == 'required') {
+          b.writeln("      final v_$field = state.formValues['$field'];");
+          b.writeln("      if (v_$field == null || v_$field.toString().trim().isEmpty) {");
+          b.writeln("        emit(state.copyWith(");
+          b.writeln("          isExecuting: false,");
+          b.writeln("          errorMessage: '$msg',");
+          b.writeln("        ));");
+          b.writeln("        return;");
+          b.writeln("      }");
+        } else if (type == 'regex' || type == 'pattern') {
+          final regex = v['regexPattern']?.toString().replaceAll(r"\", r"\\").replaceAll("'", "\\'") ?? '';
+          if (regex.isEmpty) continue;
+          b.writeln("      final v_$field = state.formValues['$field']?.toString() ?? '';");
+          b.writeln("      if (v_$field.isNotEmpty && !RegExp(r'$regex').hasMatch(v_$field)) {");
+          b.writeln("        emit(state.copyWith(");
+          b.writeln("          isExecuting: false,");
+          b.writeln("          errorMessage: '$msg',");
+          b.writeln("        ));");
+          b.writeln("        return;");
+          b.writeln("      }");
+        }
+      }
+    }
+    b.writeln("      await executeStepApis(trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}');");
+    if (stepMeta.hasNextStep) {
+      b.writeln("      emit(state.copyWith(");
+      b.writeln("        isExecuting: false,");
+      b.writeln("        navigationTargetStepId: nextStepId,");
+      b.writeln("        errorMessage: null,");
+      b.writeln("      ));");
+    } else {
+      b.writeln("      emit(state.copyWith(isExecuting: false, errorMessage: null));");
+    }
+    b.writeln("    } catch (e) {");
+    b.writeln("      emit(state.copyWith(isExecuting: false, errorMessage: e.toString()));");
+    b.writeln("    }");
     b.writeln("  }");
     b.writeln("}");
 
@@ -369,13 +458,15 @@ class BlocGenerator {
     b.writeln("class Reset${featureName}Event extends ${featureName}Event {");
     b.writeln("  const Reset${featureName}Event();");
     b.writeln("}");
+    b.writeln();
+    b.writeln("class ${featureName}PrimaryActionEvent extends ${featureName}Event {");
+    b.writeln("  const ${featureName}PrimaryActionEvent();");
+    b.writeln("}");
     return b.toString();
   }
 
   String generateState() {
     final b = StringBuffer();
-    final snake = _snake(featureName);
-
     b.writeln("import 'dart:convert';");
     b.writeln("import 'package:equatable/equatable.dart';");
     b.writeln("import '$asyncValueImportPath';");
@@ -402,6 +493,9 @@ class BlocGenerator {
       }
     }
     b.writeln("  final Map<String, dynamic> formValues;");
+    b.writeln("  final bool isExecuting;");
+    b.writeln("  final String? navigationTargetStepId;");
+    b.writeln("  final String? errorMessage;");
     b.writeln();
 
     b.writeln("  const ${featureName}State({");
@@ -410,6 +504,9 @@ class BlocGenerator {
       b.writeln("    required this.${fName}Async,");
     }
     b.writeln("    required this.formValues,");
+    b.writeln("    this.isExecuting = false,");
+    b.writeln("    this.navigationTargetStepId,");
+    b.writeln("    this.errorMessage,");
     b.writeln("  });");
     b.writeln();
 
@@ -446,6 +543,9 @@ class BlocGenerator {
       }
     }
     b.writeln("    Map<String, dynamic>? formValues,");
+    b.writeln("    bool? isExecuting,");
+    b.writeln("    String? navigationTargetStepId,");
+    b.writeln("    String? errorMessage,");
     b.writeln("  }) {");
     b.writeln("    return ${featureName}State(");
     for (final f in _uniqueAsyncFields) {
@@ -453,6 +553,11 @@ class BlocGenerator {
       b.writeln("      ${fName}Async: ${fName}Async ?? this.${fName}Async,");
     }
     b.writeln("      formValues: formValues ?? this.formValues,");
+    b.writeln("      isExecuting: isExecuting ?? this.isExecuting,");
+    b.writeln(
+      "      navigationTargetStepId: navigationTargetStepId ?? this.navigationTargetStepId,",
+    );
+    b.writeln("      errorMessage: errorMessage,");
     b.writeln("    );");
     b.writeln("  }");
     b.writeln();
@@ -469,6 +574,9 @@ class BlocGenerator {
       b.writeln("    ${_fieldName(f)}Async,");
     }
     b.writeln("    jsonEncode(formValues),");
+    b.writeln("    isExecuting,");
+    b.writeln("    navigationTargetStepId,");
+    b.writeln("    errorMessage,");
     b.writeln("  ];");
     b.writeln("}");
 
@@ -536,7 +644,25 @@ class AsyncError<T> extends AsyncValue<T> {
 
   bool _isFormField(Map<String, dynamic> field) {
     final type = (field['type'] ?? '').toString().toLowerCase();
-    const skipTypes = {'card', 'group', 'section', 'step', 'tab', 'container'};
+    final hidden = field['hidden'] == true;
+    final visible = field['visible'] != false;
+    const skipTypes = {
+      'card',
+      'group',
+      'section',
+      'step',
+      'tab',
+      'tabs',
+      'container',
+      'row',
+      'column',
+      'accordion',
+      'table_grid',
+      'timeline',
+      'repeater',
+      'divider',
+    };
+    if (hidden || !visible) return false;
     return !skipTypes.contains(type);
   }
 

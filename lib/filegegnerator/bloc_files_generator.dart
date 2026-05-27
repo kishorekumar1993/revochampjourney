@@ -6,19 +6,16 @@ import 'package:revojourneytryone/generators/bloc/generators/widget_generator.da
 import 'package:revojourneytryone/generators/bloc/generators/api_client_generator.dart';
 import 'package:revojourneytryone/generators/bloc/generators/bloc_generator.dart';
 // import 'package:revojourneytryone/generators/bloc/generators/entity_generator.dart';
-import 'package:revojourneytryone/generators/bloc/generators/event_generator.dart';
-import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart' hide toSnakeCase;
-import 'package:revojourneytryone/generators/bloc/generators/mapper_generator.dart';
 import 'package:revojourneytryone/generators/bloc/runtime/observer_generator.dart';
 import 'package:revojourneytryone/generators/bloc/runtime/runtime_sources.dart';
 import 'package:revojourneytryone/generators/bloc/generators/screen_generator.dart';
-import 'package:revojourneytryone/generators/bloc/validators/validation_generator.dart';
 
 List<Map<String, String>> generateBlocFiles({
   required String screenName,
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
   required bool addCoreFiles,
+  Map<String, dynamic>? stepJson,
 }) {
   final result = <Map<String, String>>[];
 
@@ -26,6 +23,7 @@ List<Map<String, String>> generateBlocFiles({
     screenName: screenName,
     modelName: 'Form',
     fieldJsonRaw: rawFields,
+    stepJson: stepJson,
     generateTests: true,
     generateBarrels: true,
   ).generate();
@@ -61,19 +59,12 @@ List<Map<String, String>> generateBlocFiles({
   return result;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BLoC inner class (unchanged from v3)
-// ─────────────────────────────────────────────────────────────────────────────
-String _fieldNameFromMap(Map<String, dynamic> f) {
-  final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field').toString().trim();
-  final n = raw.replaceAll(RegExp(r'\s+'), '');
-  return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
-}
 class RevochampBlocGenerator {
   RevochampBlocGenerator({
     required this.screenName,
     required this.modelName,
     required this.fieldJsonRaw,
+    this.stepJson,
     this.generateTests = true,
     this.generateBarrels = true,
   });
@@ -81,6 +72,7 @@ class RevochampBlocGenerator {
   final String screenName;
   final String modelName;
   final List<Map<String, dynamic>> fieldJsonRaw;
+  final Map<String, dynamic>? stepJson;
   final bool generateTests;
   final bool generateBarrels;
 
@@ -88,19 +80,10 @@ Map<String, String> generate() {
   final featureName = '$screenName$modelName';
   final baseName = screenName.toLowerCase();
   final snakeName = toSnakeCase(featureName);
-  final resultData = '${featureName}ResultData';
   final featBase = 'lib/bloc/features/$baseName';
 
   // ----- Use raw JSON fields for the new generators -----
   final flatFields = flattenBlocFields(fieldJsonRaw); // List<Map<String,dynamic>>
-  final fieldNames = flatFields
-      .map((f) => _fieldNameFromMap(f)) // extract human-readable key
-      .toList();
-
-  // Legacy FieldSchema list (keep for older generators like EventGenerator)
-  final fields = fieldJsonRaw
-      .map((e) => FieldSchema.fromJson(Map<String, dynamic>.from(e)))
-      .toList();
 
   final files = <String, String>{};
 
@@ -113,11 +96,10 @@ Map<String, String> generate() {
       const ObserverGenerator().generate();
 
   // ----- Updated generators (using flatFields / fieldNames) -----
-  files['$featBase/presentation/validation/${snakeName}_validators.dart'] =
-      ValidationGenerator(
-        featureName: featureName,
-        fields: flatFields, // now expects List<Map<String,dynamic>>
-      ).generate();
+  // NOTE:
+  // Validators and mappers are intentionally not emitted here because they are
+  // currently not wired by the generated BLoC flow and produced extra/unusable
+  // files for JSON-driven generation.
 
   // EventGenerator may still use FieldSchema list (adapt if needed)
 //   files['$featBase/presentation/events/${snakeName}_event.dart'] =
@@ -135,20 +117,12 @@ Map<String, String> generate() {
   //       // resultEntityClass: '${featureName}Entity',
   //     ).generate();
 
-  files['$featBase/presentation/mapper/${snakeName}_mapper.dart'] =
-      MapperGenerator(
-        featureName: featureName,
-        fieldNames: fieldNames, // required List<String>
-        entityClassName: '${featureName}Entity',
-        stateClassName: '${featureName}FeatureState',
-      ).generate();
-
   // BLoC generator (already fixed) uses configList = flatFields
   final blocFiles = BlocGenerator(
     featureName: featureName,
-    configList: flatFields, // raw JSON list
+    configList: flatFields,
+    stepJson: stepJson,
     generateAsyncValueSeparately: false,
-    // hasSubmit: true, // or false, depending on your form
   ).generateAll();
 
   blocFiles.forEach((key, value) {
@@ -159,6 +133,7 @@ Map<String, String> generate() {
       ScreenGenerator(
         featureName: featureName,
         flatFields: flatFields,
+        stepJson: stepJson,
         hasSubmit: true,
       ).generate();
   //   if (generateBarrels) {

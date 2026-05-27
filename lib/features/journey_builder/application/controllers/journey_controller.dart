@@ -697,13 +697,42 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
   }
 
   void resetWithDefaults(JourneyStep step) {
+    mergeStepDefaults(step, replaceExisting: true);
+  }
+
+  /// Preserves journey-wide values; only fills missing keys from step defaults.
+  void mergeStepDefaults(JourneyStep step, {bool replaceExisting = false}) {
+    if (replaceExisting) {
+      state = _defaultsForStep(step);
+      return;
+    }
+    final merged = Map<String, dynamic>.from(state);
+    for (final f in step.flattenedFields) {
+      if (f.defaultValue != null && !merged.containsKey(f.id)) {
+        merged[f.id] = f.defaultValue!;
+      }
+    }
+    state = merged;
+  }
+
+  void restoreSession({
+    required Map<String, dynamic> values,
+    JourneyStep? step,
+  }) {
+    state = Map<String, dynamic>.from(values);
+    if (step != null) {
+      mergeStepDefaults(step);
+    }
+  }
+
+  Map<String, dynamic> _defaultsForStep(JourneyStep step) {
     final defaults = <String, dynamic>{};
-    for (var f in step.flattenedFields) {
+    for (final f in step.flattenedFields) {
       if (f.defaultValue != null) {
         defaults[f.id] = f.defaultValue!;
       }
     }
-    state = defaults;
+    return defaults;
   }
 }
 

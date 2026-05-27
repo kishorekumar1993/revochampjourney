@@ -23,8 +23,7 @@ class ValidationGenerator {
       if (entityClass.isEmpty) continue;
       if (importedEntities.contains(entityClass)) continue;
       importedEntities.add(entityClass);
-      final snake = _toSnakeCase(entityClass.replaceAll('Entity', ''));
-      // buf.writeln("import '../../domain/entity/${snake}_entity.dart';");
+      // import commented out — entity files not generated in current pipeline;
     }
     if (importedEntities.isNotEmpty) buf.writeln();
 
@@ -235,9 +234,30 @@ class ValidationGenerator {
   }
 
   // --- Common utilities (matching bloc generator) ---
+  bool _isAutoId(String? id) {
+    if (id == null) return true;
+    return RegExp(r'^field_\d+$').hasMatch(id.trim());
+  }
+
   String _fieldName(Map<String, dynamic> f) {
-    final raw = (f['label'] ?? f['id'] ?? f['fieldId'] ?? 'field').toString().trim();
+    final id = f['id']?.toString().trim();
+    final label = (f['label'] ?? f['fieldId'] ?? 'field').toString().trim();
+    if (_isAutoId(id)) return _labelToCamel(label);
+    final raw = (id ?? label);
     final n = raw.replaceAll(RegExp(r'\s+'), '');
+    return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
+  }
+
+  String _labelToCamel(String label) {
+    final parts = label.trim().split(RegExp(r'[\s_\-]+'));
+    if (parts.isEmpty) return 'field';
+    final first = parts.first;
+    final rest = parts.skip(1).map((p) {
+      if (p.isEmpty) return '';
+      return p[0].toUpperCase() + p.substring(1);
+    }).join();
+    final camel = first[0].toLowerCase() + first.substring(1) + rest;
+    final n = camel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     return n.isEmpty ? 'field' : n[0].toLowerCase() + n.substring(1);
   }
 

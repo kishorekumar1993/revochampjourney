@@ -18,6 +18,7 @@ List<Map<String, String>> generateGetxFiles({
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
   List<Map<String, dynamic>>? flatFields,
+  Map<String, dynamic>? stepJson,
 }) {
   final result    = <Map<String, String>>[];
   final baseName  = screenName.toLowerCase();
@@ -33,9 +34,19 @@ List<Map<String, String>> generateGetxFiles({
     rawFields.isNotEmpty ? rawFields.first : <String, dynamic>{}, 
     fileName,
   );
-  final controller = generatecontrollerClass(className, rawFields, fileName);
+  final controller = generatecontrollerClass(
+    className,
+    rawFields,
+    fileName,
+    stepJson: stepJson,
+  );
   final repository = generaterepositoryClass(className, rawFields, fileName);
-  final view       = generateviewClass(className, rawFields, fileName);
+  final view = generateviewClass(
+    className,
+    rawFields,
+    fileName,
+    stepJson: stepJson,
+  );
 
   result.addAll([
     {'folderPath': '$base/bindings',     'fileName': '${fileName}_binding.dart',    'textContent': binding},

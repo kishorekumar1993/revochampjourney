@@ -21,8 +21,8 @@ List<Map<String, String>> generateRiverpodFiles({
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
   List<Map<String, dynamic>>? flatFields,
-    required Map<String, dynamic> journeyJson,   // new parameter
-
+  required Map<String, dynamic> journeyJson,
+  Map<String, dynamic>? stepJson,
 }) {
   final result   = <Map<String, String>>[];
   final baseName = screenName.toLowerCase();
@@ -71,7 +71,12 @@ List<Map<String, String>> generateRiverpodFiles({
   final locator       = generateLocatorInterface(className, rawFields, fileName);
   final dataSource    = generateDataSourceInterface(className, rawFields, fileName);
   final provider      = generateProviderInterface(className, rawFields, fileName);
-  final view          = generateriverpodviewClass(className, rawFields, fileName);
+  final view = generateriverpodviewClass(
+    className,
+    rawFields,
+    fileName,
+    stepJson: stepJson,
+  );
 // ── Use‑case generator ─────────────────────────────────────────────
 // ── Use‑case generator ─────────────────────────────────────────────
 final repositoryClassName = '${className}Repository';

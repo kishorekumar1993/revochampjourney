@@ -80,13 +80,16 @@ List<Map<String, String>> generateAllFilesData({
         : 'Step';
 
     debugPrint('  📋 Step: $screenName (${rawFields.length} fields)');
-  
+
+    final stepJson = step.toJson();
+
     // ── 1. BLoC ───────────────────────────────────────────────────────────
     if (architectures.contains(Architecture.bloc)) {
       final blocFiles = generateBlocFiles(
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
+        stepJson: stepJson,
         addCoreFiles: !coreFilesAdded,
       );
       allFiles.addAll(blocFiles);
@@ -104,8 +107,11 @@ List<Map<String, String>> generateAllFilesData({
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
         flatFields: flatFields,
-        journeyJson: journeyJson,
-        statemanagement: "Bloc" // <-- pass the full JSON
+        journeyJson: {
+          'journeyName': journeyJson['journeyName'],
+          'steps': [stepJson],
+        },
+        statemanagement: "Bloc",
       );
       allFiles.addAll(commonFiles);
     }
@@ -117,6 +123,7 @@ List<Map<String, String>> generateAllFilesData({
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
         flatFields: flatFields,
+        stepJson: stepJson,
       );
       allFiles.addAll(getxFiles);
     }
@@ -126,14 +133,22 @@ List<Map<String, String>> generateAllFilesData({
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
-        journeyJson: journeyJson, // <-- pass the full JSON
+        journeyJson: journeyJson,
         flatFields: flatFields,
+        stepJson: stepJson,
       );
       allFiles.addAll(riverpodFiles);
     }
 
     coreFilesAdded = true;
   }
+
+  // Journey route map for generated Next navigation (GetX / Riverpod / BLoC).
+  allFiles.add({
+    'folderPath': 'lib/core/routing',
+    'fileName': 'journey_routes.dart',
+    'textContent': _generateJourneyRoutes(journeyConfig),
+  });
 
   if (architectures.contains(Architecture.bloc) &&
       blocFeaturesInfo.isNotEmpty) {
@@ -342,3 +357,17 @@ String _toJourneyNamespace(String name) {
           .join();
 }
 
+/// Route constants from journey JSON steps (used by generated Next navigation).
+String _generateJourneyRoutes(dynamic journeyConfig) {
+  final buf = StringBuffer();
+  buf.writeln('// AUTO-GENERATED — journey step routes from JSON');
+  buf.writeln('class JourneyRoutes {');
+  buf.writeln('  JourneyRoutes._();');
+  buf.writeln();
+  for (final step in journeyConfig.steps) {
+    final id = step.id.replaceAll("'", "\\'");
+    buf.writeln("  static const String $id = '/journey/$id';");
+  }
+  buf.writeln('}');
+  return buf.toString();
+}

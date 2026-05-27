@@ -13,7 +13,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/runner',
-        builder: (context, state) => const JourneyRunnerScreen(),
+        builder: (context, state) {
+          final stepId = state.uri.queryParameters['step'];
+          return JourneyRunnerScreen(initialStepId: stepId);
+        },
       ),
     ],
   );

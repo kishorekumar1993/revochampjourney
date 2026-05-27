@@ -1,9 +1,14 @@
+import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
+import 'package:revojourneytryone/getx/getx_model_naming.dart';
+
 String generateviewClass(
   String className,
-  List<Map<String, dynamic>> fields,
-  String fileName,
-) {
+  List<dynamic> fields,
+  String fileName, {
+  Map<String, dynamic>? stepJson,
+}) {
   final buffer = StringBuffer();
+  final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
   // ─── Recursive flatten ────────────────────────────────────────
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
@@ -14,19 +19,20 @@ String generateviewClass(
       }
       return;
     }
-    if (source is! Map<String, dynamic>) return;
-    if (source.containsKey('steps')) {
-      flattenFields(source['steps'], result);
+    if (source is! Map) return;
+    final map = Map<String, dynamic>.from(source);
+    if (map.containsKey('steps')) {
+      flattenFields(map['steps'], result);
       return;
     }
-    if (source.containsKey('fields')) {
-      flattenFields(source['fields'], result);
+    if (map.containsKey('fields')) {
+      flattenFields(map['fields'], result);
       return;
     }
-    if (source.containsKey('type')) {
-      result.add(source);
-      flattenFields(source['nestedFields'], result);
-      final config = source['componentConfig'];
+    if (map.containsKey('type')) {
+      result.add(map);
+      flattenFields(map['nestedFields'], result);
+      final config = map['componentConfig'];
       if (config is Map) {
         flattenFields(config['fields'], result);
         flattenFields(config['columns'], result);
@@ -38,57 +44,6 @@ String generateviewClass(
   flattenFields(fields, flatFields);
 
   // ─── Name helpers ──────────────────────────────────────────────
-
-  // ✅ Derive model class from dropdowndata key — not from label
-  // "recipes":[...] → "RecipeModel", "todos":[...] → "TodoModel"
-  String resolveModelClass(Map<String, dynamic> field) {
-    final dropdowndata = field['dropdowndata'];
-    if (dropdowndata is Map<String, dynamic>) {
-      for (final entry in dropdowndata.entries) {
-        final v = entry.value;
-        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-          final singular = singularize(entry.key);
-          return capitalize(singular); // ✅ removed 'Model'
-        }
-      }
-    }
-    // Fallback – also without Model suffix
-    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
-        .toString()
-        .trim();
-    final n = raw.replaceAll(RegExp(r'\s+'), '');
-    return capitalize(n);
-  }
-
-  // String resolveModelClass(Map<String, dynamic> field) {
-  //   final dropdowndata = field['dropdowndata'];
-  //   if (dropdowndata is Map<String, dynamic>) {
-  //     for (final entry in dropdowndata.entries) {
-  //       final v = entry.value;
-  //       if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-  //         final singular = singularize(entry.key);
-  //         return '${capitalize(singular)}Model';
-  //       }
-  //     }
-  //   }
-  //   final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
-  //       .toString()
-  //       .trim();
-  //   final n = raw.replaceAll(RegExp(r'\s+'), '');
-  //   return '${capitalize(n)}Model';
-  // }
-
-  // "RecipeModel" → "recipe"  (for import file name)
-  String modelClassToFileName(String modelClass) {
-    final base = modelClass.endsWith('Model')
-        ? modelClass.substring(0, modelClass.length - 5)
-        : modelClass;
-    final snake = base.replaceAllMapped(
-      RegExp(r'[A-Z]'),
-      (m) => '_${m.group(0)!.toLowerCase()}',
-    );
-    return snake.startsWith('_') ? snake.substring(1) : snake;
-  }
 
   // ─── Conditional imports ───────────────────────────────────────
   final hasRadio = flatFields.any(
@@ -113,21 +68,10 @@ String generateviewClass(
   // ✅ Model imports derived from dropdowndata keys — not from label
   final emittedModelFiles = <String>{};
   for (final field in flatFields) {
-    final type = (field['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown' || type == 'api_dropdown') {
-      final useStatic = field['useStaticOptions'] == true;
-      final hasApiUrl = field['dropdownApiUrl'] != null;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
-      if ((!useStatic && hasApiUrl) ||
-          (!useStatic && (staticOpts == null || staticOpts.isEmpty))) {
-        final modelClass = resolveModelClass(field);
-        final modelFile = modelClassToFileName(modelClass);
-        if (emittedModelFiles.add(modelFile)) {
-          buffer.writeln("import '../model/${modelFile}_model.dart';");
-        }
-      }
+    if (!fieldNeedsGetxModel(field)) continue;
+    final modelFile = resolveGetxModelFileBase(field);
+    if (emittedModelFiles.add(modelFile)) {
+      buffer.writeln("import '${getxModelImportPath(modelFile)}';");
     }
   }
 
@@ -141,7 +85,7 @@ String generateviewClass(
   buffer.writeln("    final formKey = GlobalKey<FormState>();");
   buffer.writeln();
   buffer.writeln("    return Scaffold(");
-  buffer.writeln("      appBar: AppBar(title: const Text('$className Form')),");
+  buffer.writeln("      appBar: AppBar(title: const Text('${stepMeta.escapedTitle}')),");
   buffer.writeln("      body: Padding(");
   buffer.writeln("        padding: const EdgeInsets.all(16.0),");
   buffer.writeln("        child: Form(");
@@ -153,6 +97,7 @@ String generateviewClass(
   buffer.writeln("            child: Column(");
   buffer.writeln("              crossAxisAlignment: CrossAxisAlignment.start,");
   buffer.writeln("              children: [");
+  stepMeta.writeFlutterStepHeader(buffer);
 
   void buildWidgets(List<dynamic> currentFields) {
     for (final rawField in currentFields) {
@@ -346,7 +291,7 @@ String generateviewClass(
         // ══════════════════════════════════════════════
       } else if (type == 'dropdown' || type == 'api_dropdown') {
         if (isApiDropdown) {
-          final dropdownmodel = resolveModelClass(field); // e.g., "Post"
+          final dropdownmodel = resolveGetxModelClassName(field);
           // final dropdownKey = (field['dropdownValue'] ?? 'name').toString();
           final dropdownKey = (field['dropdownValue'] ?? 'title')
               .toString(); // better default
@@ -1665,19 +1610,10 @@ String generateviewClass(
 
   buildWidgets(fields);
 
-  buffer.writeln("                const SizedBox(height: 20),");
-  buffer.writeln("                Center(");
-  buffer.writeln("                  child: ElevatedButton(");
-  buffer.writeln("                    onPressed: () {");
-  buffer.writeln(
-    "                      if (formKey.currentState?.validate() ?? false) {",
+  stepMeta.writeFlutterActionButtons(
+    buffer,
+    onPressedHandler: '() => controller.onPrimaryAction()',
   );
-  buffer.writeln("                        // TODO: Submit logic");
-  buffer.writeln("                      }");
-  buffer.writeln("                    },");
-  buffer.writeln("                    child: const Text('Submit'),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
   buffer.writeln("              ],");
   buffer.writeln("            ),");
   buffer.writeln("          ),");

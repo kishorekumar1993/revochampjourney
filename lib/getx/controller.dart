@@ -1,11 +1,14 @@
+import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
 import 'package:revojourneytryone/getx/getx_model_naming.dart';
 
 String generatecontrollerClass(
   String className,
   List<dynamic> configList,
-  String fileName,
-) {
+  String fileName, {
+  Map<String, dynamic>? stepJson,
+}) {
   final buffer = StringBuffer();
+  final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
   // -------------------------------------------------------------------
   // Helper to recursively flatten all fields
@@ -18,20 +21,21 @@ String generatecontrollerClass(
       }
       return;
     }
-    if (source is! Map<String, dynamic>) return;
+    if (source is! Map) return;
 
-    if (source.containsKey('steps')) {
-      flattenFields(source['steps'], result);
+    final map = Map<String, dynamic>.from(source);
+    if (map.containsKey('steps')) {
+      flattenFields(map['steps'], result);
       return;
     }
-    if (source.containsKey('fields')) {
-      flattenFields(source['fields'], result);
+    if (map.containsKey('fields')) {
+      flattenFields(map['fields'], result);
       return;
     }
-    if (source.containsKey('type')) {
-      result.add(source);
-      flattenFields(source['nestedFields'], result);
-      final config = source['componentConfig'];
+    if (map.containsKey('type')) {
+      result.add(map);
+      flattenFields(map['nestedFields'], result);
+      final config = map['componentConfig'];
       if (config is Map) {
         flattenFields(config['fields'], result);
         flattenFields(config['columns'], result);
@@ -61,67 +65,16 @@ String generatecontrollerClass(
     return n.isEmpty ? 'Field' : n[0].toUpperCase() + n.substring(1);
   }
 
-  String capitalize(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-  String singularize(String text) {
-    if (text.endsWith('ies')) {
-      return '${text.substring(0, text.length - 3)}y';
-    }
-    if (text.endsWith('s') && text.length > 1) {
-      return text.substring(0, text.length - 1);
-    }
-    return text;
-  }
-
-  // ✅ FIX 1: Resolve model class WITHOUT appending "Model"
-  // The dropdown items are the inner classes (e.g., Post, User), not the wrapper.
-  String resolveModelClass(Map<String, dynamic> field) {
-    final dropdowndata = field['dropdowndata'];
-    if (dropdowndata is Map<String, dynamic>) {
-      for (final entry in dropdowndata.entries) {
-        final v = entry.value;
-        if (v is List && v.isNotEmpty && v.first is Map<String, dynamic>) {
-          final singular = singularize(entry.key);
-          return capitalize(singular); // e.g. "recipes" → "Recipe"
-        }
-      }
-    }
-    // Fallback: label‑based
-    final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'model')
-        .toString()
-        .trim();
-    final n = raw.replaceAll(RegExp(r'\s+'), '');
-    return capitalize(n);
-  }
-
-  // e.g. "Recipe" → "recipe"  (for import file name)
-  String modelClassToFileName(String modelClass) {
-    // Model class is now just "Recipe", not "RecipeModel"
-    final snake = modelClass.replaceAllMapped(
-      RegExp(r'[A-Z]'),
-      (m) => '_${m.group(0)!.toLowerCase()}',
-    );
-    return snake.startsWith('_') ? snake.substring(1) : snake;
-  }
-
-  // ✅ FIX 2: Repository method pattern changed to get<PascalName>Options
-  // No longer needed for the method name itself, but keep the function if used elsewhere.
-  bool needsS(String name) => !name.toLowerCase().endsWith('s');
-
   // -------------------------------------------------------------------
   // Imports
   // -------------------------------------------------------------------
   final hasRadio = flatFields.any(
     (f) => (f['type'] ?? '').toString().toLowerCase().startsWith('radio'),
   );
-  final hasDropdown = flatFields.any((f) {
-    final t = (f['type'] ?? '').toString().toLowerCase();
-    return t == 'dropdown' || t == 'api_dropdown';
-  });
-
+  buffer.writeln("import 'dart:convert';");
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:get/get.dart';");
+  buffer.writeln("import 'package:http/http.dart' as http;");
   buffer.writeln(
     "import '../repository/${fileName.toLowerCase().replaceAll(' ', '_')}_repository.dart';",
   );
@@ -137,21 +90,10 @@ String generatecontrollerClass(
   // Collect model imports for API dropdowns
   final emittedModelFiles = <String>{};
   for (final field in flatFields) {
-    final type = (field['type'] ?? '').toString().toLowerCase();
-    if (type == 'dropdown' || type == 'api_dropdown') {
-      final useStatic = field['useStaticOptions'] == true;
-      final hasApiUrl = field['dropdownApiUrl'] != null;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
-      if ((!useStatic && hasApiUrl) ||
-          (!useStatic && (staticOpts == null || staticOpts.isEmpty))) {
-        final modelClass = resolveModelClass(field); // e.g. "Post"
-        final modelFile = modelClassToFileName(modelClass); // e.g. "post"
-        if (emittedModelFiles.add(modelFile)) {
-          buffer.writeln("import '../model/${modelFile}_model.dart';");
-        }
-      }
+    if (!fieldNeedsGetxModel(field)) continue;
+    final modelFile = resolveGetxModelFileBase(field);
+    if (emittedModelFiles.add(modelFile)) {
+      buffer.writeln("import '${getxModelImportPath(modelFile)}';");
     }
   }
 
@@ -161,6 +103,9 @@ String generatecontrollerClass(
   buffer.writeln("  ${className}Controller(this.repository);");
   buffer.writeln();
   buffer.writeln("  final isLoading = false.obs;");
+  buffer.writeln("  final isExecuting = false.obs;");
+  buffer.writeln();
+  stepMeta.writeStepConstants(buffer);
   buffer.writeln();
 
   final dropdownInitCalls = <String>[];
@@ -227,7 +172,7 @@ String generatecontrollerClass(
         );
       } else if (isApiDropdown) {
         // Dynamic dropdown – uses inner model class
-        final dropdownmodel = resolveModelClass(item);
+        final dropdownmodel = resolveGetxModelClassName(item);
 
         buffer.writeln("  var ${name}Options = <$dropdownmodel>[].obs;");
         buffer.writeln("  var selected$pascalName = Rxn<$dropdownmodel>();");
@@ -649,7 +594,83 @@ String generatecontrollerClass(
     }
   }
   buffer.writeln("  }");
+  buffer.writeln();
+
+  // ── Journey step execution (from JSON: apiCalls, actions, nextStep) ──
+  buffer.writeln('  dynamic _formValue(String fieldId) {');
+  buffer.writeln('    // Map field values from controllers / observables');
+  for (final item in flatFields) {
+    final name = getFieldName(item);
+    final type = (item['type'] ?? '').toString().toLowerCase().trim();
+    if (type == 'text' ||
+        type == 'textfield' ||
+        type == 'phone' ||
+        type == 'textarea' ||
+        type == 'otp' ||
+        type == 'email' ||
+        type == 'password' ||
+        type == 'number' ||
+        type == 'date' ||
+        type == 'time') {
+      buffer.writeln("    if (fieldId == '${item['id']}') return ${name}Controller.text;");
+    } else if (type == 'radio' || type == 'dropdown') {
+      final pascal = getPascalName(item);
+      buffer.writeln("    if (fieldId == '${item['id']}') return selected$pascal.value?.toString();");
+    } else if (type == 'switch' || type == 'checkbox') {
+      buffer.writeln("    if (fieldId == '${item['id']}') return ${name}Value.value.toString();");
+    }
+  }
+  buffer.writeln('    return null;');
+  buffer.writeln('  }');
+  buffer.writeln();
+
+  _writeGetxValidation(buffer, stepMeta, flatFields, getFieldName);
+  JourneyStepCodegen.writeHttpHelper(buffer);
+  stepMeta.writeApiExecutionMethods(buffer);
+  buffer.writeln();
+  buffer.writeln('  Future<void> onPrimaryAction() async {');
+  buffer.writeln('    if (isExecuting.value) return;');
+  buffer.writeln('    isExecuting.value = true;');
+  buffer.writeln('    try {');
+  buffer.writeln('      if (!validateStep()) return;');
+  buffer.writeln("      await executeStepApis(trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}');");
+  stepMeta.writeNavigateNextGetX(buffer, indent: '      ');
+  buffer.writeln('    } catch (e) {');
+  buffer.writeln("      Get.snackbar('Error', e.toString());");
+  buffer.writeln('    } finally {');
+  buffer.writeln('      isExecuting.value = false;');
+  buffer.writeln('    }');
+  buffer.writeln('  }');
   buffer.writeln("}");
 
   return buffer.toString();
+}
+
+void _writeGetxValidation(
+  StringBuffer buffer,
+  JourneyStepCodegen stepMeta,
+  List<Map<String, dynamic>> flatFields,
+  String Function(Map<String, dynamic>) getFieldName,
+) {
+  buffer.writeln('  bool validateStep() {');
+  if (!stepMeta.hasValidations) {
+    buffer.writeln('    return true;');
+    buffer.writeln('  }');
+    return;
+  }
+  for (final v in stepMeta.validations) {
+    final type = v['type']?.toString() ?? 'required';
+    final field = v['field']?.toString() ?? '';
+    final message = v['message']?.toString().replaceAll("'", "\\'") ?? 'Required';
+    if (type == 'required' && field.isNotEmpty) {
+      buffer.writeln('    final v = _formValue(\'$field\');');
+      buffer.writeln('    if (v == null || v.toString().trim().isEmpty) {');
+      buffer.writeln("      Get.snackbar('Validation', '$message');");
+      buffer.writeln('      return false;');
+      buffer.writeln('    }');
+    }
+  }
+  buffer.writeln('    return true;');
+  buffer.writeln('  }');
+  buffer.writeln();
 }

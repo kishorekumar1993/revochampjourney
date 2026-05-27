@@ -1,9 +1,13 @@
+import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
+
 String generateriverpodviewClass(
   String className,
   List<dynamic> configList,
-  String fileName,
-) {
+  String fileName, {
+  Map<String, dynamic>? stepJson,
+}) {
   final buffer = StringBuffer();
+  final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
   // ─── Shared helpers ───────────────────────────────────────────────
   String camel(String label) {
@@ -114,8 +118,10 @@ String generateriverpodviewClass(
   }
 
   // ─── Imports ──────────────────────────────────────────────────
+  buffer.writeln("import 'dart:convert';");
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:flutter_riverpod/flutter_riverpod.dart';");
+  buffer.writeln("import 'package:http/http.dart' as http;");
   // ✅ FIX 5: Removed unused collection import
   buffer.writeln("import '/widget/common_text_form.dart';");
   buffer.writeln("import '/widget/common_radiobutton.dart';");
@@ -143,6 +149,9 @@ String generateriverpodviewClass(
   buffer.writeln(
       "class ${className}ScreenState extends ConsumerState<${className}Screen> {");
   buffer.writeln("  final _formKey = GlobalKey<FormState>();");
+  buffer.writeln("  bool _isExecuting = false;");
+  buffer.writeln();
+  stepMeta.writeStepConstants(buffer);
   buffer.writeln();
 
   // ─── TextEditingController declarations ───────────────────────
@@ -252,7 +261,7 @@ String generateriverpodviewClass(
   buffer.writeln("  Widget build(BuildContext context) {");
   buffer.writeln("    return Scaffold(");
   buffer.writeln(
-      "      appBar: AppBar(title: const Text('$className Form')),");
+      "      appBar: AppBar(title: const Text('${stepMeta.escapedTitle}')),");
   buffer.writeln("      body: Padding(");
   buffer.writeln("        padding: const EdgeInsets.all(16.0),");
   buffer.writeln("        child: Form(");
@@ -264,6 +273,7 @@ String generateriverpodviewClass(
   buffer.writeln(
       "              crossAxisAlignment: CrossAxisAlignment.start,");
   buffer.writeln("              children: [");
+  stepMeta.writeFlutterStepHeader(buffer);
 
   // ─── Field widgets ────────────────────────────────────────────
   for (final field in flatFields) {
@@ -703,19 +713,10 @@ String generateriverpodviewClass(
     buffer.writeln("                const SizedBox(height: 16),");
   }
 
-  // ─── Submit button ────────────────────────────────────────────
-  buffer.writeln("                const SizedBox(height: 20),");
-  buffer.writeln("                Center(");
-  buffer.writeln("                  child: ElevatedButton(");
-  buffer.writeln("                    onPressed: () {");
-  buffer.writeln(
-      "                      if (_formKey.currentState?.validate() ?? false) {");
-  buffer.writeln("                        // TODO: Submit logic");
-  buffer.writeln("                      }");
-  buffer.writeln("                    },");
-  buffer.writeln("                    child: const Text('Submit'),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
+  stepMeta.writeRiverpodActionButtons(
+    buffer,
+    onPressedHandler: '_onPrimaryAction',
+  );
   buffer.writeln("              ],");
   buffer.writeln("            ),");
   buffer.writeln("          ),");
@@ -723,6 +724,36 @@ String generateriverpodviewClass(
   buffer.writeln("      ),");
   buffer.writeln("    );");
   buffer.writeln("  }");
+  buffer.writeln();
+
+  JourneyStepCodegen.writeHttpHelper(buffer);
+  stepMeta.writeApiExecutionMethods(buffer);
+  buffer.writeln();
+  buffer.writeln('  Future<void> _onPrimaryAction() async {');
+  buffer.writeln('    if (_isExecuting) return;');
+  buffer.writeln('    setState(() => _isExecuting = true);');
+  buffer.writeln('    try {');
+  buffer.writeln('      if (!(_formKey.currentState?.validate() ?? false)) return;');
+  buffer.writeln("      await executeStepApis(trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}');");
+  if (stepMeta.hasNextStep) {
+    buffer.writeln("      if (mounted) Navigator.of(context).pushNamed('/journey/\$nextStepId');");
+  } else {
+    buffer.writeln("      if (mounted) {");
+    buffer.writeln("        ScaffoldMessenger.of(context).showSnackBar(");
+    buffer.writeln("          const SnackBar(content: Text('Journey step completed.')),");
+    buffer.writeln("        );");
+    buffer.writeln("      }");
+  }
+  buffer.writeln('    } catch (e) {');
+  buffer.writeln('      if (mounted) {');
+  buffer.writeln('        ScaffoldMessenger.of(context).showSnackBar(');
+  buffer.writeln('          SnackBar(content: Text(e.toString())),');
+  buffer.writeln('        );');
+  buffer.writeln('      }');
+  buffer.writeln('    } finally {');
+  buffer.writeln('      if (mounted) setState(() => _isExecuting = false);');
+  buffer.writeln('    }');
+  buffer.writeln('  }');
   buffer.writeln("}");
 
   return buffer.toString();
