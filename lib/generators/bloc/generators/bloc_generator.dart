@@ -274,9 +274,7 @@ class BlocGenerator {
     final snake = _snake(featureName);
     final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
-    b.writeln("import 'dart:convert';");
     b.writeln("import 'package:flutter_bloc/flutter_bloc.dart';");
-    b.writeln("import 'package:http/http.dart' as http;");
     b.writeln("import '${snake}_event.dart';");
     b.writeln("import '${snake}_state.dart';");
     b.writeln("import '$asyncValueImportPath';");
@@ -361,55 +359,24 @@ class BlocGenerator {
     b.writeln("    emit(${featureName}State.initial());");
     b.writeln("  }");
     b.writeln();
-    JourneyStepCodegen.writeHttpHelper(b);
-    stepMeta.writeApiExecutionMethods(b);
-    b.writeln();
     b.writeln("  Future<void> _onPrimaryAction(");
     b.writeln("    ${featureName}PrimaryActionEvent event,");
     b.writeln("    Emitter<${featureName}State> emit,");
     b.writeln("  ) async {");
     b.writeln("    if (state.isExecuting) return;");
-    b.writeln("    emit(state.copyWith(isExecuting: true));");
+    b.writeln("    emit(state.copyWith(isExecuting: true, errorMessage: null));");
     b.writeln("    try {");
-    if (stepMeta.hasValidations) {
-      for (final v in stepMeta.validations) {
-        final type = v['type']?.toString().toLowerCase() ?? '';
-        final field = v['field']?.toString() ?? '';
-        final msg = v['message']?.toString().replaceAll("'", "\\'") ?? 'Validation failed';
-        if (field.isEmpty) continue;
-        if (type == 'required') {
-          b.writeln("      final v_$field = state.formValues['$field'];");
-          b.writeln("      if (v_$field == null || v_$field.toString().trim().isEmpty) {");
-          b.writeln("        emit(state.copyWith(");
-          b.writeln("          isExecuting: false,");
-          b.writeln("          errorMessage: '$msg',");
-          b.writeln("        ));");
-          b.writeln("        return;");
-          b.writeln("      }");
-        } else if (type == 'regex' || type == 'pattern') {
-          final regex = v['regexPattern']?.toString().replaceAll(r"\", r"\\").replaceAll("'", "\\'") ?? '';
-          if (regex.isEmpty) continue;
-          b.writeln("      final v_$field = state.formValues['$field']?.toString() ?? '';");
-          b.writeln("      if (v_$field.isNotEmpty && !RegExp(r'$regex').hasMatch(v_$field)) {");
-          b.writeln("        emit(state.copyWith(");
-          b.writeln("          isExecuting: false,");
-          b.writeln("          errorMessage: '$msg',");
-          b.writeln("        ));");
-          b.writeln("        return;");
-          b.writeln("      }");
-        }
-      }
-    }
-    b.writeln("      await executeStepApis(trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}');");
-    if (stepMeta.hasNextStep) {
-      b.writeln("      emit(state.copyWith(");
-      b.writeln("        isExecuting: false,");
-      b.writeln("        navigationTargetStepId: nextStepId,");
-      b.writeln("        errorMessage: null,");
-      b.writeln("      ));");
-    } else {
-      b.writeln("      emit(state.copyWith(isExecuting: false, errorMessage: null));");
-    }
+    b.writeln("      final result = await usecases.submitStep(");
+    b.writeln("        stepId: stepKey,");
+    b.writeln("        formData: state.formValues,");
+    b.writeln("        trigger: '${stepMeta.hasNextStep ? 'onNext' : 'onSubmit'}',");
+    b.writeln("      );");
+    b.writeln("      final nextStep = result?.nextStepId ?? nextStepId;");
+    b.writeln("      emit(state.copyWith(");
+    b.writeln("        isExecuting: false,");
+    b.writeln("        navigationTargetStepId: nextStep,");
+    b.writeln("        errorMessage: null,");
+    b.writeln("      ));");
     b.writeln("    } catch (e) {");
     b.writeln("      emit(state.copyWith(isExecuting: false, errorMessage: e.toString()));");
     b.writeln("    }");

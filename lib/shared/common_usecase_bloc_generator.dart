@@ -107,11 +107,21 @@ class JourneyBlocUseCaseGenerator {
     final imported = <String>{};
 
     for (final d in asyncDropdowns) {
-      final entityName = '${d.pascalName}Entity';
+      final field = _findFieldByLabel(d.originalLabel);
+      final returnType = _resolveReturnType(field, '${d.pascalName}Entity');
+      
+      final isList = returnType.startsWith('List<');
+      final actualEntity = isList 
+          ? returnType.replaceAll('List<', '').replaceAll('>', '') 
+          : returnType;
 
-      if (imported.add(entityName)) {
+      if (imported.add(actualEntity)) {
+        final snakeName = toSnakeCase(
+          actualEntity.replaceAll('Entity', ''),
+        );
+        
         buf.writeln(
-          "import '../entity/${toSnakeCase(d.pascalName)}_entity.dart';",
+          "import '../entity/${snakeName}_entity.dart';",
         );
       }
     }
@@ -122,13 +132,22 @@ class JourneyBlocUseCaseGenerator {
     /// GENERATE INDIVIDUAL USECASES
     /// ==================================================
 
+    final generatedUsecases = <String>{};
+    final uniqueDropdowns = <_DropdownInfo>[];
+
     for (final d in asyncDropdowns) {
       final field = _findFieldByLabel(
         d.originalLabel,
       );
 
       final className =
-          'Load${d.pascalName}ListUseCase';
+          _buildUsecaseName(d, field);
+
+      if (!generatedUsecases.add(className)) {
+        continue;
+      }
+      
+      uniqueDropdowns.add(d);
 
       final entityName =
           '${d.pascalName}Entity';
@@ -194,9 +213,13 @@ class JourneyBlocUseCaseGenerator {
 
     buf.writeln('  const $facadeClass({');
 
-    for (final d in asyncDropdowns) {
+    for (final d in uniqueDropdowns) {
+      final field = _findFieldByLabel(
+        d.originalLabel,
+      );
+
       final className =
-          'Load${d.pascalName}ListUseCase';
+          _buildUsecaseName(d, field);
 
       final variableName =
           _toCamelCase(className);
@@ -214,9 +237,13 @@ class JourneyBlocUseCaseGenerator {
     /// Variables
     /// --------------------------------------------------
 
-    for (final d in asyncDropdowns) {
+    for (final d in uniqueDropdowns) {
+      final field = _findFieldByLabel(
+        d.originalLabel,
+      );
+
       final className =
-          'Load${d.pascalName}ListUseCase';
+          _buildUsecaseName(d, field);
 
       final variableName =
           _toCamelCase(className);
@@ -232,7 +259,7 @@ class JourneyBlocUseCaseGenerator {
     /// Methods
     /// --------------------------------------------------
 
-    for (final d in asyncDropdowns) {
+    for (final d in uniqueDropdowns) {
       final field = _findFieldByLabel(
         d.originalLabel,
       );
@@ -245,12 +272,17 @@ class JourneyBlocUseCaseGenerator {
         field,
         entityName,
       );
+      
+      final isList =
+          returnType.startsWith('List<');
 
-      final methodName =
-          'load${_pluralize(d.pascalName)}';
+      final methodName = isList
+          ? 'load${_pluralize(d.pascalName)}'
+          : 'load${d.pascalName}';
 
+      final className = _buildUsecaseName(d, field);
       final variableName = _toCamelCase(
-        'Load${d.pascalName}ListUseCase',
+        className,
       );
 
       buf.writeln(
@@ -278,6 +310,11 @@ class JourneyBlocUseCaseGenerator {
   bool _isWrapperResponse(
     Map<String, dynamic> field,
   ) {
+    if (field['isWrapperResponse'] == true || 
+        field['responseType'] == 'wrapper') {
+      return true;
+    }
+
     final data = field['dropdowndata'];
 
     if (data is! Map<String, dynamic>) {
@@ -311,10 +348,32 @@ class JourneyBlocUseCaseGenerator {
         _isWrapperResponse(field);
 
     if (isWrapper) {
-      return entityName;
+      return entityName.replaceAll('Entity', 'ResponseEntity');
     }
 
     return 'List<$entityName>';
+  }
+  
+  /// ======================================================
+  /// BUILD USECASE NAME
+  /// ======================================================
+
+  String _buildUsecaseName(
+    _DropdownInfo d,
+    Map<String, dynamic> field,
+  ) {
+    final entityName =
+        '${d.pascalName}Entity';
+
+    final returnType =
+        _resolveReturnType(field, entityName);
+
+    final isList =
+        returnType.startsWith('List<');
+
+    return isList
+        ? 'Load${d.pascalName}ListUseCase'
+        : 'Load${d.pascalName}UseCase';
   }
 
   /// ======================================================
@@ -388,11 +447,11 @@ class JourneyBlocUseCaseGenerator {
       final type =
           field['type'] as String?;
 
-      if (type == 'dropdown') {
+      if (type == 'dropdown' || type == 'api_dropdown') {
         final useStatic =
             field['useStaticOptions']
                     as bool? ??
-                true;
+                false;
 
         final apiUrl =
             field['dropdownApiUrl']

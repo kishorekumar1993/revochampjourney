@@ -51,8 +51,12 @@ class ScreenGenerator {
         "import '../../domain/entity/${innerFile}_entity.dart';",
       );
     }
-    for (final imp in wrapperImports) buf.writeln(imp);
-    for (final imp in innerImports) buf.writeln(imp);
+    for (final imp in wrapperImports) {
+      buf.writeln(imp);
+    }
+    for (final imp in innerImports) {
+      buf.writeln(imp);
+    }
     buf.writeln();
 
     // ─── Helper: get label from entity via toJson() ──────────────────────
@@ -893,8 +897,9 @@ runtime.AsyncState<T> _toAsyncState<T>(
 
   String _singularize(String text) {
     if (text.endsWith('ies')) return '${text.substring(0, text.length - 3)}y';
-    if (text.endsWith('s') && text.length > 1)
+    if (text.endsWith('s') && text.length > 1) {
       return text.substring(0, text.length - 1);
+    }
     return text;
   }
 

@@ -10,7 +10,9 @@ String generateRepositoryInterface(
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;
@@ -45,12 +47,9 @@ String generateRepositoryInterface(
     if (type == 'dropdown' || type == 'api_dropdown') {
       final useStatic = field['useStaticOptions'] == true;
       final hasApiUrl = (field['dropdownApiUrl'] ?? '').toString().isNotEmpty;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
+      final apiRequired = field['apiRequired'] == true;
 
-      if (!useStatic &&
-          (hasApiUrl || staticOpts != null && staticOpts.isNotEmpty)) {
+      if (!useStatic && (hasApiUrl || apiRequired)) {
         apiDropdownFields.add(field);
 
         final rawLabel =
@@ -78,6 +77,7 @@ String generateRepositoryInterface(
   // ─── Abstract class ─────────────────────────────────────────
   buffer.writeln("abstract class ${className}Repository {");
 
+  final generatedMethods = <String>{};
   for (final item in apiDropdownFields) {
     final rawLabel = (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'field')
         .toString()
@@ -96,17 +96,23 @@ String generateRepositoryInterface(
         name; // 👈 use the label’s PascalCase directly
 
     // Ensure it ends with 'Entity'
-    String entityClass = _ifaceCapitalize(entityClassBase);
+    String entityClass = toPascalCase(entityClassBase);
     if (!entityClass.endsWith('Entity')) {
       entityClass = '${entityClass}Entity';
     }
 
-    // Method name: getAll<Name>(s)? – pluralise if name doesn’t already end with 's'
-    final methodName = 'getAll$name${_ifaceNeedsS(name) ? 's' : ''}';
+    // Method name: getAll<Name>(s)? – robust pluralization
+    final methodName = 'getAll${pluralize(name)}';
 
-    // Decide return type based on dropdowndata structure
-    final dropdowndata = item['dropdowndata'];
-    if (dropdowndata is Map) {
+    if (generatedMethods.contains(methodName)) continue;
+    generatedMethods.add(methodName);
+
+    // Decide return type based on explicit config or dropdowndata structure
+    final isSingleObject = item['isSingleObject'] == true ||
+        item['responseType'] == 'object' ||
+        item['dropdowndata'] is Map;
+
+    if (isSingleObject) {
       buffer.writeln("  Future<Either<Failure, $entityClass>> $methodName();");
     } else {
       buffer.writeln(
@@ -119,8 +125,23 @@ String generateRepositoryInterface(
   return buffer.toString();
 }
 
-// ─── Helpers (unchanged) ──────────────────────────────────────
-String _ifaceCapitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+// ─── Helpers ──────────────────────────────────────────────────
+String toPascalCase(String value) {
+  if (value.isEmpty) return value;
+  return value
+      .split(RegExp(r'[_\s-]+'))
+      .where((e) => e.isNotEmpty)
+      .map((e) => e[0].toUpperCase() + e.substring(1))
+      .join();
+}
 
-bool _ifaceNeedsS(String name) => !name.toLowerCase().endsWith('s');
+String pluralize(String value) {
+  if (value.isEmpty) return value;
+  if (value.endsWith('y')) {
+    return '${value.substring(0, value.length - 1)}ies';
+  }
+  if (value.endsWith('s')) {
+    return value;
+  }
+  return '${value}s';
+}

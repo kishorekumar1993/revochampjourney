@@ -20,7 +20,12 @@ String toSnakeCase(String input) {
 class _DropdownInfo {
   final String originalLabel;
   final String pascalName;
-  const _DropdownInfo({required this.originalLabel, required this.pascalName});
+  final bool isSingleObject;
+  const _DropdownInfo({
+    required this.originalLabel,
+    required this.pascalName,
+    required this.isSingleObject,
+  });
 }
 
 class JourneyUseCaseGenerator {
@@ -53,11 +58,7 @@ class JourneyUseCaseGenerator {
 
     // Collect async dropdowns
     final asyncDropdowns = <_DropdownInfo>[];
-    _extractDropdowns(
-      (journeyJson['steps'] as List?)?.expand((step) => step['fields'] ?? []) ??
-          [],
-      asyncDropdowns,
-    );
+    _extractDropdowns(journeyJson, asyncDropdowns);
 
     // Import entities (deduplicated)
     final imported = <String>{};
@@ -72,8 +73,11 @@ class JourneyUseCaseGenerator {
     buf.writeln();
 
     // Use cases
+    final generated = <String>{};
     for (final d in asyncDropdowns) {
       final className = 'Load${d.pascalName}ListUseCase';
+      if (!generated.add(className)) continue;
+
       buf.writeln(
         '/// Fetches the list of ${d.originalLabel} for the dropdown.',
       );
@@ -81,8 +85,11 @@ class JourneyUseCaseGenerator {
       buf.writeln('  const $className(this._repository);');
       buf.writeln('  final $repoClass _repository;');
       buf.writeln();
-      // Return single entity, method name matches existing API
-      buf.writeln('  Future<Either<Failure, ${d.pascalName}Entity>> call() =>');
+      if (d.isSingleObject) {
+        buf.writeln('  Future<Either<Failure, ${d.pascalName}Entity>> call() =>');
+      } else {
+        buf.writeln('  Future<Either<Failure, List<${d.pascalName}Entity>>> call() =>');
+      }
       buf.writeln('      _repository.getAll${_pluralize(d.pascalName)}();');
       buf.writeln('}');
       buf.writeln();
@@ -103,27 +110,52 @@ class JourneyUseCaseGenerator {
     return '${word}s';
   }
 
-  void _extractDropdowns(Iterable<dynamic> fields, List<_DropdownInfo> out) {
-    for (final field in fields) {
-      if (field is! Map<String, dynamic>) continue;
+  void _extractDropdowns(dynamic source, List<_DropdownInfo> out) {
+    if (source == null) return;
+    if (source is List) {
+      for (final item in source) _extractDropdowns(item, out);
+      return;
+    }
+    if (source is! Map<String, dynamic>) return;
 
-      final type = field['type'] as String?;
-      if (type == 'dropdown') {
-        final useStatic = field['useStaticOptions'] as bool? ?? true;
-        final apiUrl = field['dropdownApiUrl'] as String?;
-        if (!useStatic && apiUrl != null && apiUrl.isNotEmpty) {
-          final label = (field['label'] as String?) ?? 'Option';
+    if (source.containsKey('steps')) {
+      _extractDropdowns(source['steps'], out);
+      return;
+    }
+    if (source.containsKey('fields')) {
+      _extractDropdowns(source['fields'], out);
+      return;
+    }
+    if (source.containsKey('type')) {
+      final type = source['type'] as String?;
+      if (type == 'dropdown' || type == 'api_dropdown') {
+        final useStatic = source['useStaticOptions'] as bool? ?? false;
+        final apiUrl = source['dropdownApiUrl'] as String?;
+        final apiRequired = source['apiRequired'] == true;
+
+        if (!useStatic && ((apiUrl != null && apiUrl.isNotEmpty) || apiRequired)) {
+          final label = (source['label'] as String?) ?? 'Option';
+
+          final isSingleObject = source['isSingleObject'] == true ||
+              source['responseType'] == 'object' ||
+              source['dropdowndata'] is Map;
+
           out.add(
             _DropdownInfo(
               originalLabel: label,
               pascalName: toPascalCase(label),
+              isSingleObject: isSingleObject,
             ),
           );
         }
       }
 
-      final nested = field['nestedFields'];
-      if (nested is List) _extractDropdowns(nested, out);
+      _extractDropdowns(source['nestedFields'], out);
+      final config = source['componentConfig'];
+      if (config is Map) {
+        _extractDropdowns(config['fields'], out);
+        _extractDropdowns(config['columns'], out);
+      }
     }
   }
 }

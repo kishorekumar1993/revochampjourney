@@ -17,7 +17,9 @@ String generateRepositoryImplInterface(
   void flattenFields(dynamic source) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item);
+      for (final item in source) {
+        flattenFields(item);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;
@@ -44,8 +46,10 @@ String generateRepositoryImplInterface(
     final type = (field['type'] ?? '').toString().toLowerCase();
     if (type == 'dropdown' || type == 'api_dropdown') {
       final useStatic = field['useStaticOptions'] == true;
-      final hasApiUrl = field['dropdownApiUrl'] != null;
-      if (!useStatic && hasApiUrl) {
+      final hasApiUrl = (field['dropdownApiUrl'] ?? '').toString().isNotEmpty;
+      final apiRequired = field['apiRequired'] == true;
+
+      if (!useStatic && (hasApiUrl || apiRequired)) {
         apiDropdownFields.add(field);
 
         final rawLabel =
@@ -80,6 +84,7 @@ String generateRepositoryImplInterface(
   buffer.writeln("import 'package:dartz/dartz.dart';");
   buffer.writeln("import '/core/network/failure_mapper.dart';");
   buffer.writeln("import '/core/runtime/failure.dart';");
+  buffer.writeln("import '/core/errors/failures.dart';");
 
   // 2. Package-based entity import (first field only, if packageName given)
   if (packageName != null &&
@@ -94,7 +99,7 @@ String generateRepositoryImplInterface(
 
   // 4. Datasource import (single, using exact path)
   buffer.writeln(
-    "import '${dataSourceImport}${snakeFileName}_data_source.dart';",
+    "import '$dataSourceImport${snakeFileName}_data_source.dart';",
   );
   buffer.writeln();
 
@@ -124,6 +129,7 @@ String generateRepositoryImplInterface(
   buffer.writeln();
 
   // ─── Generate methods ─────────────────────────────────────────
+  final generatedMethods = <String>{};
   for (final item in apiDropdownFields) {
     final rawLabel = (item['label'] ?? item['id'] ?? item['fieldId'] ?? 'field')
         .toString()
@@ -132,17 +138,30 @@ String generateRepositoryImplInterface(
 
     final name = rawLabel.replaceAll(RegExp(r'\s+'), '');
 
-    // ✅ Entity class name derived from label directly — NO singularize
-    final entityClassName = '${_repoCapitalize(name)}Entity';
+    String entityClassBase =
+        item['entityClassName']?.toString() ??
+        item['entityName']?.toString() ??
+        item['modelName']?.toString() ??
+        item['fieldId']?.toString() ??
+        name;
 
-    final dropdowndata = item['dropdowndata'];
+    String entityClassName = toPascalCase(entityClassBase);
+    if (!entityClassName.endsWith('Entity')) {
+      entityClassName = '${entityClassName}Entity';
+    }
 
-    final methodBase = 'getAll${_repoCapitalize(name)}';
-    final methodName = _repoNeedsS(name) ? '${methodBase}s' : methodBase;
+    final methodName = 'getAll${pluralize(name)}';
+
+    if (generatedMethods.contains(methodName)) continue;
+    generatedMethods.add(methodName);
 
     buffer.writeln("  @override");
 
-    if (dropdowndata is Map) {
+    final isSingleObject = item['isSingleObject'] == true ||
+        item['responseType'] == 'object' ||
+        item['dropdowndata'] is Map;
+
+    if (isSingleObject) {
       buffer.writeln(
         "  Future<Either<Failure, $entityClassName>> $methodName() async {",
       );
@@ -179,9 +198,22 @@ String generateRepositoryImplInterface(
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-String _repoCapitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+String toPascalCase(String value) {
+  if (value.isEmpty) return value;
+  return value
+      .split(RegExp(r'[_\s-]+'))
+      .where((e) => e.isNotEmpty)
+      .map((e) => e[0].toUpperCase() + e.substring(1))
+      .join();
+}
 
-// ✅ Removed _repoSingularize — was causing UserDetailsEntity → UserDetailEntity
-
-bool _repoNeedsS(String name) => !name.toLowerCase().endsWith('s');
+String pluralize(String value) {
+  if (value.isEmpty) return value;
+  if (value.endsWith('y')) {
+    return '${value.substring(0, value.length - 1)}ies';
+  }
+  if (value.endsWith('s')) {
+    return value;
+  }
+  return '${value}s';
+}
