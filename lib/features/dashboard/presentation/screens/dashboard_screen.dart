@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,289 +9,32 @@ import '../../../../core/theme.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../../journey_builder/presentation/widgets/sidebar.dart';
-import '../../../journey_builder/presentation/widgets/steps_panel.dart' deferred as steps_panel;
-import '../../../journey_builder/presentation/widgets/canvas_panel.dart' deferred as canvas_panel;
-import '../../../journey_builder/presentation/widgets/properties_panel.dart' deferred as properties_panel;
+import '../../../journey_builder/presentation/widgets/steps_panel.dart';
+import '../../../journey_builder/presentation/widgets/canvas_panel.dart';
+import '../../../journey_builder/presentation/widgets/properties_panel.dart';
 import 'templates_screen.dart';
 import 'journeys_screen.dart';
 import 'runs_screen.dart';
 import 'misc_screens.dart';
 
-// Top-level providers to replace local setState and avoid full screen rebuilds
-final dashboardMenuProvider = StateProvider<String>((ref) => 'dashboard');
-final editingJourneyProvider = StateProvider<bool>((ref) => false);
-final sidebarCollapsedProvider = StateProvider<bool>((ref) => false);
-final showStepsPanelProvider = StateProvider<bool>((ref) => true);
-final showPropertiesPanelProvider = StateProvider<bool>((ref) => true);
-final environmentProvider = StateProvider<String>((ref) => 'Production');
-
-// Top-level isolate functions for JSON encoding
-String _encodeJson(Map<String, dynamic> data) => json.encode(data);
-String _encodeJsonPretty(Map<String, dynamic> data) => const JsonEncoder.withIndent('  ').convert(data);
-
-// Deferred loader for Steps Panel with RepaintBoundary
-class DeferredStepsPanel extends StatefulWidget {
-  const DeferredStepsPanel({super.key});
-  @override
-  State<DeferredStepsPanel> createState() => _DeferredStepsPanelState();
-}
-
-class _DeferredStepsPanelState extends State<DeferredStepsPanel> {
-  late Future<void> _libraryFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _libraryFuture = steps_panel.loadLibrary();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _libraryFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return RepaintBoundary(child: steps_panel.RevoStepsPanel());
-        }
-        return const SizedBox(width: 320, child: Center(child: CircularProgressIndicator()));
-      },
-    );
-  }
-}
-
-// Deferred loader for Canvas Panel with RepaintBoundary
-class DeferredCanvasPanel extends StatefulWidget {
-  const DeferredCanvasPanel({super.key});
-  @override
-  State<DeferredCanvasPanel> createState() => _DeferredCanvasPanelState();
-}
-
-class _DeferredCanvasPanelState extends State<DeferredCanvasPanel> {
-  late Future<void> _libraryFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _libraryFuture = canvas_panel.loadLibrary();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _libraryFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return RepaintBoundary(child: canvas_panel.RevoCanvasPanel());
-        }
-        return const Expanded(child: Center(child: CircularProgressIndicator()));
-      },
-    );
-  }
-}
-
-// Deferred loader for Properties Panel with RepaintBoundary
-class DeferredPropertiesPanel extends StatefulWidget {
-  const DeferredPropertiesPanel({super.key});
-  @override
-  State<DeferredPropertiesPanel> createState() => _DeferredPropertiesPanelState();
-}
-
-class _DeferredPropertiesPanelState extends State<DeferredPropertiesPanel> {
-  late Future<void> _libraryFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _libraryFuture = properties_panel.loadLibrary();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _libraryFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return RepaintBoundary(child: properties_panel.RevoPropertiesPanel());
-        }
-        return const SizedBox(width: 320, child: Center(child: CircularProgressIndicator()));
-      },
-    );
-  }
-}
-
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeMenu = ref.watch(dashboardMenuProvider);
-    final isSidebarCollapsed = ref.watch(sidebarCollapsedProvider);
-
-    return Scaffold(
-      backgroundColor: RevoTheme.background,
-      body: Row(
-        children: [
-          // 1. Sidebar Menu (Leftmost)
-          RevoSidebar(
-            activeMenu: activeMenu,
-            isCollapsed: isSidebarCollapsed,
-            onMenuChanged: (menu) {
-              ref.read(dashboardMenuProvider.notifier).state = menu;
-              ref.read(editingJourneyProvider.notifier).state = false;
-            },
-          ),
-
-          // Main content container
-          const Expanded(
-            child: Column(
-              children: [
-                // 2. Top Header Navigation Bar
-                DashboardTopHeader(),
-                
-                // 3. Lower Content Panels (3 columns layout or Templates Screen)
-                Expanded(
-                  child: DashboardMainContent(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class DashboardMainContent extends ConsumerWidget {
-  const DashboardMainContent({super.key});
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _activeMenu = 'dashboard';
+  String _environment = 'Production';
+  bool _isEditingJourney = false;
+  bool _isSidebarCollapsed = false;
+  bool _showStepsPanel = true;
+  bool _showPropertiesPanel = true;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeMenu = ref.watch(dashboardMenuProvider);
-    final isEditingJourney = ref.watch(editingJourneyProvider);
-    final showStepsPanel = ref.watch(showStepsPanelProvider);
-    final showPropertiesPanel = ref.watch(showPropertiesPanelProvider);
-
-    switch (activeMenu) {
-      case 'templates':
-        return RevoTemplatesScreen(
-          onTemplateLoaded: () {
-            ref.read(dashboardMenuProvider.notifier).state = 'journeys';
-            ref.read(editingJourneyProvider.notifier).state = true;
-            ref.read(sidebarCollapsedProvider.notifier).state = true;
-          },
-        );
-      case 'runs':
-        return const RevoRunsScreen();
-      case 'analytics':
-        return const RevoAnalyticsScreen();
-      case 'approvals':
-        return const RevoApprovalsScreen();
-      case 'users':
-        return const RevoUsersScreen();
-      case 'settings':
-        return const RevoSettingsScreen();
-      case 'api_hub':
-        return const RevoApiHubScreen();
-      case 'audit_logs':
-        return const RevoAuditLogsScreen();
-      case 'journeys':
-        if (!isEditingJourney) {
-          return RevoJourneysScreen(
-            onEditJourney: (journey) async {
-              final jsonStr = await compute(_encodeJson, journey.toJson());
-              ref.read(journeyConfigProvider.notifier).updateFromJson(jsonStr);
-              ref.read(editingJourneyProvider.notifier).state = true;
-              ref.read(sidebarCollapsedProvider.notifier).state = true;
-            },
-            onCreateNew: () async {
-              final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
-              final jsonStr = await compute(_encodeJson, blank.toJson());
-              ref.read(journeyConfigProvider.notifier).updateFromJson(jsonStr);
-              ref.read(editingJourneyProvider.notifier).state = true;
-              ref.read(sidebarCollapsedProvider.notifier).state = true;
-            },
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Steps Sidebar (Column 2)
-            if (showStepsPanel) const DeferredStepsPanel(),
-
-            // Canvas Builder Area (Column 3)
-            const DeferredCanvasPanel(),
-
-            // Right properties editor panel (Column 4)
-            if (showPropertiesPanel) const DeferredPropertiesPanel(),
-          ],
-        );
-      case 'dashboard':
-      default:
-        return RevoDashboardOverviewScreen(
-          onCreateNew: () async {
-            final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
-            final jsonStr = await compute(_encodeJson, blank.toJson());
-            ref.read(journeyConfigProvider.notifier).updateFromJson(jsonStr);
-            ref.read(dashboardMenuProvider.notifier).state = 'journeys';
-            ref.read(editingJourneyProvider.notifier).state = true;
-            ref.read(sidebarCollapsedProvider.notifier).state = true;
-          },
-          onEditJourney: (journey) async {
-            final jsonStr = await compute(_encodeJson, journey.toJson());
-            ref.read(journeyConfigProvider.notifier).updateFromJson(jsonStr);
-            ref.read(dashboardMenuProvider.notifier).state = 'journeys';
-            ref.read(editingJourneyProvider.notifier).state = true;
-            ref.read(sidebarCollapsedProvider.notifier).state = true;
-          },
-          onViewCatalog: () {
-            ref.read(dashboardMenuProvider.notifier).state = 'journeys';
-            ref.read(editingJourneyProvider.notifier).state = false;
-          },
-          onViewTemplates: () {
-            ref.read(dashboardMenuProvider.notifier).state = 'templates';
-          },
-          onViewRuns: () {
-            ref.read(dashboardMenuProvider.notifier).state = 'runs';
-          },
-        );
-    }
-  }
-}
-
-class DashboardTopHeader extends StatelessWidget {
-  const DashboardTopHeader({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      decoration: BoxDecoration(
-        color: RevoTheme.sidebarBackground,
-        border: Border(
-          bottom: BorderSide(color: RevoTheme.cardBorder, width: 1),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          HeaderEnvironment(),
-          SizedBox(width: 16),
-          HeaderControls(),
-        ],
-      ),
-    );
-  }
-}
-
-class HeaderControls extends ConsumerWidget {
-  const HeaderControls({super.key});
-
-  Future<void> _exportJson(BuildContext context, Map<String, dynamic> jsonMap) async {
-    // Moved to compute to avoid UI thread block on large JSON structures
-    final jsonStr = await compute(_encodeJsonPretty, jsonMap);
-    if (!context.mounted) return;
-
+  void _exportJson(BuildContext context, Map<String, dynamic> jsonMap) {
+    // Mock export by printing and showing dialog
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(jsonMap);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -707,98 +449,310 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
     );
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Localize watches so the header only rebuilds when needed
-    final isEditingJourney = ref.watch(editingJourneyProvider);
-    final showStepsPanel = ref.watch(showStepsPanelProvider);
-    final showPropertiesPanel = ref.watch(showPropertiesPanelProvider);
-    final themeMode = ref.watch(themeModeProvider);
 
+  @override
+  Widget build(BuildContext context) {
+    final journeyConfig = ref.watch(journeyConfigProvider);
+
+    return Scaffold(
+      backgroundColor: RevoTheme.background,
+      body: Row(
+        children: [
+          // 1. Sidebar Menu (Leftmost)
+          RevoSidebar(
+            activeMenu: _activeMenu,
+            isCollapsed: _isSidebarCollapsed,
+            onMenuChanged: (menu) {
+              setState(() {
+                _activeMenu = menu;
+                _isEditingJourney = false;
+              });
+            },
+          ),
+
+          // Main content container
+          Expanded(
+            child: Column(
+              children: [
+                // 2. Top Header Navigation Bar
+                _buildTopHeader(context, journeyConfig),
+                
+                // 3. Lower Content Panels (3 columns layout or Templates Screen)
+                Expanded(
+                  child: _activeMenu == 'templates'
+                      ? RevoTemplatesScreen(
+                          onTemplateLoaded: () {
+                            setState(() {
+                              _activeMenu = 'journeys';
+                              _isEditingJourney = true;
+                              _isSidebarCollapsed = true;
+                            });
+                          },
+                        )
+                      : _activeMenu == 'runs'
+                          ? RevoRunsScreen()
+                          : _activeMenu == 'dashboard'
+                              ? RevoDashboardOverviewScreen(
+                                  onCreateNew: () {
+                                    final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
+                                    ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = true;
+                                      _isSidebarCollapsed = true;
+                                    });
+                                  },
+                                  onEditJourney: (journey) {
+                                    ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = true;
+                                      _isSidebarCollapsed = true;
+                                    });
+                                  },
+                                  onViewCatalog: () {
+                                    setState(() {
+                                      _activeMenu = 'journeys';
+                                      _isEditingJourney = false;
+                                    });
+                                  },
+                                  onViewTemplates: () {
+                                    setState(() {
+                                      _activeMenu = 'templates';
+                                    });
+                                  },
+                                  onViewRuns: () {
+                                    setState(() {
+                                      _activeMenu = 'runs';
+                                    });
+                                  },
+                                )
+                              : _activeMenu == 'analytics'
+                                  ? RevoAnalyticsScreen()
+                                  : _activeMenu == 'approvals'
+                                      ? RevoApprovalsScreen()
+                                      : _activeMenu == 'users'
+                                          ? RevoUsersScreen()
+                                          : _activeMenu == 'settings'
+                                              ? RevoSettingsScreen()
+                                              : _activeMenu == 'api_hub'
+                                                  ? RevoApiHubScreen()
+                                                  : _activeMenu == 'audit_logs'
+                                                      ? RevoAuditLogsScreen()
+                                                      : _activeMenu == 'journeys' && !_isEditingJourney
+                                                          ? RevoJourneysScreen(
+                                                              onEditJourney: (journey) {
+                                                                ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
+                                                                setState(() {
+                                                                  _isEditingJourney = true;
+                                                                  _isSidebarCollapsed = true;
+                                                                });
+                                                              },
+                                                              onCreateNew: () {
+                                                                final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
+                                                                ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
+                                                                setState(() {
+                                                                  _isEditingJourney = true;
+                                                                  _isSidebarCollapsed = true;
+                                                                });
+                                                              },
+                                                            )
+                                                          : Row(
+                                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                              children: [
+                                                                // Steps Sidebar (Column 2)
+                                                                if (_showStepsPanel) RevoStepsPanel(),
+
+                                                                // Canvas Builder Area (Column 3)
+                                                                RevoCanvasPanel(),
+
+                                                                // Right properties editor panel (Column 4)
+                                                                if (_showPropertiesPanel) RevoPropertiesPanel(),
+                                                              ],
+                                                            ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopHeader(BuildContext context, dynamic journeyConfig) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isCompact = screenWidth < 1350;
 
-    return Flexible(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-                  if (isEditingJourney) ...[
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        color: RevoTheme.sidebarBackground,
+        border: Border(
+          bottom: BorderSide(color: RevoTheme.cardBorder, width: 1),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left breadcrumb / Environment indicator
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _isSidebarCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded,
+                    color: RevoTheme.textPrimary,
+                    size: 20,
+                  ),
+                  tooltip: _isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
+                  onPressed: () {
+                    setState(() {
+                      _isSidebarCollapsed = !_isSidebarCollapsed;
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                if (_activeMenu == 'journeys' && _isEditingJourney) ...[
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_rounded, color: RevoTheme.textPrimary, size: 20),
+                    tooltip: "Back to Catalog",
+                    onPressed: () {
+                      setState(() {
+                        _isEditingJourney = false;
+                        _isSidebarCollapsed = false;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  Icon(Icons.settings_outlined, color: RevoTheme.textSecondary, size: 20),
+                ],
+                const SizedBox(width: 24),
+                // Environment Switcher dropdown mockup
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: RevoTheme.cardBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: RevoTheme.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: RevoTheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isCompact ? "Prod" : "Environment: $_environment",
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: RevoTheme.textSecondary),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Action buttons & Icons
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isEditingJourney) ...[
                     if (isCompact) ...[
                       IconButton(
                         icon: Icon(
-                          showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
-                          color: showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          _showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
+                          color: _showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                           size: 20,
                         ),
-                        tooltip: showStepsPanel ? "Hide Steps Panel" : "Show Steps Panel",
+                        tooltip: _showStepsPanel ? "Hide Steps Panel" : "Show Steps Panel",
                         onPressed: () {
-                          ref.read(showStepsPanelProvider.notifier).state = !showStepsPanel;
+                          setState(() {
+                            _showStepsPanel = !_showStepsPanel;
+                          });
                         },
                       ),
                       const SizedBox(width: 8),
                       IconButton(
                         icon: Icon(
-                          showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
-                          color: showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          _showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
+                          color: _showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                           size: 20,
                         ),
-                        tooltip: showPropertiesPanel ? "Hide Properties Panel" : "Show Properties Panel",
+                        tooltip: _showPropertiesPanel ? "Hide Properties Panel" : "Show Properties Panel",
                         onPressed: () {
-                          ref.read(showPropertiesPanelProvider.notifier).state = !showPropertiesPanel;
+                          setState(() {
+                            _showPropertiesPanel = !_showPropertiesPanel;
+                          });
                         },
                       ),
                     ] else ...[
                       OutlinedButton.icon(
                         onPressed: () {
-                          ref.read(showStepsPanelProvider.notifier).state = !showStepsPanel;
+                          setState(() {
+                            _showStepsPanel = !_showStepsPanel;
+                          });
                         },
                         icon: Icon(
-                          showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
+                          _showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
                           size: 16,
-                          color: showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          color: _showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                         ),
                         label: Text(
-                          showStepsPanel ? "Hide Steps" : "Show Steps",
+                          _showStepsPanel ? "Hide Steps" : "Show Steps",
                           style: TextStyle(
                             fontSize: 11,
-                            color: showStepsPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                            color: _showStepsPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: showStepsPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
+                            color: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: showStepsPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
+                          backgroundColor: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: () {
-                          ref.read(showPropertiesPanelProvider.notifier).state = !showPropertiesPanel;
+                          setState(() {
+                            _showPropertiesPanel = !_showPropertiesPanel;
+                          });
                         },
                         icon: Icon(
-                          showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
+                          _showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
                           size: 16,
-                          color: showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          color: _showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                         ),
                         label: Text(
-                          showPropertiesPanel ? "Hide Props" : "Show Props",
+                          _showPropertiesPanel ? "Hide Props" : "Show Props",
                           style: TextStyle(
                             fontSize: 11,
-                            color: showPropertiesPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                            color: _showPropertiesPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
+                            color: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
+                          backgroundColor: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                     ],
@@ -813,7 +767,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     Tooltip(
                       message: "Export JSON",
                       child: OutlinedButton(
-                        onPressed: () => _exportJson(context, ref.read(journeyConfigProvider).toJson()),
+                        onPressed: () => _exportJson(context, journeyConfig.toJson()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(12),
                           minimumSize: Size.zero,
@@ -837,7 +791,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     Tooltip(
                       message: "Generate Code",
                       child: OutlinedButton(
-                        onPressed: () => _generateBlocCode(context, ref.read(journeyConfigProvider)),
+                        onPressed: () => _generateBlocCode(context, journeyConfig),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(12),
                           minimumSize: Size.zero,
@@ -862,7 +816,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     ),
                   ] else ...[
                     OutlinedButton.icon(
-                      onPressed: () => _exportJson(context, ref.read(journeyConfigProvider).toJson()),
+                      onPressed: () => _exportJson(context, journeyConfig.toJson()),
                       icon: const Icon(Icons.download_rounded, size: 16),
                       label: const Text("Export JSON"),
                       style: OutlinedButton.styleFrom(
@@ -880,7 +834,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: () => _generateBlocCode(context, ref.read(journeyConfigProvider)),
+                      onPressed: () => _generateBlocCode(context, journeyConfig),
                       icon: const Icon(Icons.code_rounded, size: 16),
                       label: const Text("Generate Code"),
                       style: OutlinedButton.styleFrom(
@@ -929,7 +883,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                   const SizedBox(width: 12),
                   IconButton(
                     icon: Icon(
-                      themeMode == ThemeMode.dark
+                      ref.watch(themeModeProvider) == ThemeMode.dark
                           ? Icons.wb_sunny_outlined
                           : Icons.dark_mode_outlined,
                       color: RevoTheme.textSecondary,
@@ -942,81 +896,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     },
                   ),
                 ],
-        ),
-      ),
-    );
-  }
-}
-
-class HeaderEnvironment extends ConsumerWidget {
-  const HeaderEnvironment({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isSidebarCollapsed = ref.watch(sidebarCollapsedProvider);
-    final activeMenu = ref.watch(dashboardMenuProvider);
-    final isEditingJourney = ref.watch(editingJourneyProvider);
-    final environment = ref.watch(environmentProvider);
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isCompact = screenWidth < 1350;
-
-    return Flexible(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              isSidebarCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded,
-              color: RevoTheme.textPrimary,
-              size: 20,
-            ),
-            tooltip: isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
-            onPressed: () {
-              ref.read(sidebarCollapsedProvider.notifier).state = !isSidebarCollapsed;
-            },
-          ),
-          const SizedBox(width: 8),
-          if (activeMenu == 'journeys' && isEditingJourney) ...[
-            IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: RevoTheme.textPrimary, size: 20),
-              tooltip: "Back to Catalog",
-              onPressed: () {
-                ref.read(editingJourneyProvider.notifier).state = false;
-                ref.read(sidebarCollapsedProvider.notifier).state = false;
-              },
-            ),
-            const SizedBox(width: 8),
-          ] else ...[
-            Icon(Icons.settings_outlined, color: RevoTheme.textSecondary, size: 20),
-          ],
-          const SizedBox(width: 24),
-          // Environment Switcher dropdown mockup
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: RevoTheme.cardBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: RevoTheme.cardBorder),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: RevoTheme.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isCompact ? "Prod" : "Environment: $environment",
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: RevoTheme.textSecondary),
-              ],
+              ),
             ),
           ),
         ],
