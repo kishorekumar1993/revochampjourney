@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import '../../../../core/theme.dart';
-import '../../data/models.dart';
-import '../providers/journey_provider.dart';
+import '../../../../../core/theme.dart';
+import '../../../data/models.dart';
+import '../../providers/journey_provider.dart';
+
+import 'property_fields.dart';
 
 class RevoPropertiesPanel extends ConsumerStatefulWidget {
   const RevoPropertiesPanel({super.key});
@@ -182,7 +183,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                       const SizedBox(width: 8),
                       Text(
                         "JSON Config Code",
-                        style: GoogleFonts.outfit(
+                        style: TextStyle(fontFamily: 'Outfit', 
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: _showJsonConfig ? RevoTheme.primaryLight : RevoTheme.textPrimary,
@@ -232,7 +233,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Format: JSON", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
+                                Text("Format: JSON", style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary)),
                                 Row(
                                   children: [
                                     IconButton(
@@ -265,7 +266,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 focusNode: _jsonFocus,
                                 maxLines: null,
                                 expands: true,
-                                style: GoogleFonts.sourceCodePro(fontSize: 11, color: Colors.greenAccent),
+                                style: TextStyle(fontFamily: 'Source Code Pro', fontSize: 11, color: Colors.greenAccent),
                                 decoration: const InputDecoration(
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
@@ -290,7 +291,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   child: Text(
                                     _isValidJson ? "Valid JSON" : "Invalid JSON",
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'Inter', 
                                       fontSize: 9,
                                       color: _isValidJson ? RevoTheme.secondary : Colors.redAccent,
                                       fontWeight: FontWeight.bold,
@@ -302,7 +303,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     TextButton(
                                       onPressed: _beautifyText,
                                       style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 24)),
-                                      child: Text("Beautify", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.primaryLight)),
+                                      child: Text("Beautify", style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.primaryLight)),
                                     ),
                                   ],
                                 )
@@ -312,7 +313,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               const SizedBox(height: 6),
                               Text(
                                 _jsonError,
-                                style: GoogleFonts.inter(fontSize: 9, color: Colors.redAccent),
+                                style: TextStyle(fontFamily: 'Inter', fontSize: 9, color: Colors.redAccent),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -323,7 +324,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     : SingleChildScrollView(
                         child: Text(
                           _jsonController.text,
-                          style: GoogleFonts.sourceCodePro(fontSize: 11, color: RevoTheme.textSecondary),
+                          style: TextStyle(fontFamily: 'Source Code Pro', fontSize: 11, color: RevoTheme.textSecondary),
                         ),
                       ),
               ),
@@ -346,7 +347,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                           const SizedBox(height: 12),
                           Text(
                             "Select a component from the canvas grid to start customizing its properties.",
-                            style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
+                            style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -375,13 +376,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   children: [
                                     Text(
                                       selectedField.label.isNotEmpty ? selectedField.label : "Unnamed Field",
-                                      style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+                                      style: TextStyle(fontFamily: 'Outfit', fontSize: 13, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       "ID: ${selectedField.id}",
-                                      style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary),
+                                      style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
@@ -396,7 +397,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 ),
                                 child: Text(
                                   selectedField.type.toUpperCase(),
-                                  style: GoogleFonts.inter(fontSize: 9, color: RevoTheme.primaryLight, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontFamily: 'Inter', fontSize: 9, color: RevoTheme.primaryLight, fontWeight: FontWeight.bold),
                                 ),
                               )
                             ],
@@ -415,7 +416,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: _PropertyTextField(
+                                  child: PropertyTextField(
                                     label: "Field ID",
                                     initialValue: selectedField.id,
                                     onChanged: (val) {
@@ -428,7 +429,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: _PropertyDropdownField(
+                                  child: PropertyDropdownField(
                                     label: "Type",
                                     currentValue: selectedField.type,
                                     items: const [
@@ -472,7 +473,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: _PropertyTextField(
+                                  child: PropertyTextField(
                                     label: "Label Text",
                                     initialValue: selectedField.label,
                                     onChanged: (val) {
@@ -485,7 +486,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 if (!isRadioOrSelectionOrDivider) ...[
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _PropertyTextField(
+                                    child: PropertyTextField(
                                       label: "Metadata Type",
                                       initialValue: selectedField.fieldtype ?? '',
                                       hint: "e.g. text, select",
@@ -504,7 +505,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _PropertyTextField(
+                                    child: PropertyTextField(
                                       label: "Placeholder",
                                       initialValue: selectedField.placeholder ?? '',
                                       onChanged: (val) {
@@ -516,7 +517,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _PropertyTextField(
+                                    child: PropertyTextField(
                                       label: "Hint Text",
                                       initialValue: selectedField.hintText ?? '',
                                       onChanged: (val) {
@@ -530,7 +531,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               ),
                             ],
                             const SizedBox(height: 10),
-                            _PropertyTextField(
+                            PropertyTextField(
                               label: "Default Value / Initial Value",
                               initialValue: selectedField.defaultValue ?? '',
                               hint: "Initial value of the field",
@@ -625,7 +626,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                             isExpanded: _showValidations,
                             onToggle: () => setState(() => _showValidations = !_showValidations),
                             children: [
-                              _PropertyTextField(
+                              PropertyTextField(
                                 label: "Validation Pattern (Regex)",
                                 initialValue: selectedField.validationPattern ?? '',
                                 hint: "e.g. ^[0-9]{10}\$ or Letters only",
@@ -636,7 +637,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 },
                               ),
                               const SizedBox(height: 10),
-                              _PropertyTextField(
+                              PropertyTextField(
                                 label: "Validation Error Message",
                                 initialValue: selectedField.errorMessage ?? '',
                                 hint: "Message shown on validation failure",
@@ -650,7 +651,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _PropertyTextField(
+                                    child: PropertyTextField(
                                       label: "Min Length",
                                       initialValue: selectedField.minLength?.toString() ?? '',
                                       hint: "e.g. 2",
@@ -664,7 +665,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _PropertyTextField(
+                                    child: PropertyTextField(
                                       label: "Max Length",
                                       initialValue: selectedField.maxLength?.toString() ?? '',
                                       hint: "e.g. 50",
@@ -682,7 +683,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _PropertyDropdownField(
+                                    child: PropertyDropdownField(
                                       label: "Keyboard Type",
                                       currentValue: selectedField.keyboardType ?? 'text',
                                       items: const ['text', 'number', 'email', 'phone', 'datetime'],
@@ -695,7 +696,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _PropertyDropdownField(
+                                    child: PropertyDropdownField(
                                       label: "Input Action",
                                       currentValue: selectedField.textInputAction ?? 'done',
                                       items: const ['done', 'next', 'search', 'none', 'go', 'send'],
@@ -709,7 +710,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 ],
                               ),
                               const SizedBox(height: 10),
-                              _PropertyDropdownField(
+                              PropertyDropdownField(
                                 label: "Text Capitalization",
                                 currentValue: selectedField.textCapitalization ?? 'none',
                                 items: const ['none', 'characters', 'words', 'sentences'],
@@ -779,7 +780,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                 
                                 if (_apiTabIndex == 0) ...[
                                   // 1. Endpoint settings
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "API URL Path",
                                     initialValue: selectedField.dropdownApiUrl ?? '',
                                     hint: "https://api.example.com/dropdown-data",
@@ -792,7 +793,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   const SizedBox(height: 10),
                                   _buildMethodSelector(selectedField, activeStepId),
                                   const SizedBox(height: 10),
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "URL / Query Parameter Key",
                                     initialValue: selectedField.apiParam ?? '',
                                     hint: "e.g. tenantId or searchKey",
@@ -804,7 +805,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                 ] else if (_apiTabIndex == 1) ...[
                                   // 2. Headers & Request Body payload
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "API Headers (JSON Map)",
                                     initialValue: selectedField.dropdownApiHeaders != null ? json.encode(selectedField.dropdownApiHeaders) : '',
                                     hint: '{"Authorization": "Bearer token", "Accept": "application/json"}',
@@ -834,10 +835,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   if (_headersError != null) ...[
                                     const SizedBox(height: 4),
-                                    Text(_headersError!, style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 10)),
+                                    Text(_headersError!, style: TextStyle(fontFamily: 'Inter', color: Colors.redAccent, fontSize: 10)),
                                   ],
                                   const SizedBox(height: 10),
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "Request Body (JSON String)",
                                     initialValue: selectedField.dropdownApiBody ?? '',
                                     hint: '{"status": "active", "filter": "users"}',
@@ -853,7 +854,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: _PropertyTextField(
+                                        child: PropertyTextField(
                                           label: "Value Key",
                                           initialValue: selectedField.dropdownkey ?? 'id',
                                           hint: "e.g. id, code",
@@ -866,7 +867,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: _PropertyTextField(
+                                        child: PropertyTextField(
                                           label: "Display Value Key",
                                           initialValue: selectedField.dropdownValue ?? 'title',
                                           hint: "e.g. title, name",
@@ -880,7 +881,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "List Key (optional)",
                                     initialValue: selectedField.dropdownListKey ?? '',
                                     hint: "e.g. data.items, result",
@@ -891,7 +892,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     },
                                   ),
                                   const SizedBox(height: 10),
-                                  _PropertyTextField(
+                                  PropertyTextField(
                                     label: "Response JSON Data (Test/Preloaded)",
                                     initialValue: selectedField.dropdowndata != null ? json.encode(selectedField.dropdowndata) : '',
                                     hint: '[{"id": 1, "title": "Option One"}, {"id": 2, "title": "Option Two"}]',
@@ -928,12 +929,12 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                   ),
                                   if (_testDataError != null) ...[
                                     const SizedBox(height: 4),
-                                    Text(_testDataError!, style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 10)),
+                                    Text(_testDataError!, style: TextStyle(fontFamily: 'Inter', color: Colors.redAccent, fontSize: 10)),
                                   ],
                                   const SizedBox(height: 10),
                                   Text(
                                     "Live Response Parsing Preview:",
-                                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
+                                    style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
                                   ),
                                   const SizedBox(height: 6),
                                   _buildResponsePreview(selectedField),
@@ -1037,7 +1038,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                         icon: _testingDropdownApi 
                                             ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                             : const Icon(Icons.bolt_rounded, size: 14),
-                                        label: Text("Test Connection", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        label: Text("Test Connection", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold)),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -1058,7 +1059,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                           );
                                         },
                                         icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
-                                        label: Text("Submit Config", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        label: Text("Submit Config", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold)),
                                       ),
                                     ),
                                   ],
@@ -1081,7 +1082,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                                     ),
                                     child: Text(
                                       _dropdownApiTestResult!,
-                                      style: GoogleFonts.inter(
+                                      style: TextStyle(fontFamily: 'Inter', 
                                         fontSize: 10,
                                         color: _dropdownApiTestSuccess ? Colors.greenAccent : Colors.redAccent,
                                         height: 1.4,
@@ -1137,7 +1138,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                       const SizedBox(width: 8),
                       Text(
                         title,
-                        style: GoogleFonts.outfit(
+                        style: TextStyle(fontFamily: 'Outfit', 
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: isExpanded ? accentColor : RevoTheme.textPrimary,
@@ -1370,7 +1371,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           children: [
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "Group ID",
                 initialValue: field.groupId ?? '',
                 hint: "customerDetails",
@@ -1379,7 +1380,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "Section ID",
                 initialValue: field.sectionId ?? '',
                 hint: "kyc",
@@ -1395,28 +1396,28 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.repeatableGroup = val),
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Formula / Calculated Value",
           initialValue: field.formula ?? '',
           hint: "sum(lineItems.amount)",
           onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.formula = val.trim().isEmpty ? null : val.trim()),
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Dynamic Expression",
           initialValue: field.expression ?? '',
           hint: "age >= 18 && country == 'IN'",
           onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.expression = val.trim().isEmpty ? null : val.trim()),
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Dynamic Default Expression",
           initialValue: field.defaultValueExpression ?? '',
           hint: "currentUser.email",
           onChanged: (val) => _updateEnterpriseField(field, activeStepId, (updated) => updated.defaultValueExpression = val.trim().isEmpty ? null : val.trim()),
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Depends On",
           initialValue: field.dependsOn ?? '',
           hint: "country",
@@ -1426,7 +1427,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           children: [
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "Visible Roles",
                 initialValue: field.visibleForRoles?.join(', ') ?? '',
                 hint: "admin, maker",
@@ -1435,7 +1436,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "Editable Roles",
                 initialValue: field.editableForRoles?.join(', ') ?? '',
                 hint: "admin, checker",
@@ -1445,7 +1446,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           ],
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Async Validation JSON",
           initialValue: field.asyncValidation == null ? '' : json.encode(field.asyncValidation),
           hint: '{"url": "/validate-pan", "method": "POST"}',
@@ -1458,7 +1459,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           },
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Cascade Config JSON",
           initialValue: field.cascadeConfig == null ? '' : json.encode(field.cascadeConfig),
           hint: '{"parentField": "country", "param": "countryId"}',
@@ -1471,7 +1472,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           },
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Localization JSON",
           initialValue: field.localization == null ? '' : json.encode(field.localization),
           hint: '{"en": {"label": "Name"}, "hi": {"label": "Naam"}}',
@@ -1484,7 +1485,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           },
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Conditional Validations JSON",
           initialValue: field.conditionalValidations == null ? '' : json.encode(field.conditionalValidations),
           hint: '[{"if": "age < 18", "type": "required", "message": "Guardian required"}]',
@@ -1674,7 +1675,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Columns", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            Text("Columns", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
             TextButton.icon(
               onPressed: () {
                 final updatedColumns = List<Map<String, dynamic>>.from(columns);
@@ -1691,7 +1692,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 _updateComponentConfig(field, activeStepId, 'columns', updatedColumns);
               },
               icon: const Icon(Icons.add_rounded, size: 14),
-              label: Text("Add Column", style: GoogleFonts.inter(fontSize: 10)),
+              label: Text("Add Column", style: TextStyle(fontFamily: 'Inter', fontSize: 10)),
             ),
           ],
         ),
@@ -1712,7 +1713,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 Row(
                   children: [
                     Expanded(
-                      child: _PropertyTextField(
+                      child: PropertyTextField(
                         label: "Label",
                         initialValue: column['label']?.toString() ?? '',
                         onChanged: (val) {
@@ -1724,7 +1725,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _PropertyTextField(
+                      child: PropertyTextField(
                         label: "Field ID",
                         initialValue: column['fieldId']?.toString() ?? '',
                         onChanged: (val) {
@@ -1740,7 +1741,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 Row(
                   children: [
                     Expanded(
-                      child: _PropertyDropdownField(
+                      child: PropertyDropdownField(
                         label: "Type",
                         currentValue: column['type']?.toString() ?? 'text',
                         items: const ['text', 'number', 'dropdown', 'date', 'checkbox'],
@@ -1824,7 +1825,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           ],
         ),
         const SizedBox(height: 10),
-        _PropertyTextField(
+        PropertyTextField(
           label: "Row Actions",
           initialValue: (config['rowActions'] is List ? (config['rowActions'] as List).join(', ') : config['rowActions']?.toString()) ?? '',
           hint: "view, edit, delete, duplicate",
@@ -1838,7 +1839,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           },
         ),
         const SizedBox(height: 10),
-        _PropertyDropdownField(
+        PropertyDropdownField(
           label: "Data Source",
           currentValue: config['dataSource']?.toString() ?? 'manual',
           items: const ['manual', 'api'],
@@ -1846,7 +1847,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         ),
         if ((config['dataSource']?.toString() ?? 'manual') == 'api') ...[
           const SizedBox(height: 10),
-          _PropertyTextField(
+          PropertyTextField(
             label: "Grid API URL",
             initialValue: config['gridApiUrl']?.toString() ?? '',
             hint: "https://api.example.com/users",
@@ -1856,7 +1857,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Row(
             children: [
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Grid API Method",
                   currentValue: config['gridApiMethod']?.toString() ?? 'GET',
                   items: const ['GET', 'POST', 'PUT', 'DELETE'],
@@ -1865,7 +1866,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _PropertyTextField(
+                child: PropertyTextField(
                   label: "Response List Key",
                   initialValue: config['gridApiListKey']?.toString() ?? '',
                   hint: "data.items",
@@ -1875,7 +1876,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ],
           ),
           const SizedBox(height: 10),
-          _PropertyTextField(
+          PropertyTextField(
             label: "Grid API Headers (JSON)",
             initialValue: config['gridApiHeaders'] == null || (config['gridApiHeaders'] is Map && (config['gridApiHeaders'] as Map).isEmpty)
                 ? ''
@@ -1892,7 +1893,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             },
           ),
           const SizedBox(height: 10),
-          _PropertyTextField(
+          PropertyTextField(
             label: "Grid API Body (JSON)",
             initialValue: config['gridApiBody']?.toString() ?? '',
             hint: '{"status": "active"}',
@@ -1915,7 +1916,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                       icon: _testingGridApi
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.bolt_rounded, size: 14),
-                  label: Text("Test Connection", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: Text("Test Connection", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1929,7 +1930,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   ),
                   onPressed: () => _submitGridApiConfig(field, activeStepId),
                   icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
-                  label: Text("Submit Config", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: Text("Submit Config", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -1951,13 +1952,13 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             children: [
               Text(
                 _gridApiTestResult!,
-                style: GoogleFonts.inter(fontSize: 10, color: _gridApiTestSuccess ? Colors.greenAccent : Colors.redAccent),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: _gridApiTestSuccess ? Colors.greenAccent : Colors.redAccent),
               ),
               if (_gridApiTestSuccess && _gridApiPreviewRows != null && _gridApiPreviewRows!.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
                   "Sample Row Preview:",
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -1969,7 +1970,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   ),
                   child: Text(
                     json.encode(_gridApiPreviewRows),
-                    style: GoogleFonts.sourceCodePro(fontSize: 9, color: Colors.greenAccent.withValues(alpha: 0.8)),
+                    style: TextStyle(fontFamily: 'Source Code Pro', fontSize: 9, color: Colors.greenAccent.withValues(alpha: 0.8)),
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1984,7 +1985,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           children: [
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "API Page Param",
                 initialValue: config['apiPageParam']?.toString() ?? 'page',
                 onChanged: (val) => _updateComponentConfig(field, activeStepId, 'apiPageParam', val.trim()),
@@ -1992,7 +1993,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PropertyTextField(
+              child: PropertyTextField(
                 label: "API Size Param",
                 initialValue: config['apiPageSizeParam']?.toString() ?? 'limit',
                 onChanged: (val) => _updateComponentConfig(field, activeStepId, 'apiPageSizeParam', val.trim()),
@@ -2033,7 +2034,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           ],
         ),
         const SizedBox(height: 10),
-        _PropertyDropdownField(
+        PropertyDropdownField(
           label: "Layout",
           currentValue: config['layout']?.toString() ?? 'singleColumn',
           items: const ['singleColumn', 'twoColumn', 'compact', 'cardList'],
@@ -2043,7 +2044,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Repeated Fields", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            Text("Repeated Fields", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
             TextButton.icon(
               onPressed: () {
                 final updatedFields = List<Map<String, dynamic>>.from(fields);
@@ -2052,7 +2053,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 _updateComponentConfig(field, activeStepId, 'fields', updatedFields);
               },
               icon: const Icon(Icons.add_rounded, size: 14),
-              label: Text("Add Field", style: GoogleFonts.inter(fontSize: 10)),
+              label: Text("Add Field", style: TextStyle(fontFamily: 'Inter', fontSize: 10)),
             ),
           ],
         ),
@@ -2073,7 +2074,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 Row(
                   children: [
                     Expanded(
-                      child: _PropertyTextField(
+                      child: PropertyTextField(
                         label: "Label",
                         initialValue: item['label']?.toString() ?? '',
                         onChanged: (val) {
@@ -2085,7 +2086,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _PropertyTextField(
+                      child: PropertyTextField(
                         label: "Field ID",
                         initialValue: item['fieldId']?.toString() ?? '',
                         onChanged: (val) {
@@ -2101,7 +2102,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 Row(
                   children: [
                     Expanded(
-                      child: _PropertyDropdownField(
+                      child: PropertyDropdownField(
                         label: "Type",
                         currentValue: item['type']?.toString() ?? 'text',
                         items: const ['text', 'number', 'dropdown', 'date', 'checkbox', 'file'],
@@ -2175,7 +2176,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           children: [
             Expanded(
-              child: _PropertyDropdownField(
+              child: PropertyDropdownField(
                 label: "Orientation",
                 currentValue: config['orientation']?.toString() ?? 'vertical',
                 items: const ['vertical', 'horizontal'],
@@ -2184,7 +2185,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PropertyDropdownField(
+              child: PropertyDropdownField(
                 label: "Marker Style",
                 currentValue: config['markerStyle']?.toString() ?? 'numbered',
                 items: const ['numbered', 'dot', 'icon'],
@@ -2197,7 +2198,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           children: [
             Expanded(
-              child: _PropertyDropdownField(
+              child: PropertyDropdownField(
                 label: "Default Status",
                 currentValue: config['defaultStatus']?.toString() ?? 'pending',
                 items: const ['pending', 'active', 'completed', 'failed'],
@@ -2206,7 +2207,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PropertyDropdownField(
+              child: PropertyDropdownField(
                 label: "Items Source",
                 currentValue: config['itemsSource']?.toString() ?? 'static',
                 items: const ['static', 'api', 'journeySteps'],
@@ -2229,7 +2230,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Static Timeline Items", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            Text("Static Timeline Items", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
             TextButton.icon(
               onPressed: () {
                 final updatedItems = List<Map<String, dynamic>>.from(items);
@@ -2238,7 +2239,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 _updateComponentConfig(field, activeStepId, 'items', updatedItems);
               },
               icon: const Icon(Icons.add_rounded, size: 14),
-              label: Text("Add Item", style: GoogleFonts.inter(fontSize: 10)),
+              label: Text("Add Item", style: TextStyle(fontFamily: 'Inter', fontSize: 10)),
             ),
           ],
         ),
@@ -2259,7 +2260,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 Row(
                   children: [
                     Expanded(
-                      child: _PropertyTextField(
+                      child: PropertyTextField(
                         label: "Title",
                         initialValue: item['title']?.toString() ?? '',
                         onChanged: (val) {
@@ -2271,7 +2272,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _PropertyDropdownField(
+                      child: PropertyDropdownField(
                         label: "Status",
                         currentValue: item['status']?.toString() ?? 'pending',
                         items: const ['pending', 'active', 'completed', 'failed'],
@@ -2294,7 +2295,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                _PropertyTextField(
+                PropertyTextField(
                   label: "Description",
                   initialValue: item['description']?.toString() ?? '',
                   onChanged: (val) {
@@ -2338,7 +2339,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Row(
             children: [
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Heading Level",
                   currentValue: config['headingLevel']?.toString() ?? 'H2',
                   items: const ['H1', 'H2', 'H3', 'H4'],
@@ -2355,7 +2356,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Row(
             children: [
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Variant",
                   currentValue: config['variant']?.toString() ?? 'outlined',
                   items: const ['outlined', 'filled', 'elevated'],
@@ -2372,7 +2373,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Row(
             children: [
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Variant",
                   currentValue: config['variant']?.toString() ?? 'underline',
                   items: const ['underline', 'boxed', 'pills'],
@@ -2381,7 +2382,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Alignment",
                   currentValue: config['alignment']?.toString() ?? 'start',
                   items: const ['start', 'center', 'end'],
@@ -2398,7 +2399,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Row(
             children: [
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Variant",
                   currentValue: config['variant']?.toString() ?? 'bordered',
                   items: const ['bordered', 'filled', 'plain'],
@@ -2407,7 +2408,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _PropertyDropdownField(
+                child: PropertyDropdownField(
                   label: "Icon Position",
                   currentValue: config['iconPosition']?.toString() ?? 'right',
                   items: const ['left', 'right'],
@@ -2431,7 +2432,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     String label, {
     String? fallback,
   }) {
-    return _PropertyTextField(
+    return PropertyTextField(
       label: label,
       initialValue: config[key]?.toString() ?? fallback ?? '',
       onChanged: (val) {
@@ -2446,7 +2447,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   }
 
   Widget _numberConfigField(JourneyField field, String activeStepId, Map<String, dynamic> config, String key, String label, int fallback) {
-    return _PropertyTextField(
+    return PropertyTextField(
       label: label,
       initialValue: _intConfig(config, key, fallback).toString(),
       onChanged: (val) => _updateComponentConfig(field, activeStepId, key, int.tryParse(val.trim()) ?? fallback),
@@ -2454,7 +2455,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   }
 
   Widget _paddingConfigField(JourneyField field, String activeStepId, Map<String, dynamic> config) {
-    return _PropertyDropdownField(
+    return PropertyDropdownField(
       label: "Padding",
       currentValue: config['padding']?.toString() ?? 'medium',
       items: const ['none', 'small', 'medium', 'large'],
@@ -2515,7 +2516,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           fit: BoxFit.scaleDown,
           child: Text(
             text,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'Inter', 
               fontSize: 10,
               color: isSelected ? Colors.white : RevoTheme.textSecondary,
               fontWeight: FontWeight.bold,
@@ -2544,7 +2545,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textPrimary),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -2596,7 +2597,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 child: Center(
                   child: Text(
                     "Static Options",
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'Inter', 
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: useStatic ? RevoTheme.primaryLight : RevoTheme.textSecondary,
@@ -2626,7 +2627,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 child: Center(
                   child: Text(
                     "API Integration",
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'Inter', 
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: !useStatic ? RevoTheme.primaryLight : RevoTheme.textSecondary,
@@ -2648,7 +2649,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
       children: [
         Text(
           "Static Options Builder",
-          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
         ),
         const SizedBox(height: 6),
         ...options.asMap().entries.map((entry) {
@@ -2663,7 +2664,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: _PropertyTextField(
+                  child: PropertyTextField(
                     label: "Key",
                     initialValue: keyStr,
                     onChanged: (newKey) {
@@ -2678,7 +2679,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 const SizedBox(width: 6),
                 Expanded(
                   flex: 5,
-                  child: _PropertyTextField(
+                  child: PropertyTextField(
                     label: "Value",
                     initialValue: valStr,
                     onChanged: (newVal) {
@@ -2728,7 +2729,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 .updateFieldInStep(activeStepId, field.id, updated);
           },
           icon: const Icon(Icons.add_rounded, size: 12),
-          label: Text("Add New Option", style: GoogleFonts.inter(fontSize: 10)),
+          label: Text("Add New Option", style: TextStyle(fontFamily: 'Inter', fontSize: 10)),
         ),
       ],
     );
@@ -2771,7 +2772,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           child: Center(
             child: Text(
               label,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'Inter', 
                 fontSize: 9,
                 fontWeight: FontWeight.bold,
                 color: isSelected ? RevoTheme.primaryLight : RevoTheme.textSecondary,
@@ -2790,7 +2791,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("API HTTP Method", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
+        Text("API HTTP Method", style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary)),
         const SizedBox(height: 4),
         Row(
           children: methods.map((method) {
@@ -2817,7 +2818,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                     child: Center(
                       child: Text(
                         method,
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                           color: isSelected ? RevoTheme.primaryLight : RevoTheme.textSecondary,
@@ -2873,7 +2874,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         ),
         child: Text(
           "Enter mock/test response JSON array in the field above to see live dropdown parse preview.",
-          style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary, fontStyle: FontStyle.italic),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary, fontStyle: FontStyle.italic),
         ),
       );
     }
@@ -2891,7 +2892,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
           ),
           child: Text(
             "Parsed 0 options. Double-check if the Display Key '$displayKey' matches properties in your JSON.",
-            style: GoogleFonts.inter(fontSize: 10, color: Colors.orangeAccent),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: Colors.orangeAccent),
           ),
         );
       }
@@ -2913,7 +2914,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                 const SizedBox(width: 4),
                 Text(
                   "Parsed ${parsedOptions.length} option(s) successfully:",
-                  style: GoogleFonts.inter(fontSize: 10, color: Colors.greenAccent, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: Colors.greenAccent, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -2931,7 +2932,7 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
                   ),
                   child: Text(
                     opt,
-                    style: GoogleFonts.inter(fontSize: 9, color: Colors.white70),
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 9, color: Colors.white70),
                   ),
                 );
               }).toList(),
@@ -2950,147 +2951,10 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
         ),
         child: Text(
           "Parsing error: ${e.toString()}",
-          style: GoogleFonts.inter(fontSize: 10, color: Colors.redAccent),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: Colors.redAccent),
         ),
       );
     }
   }
 }
 
-// Stateful text field wrapper that isolates editing state, preventing rebuild lags
-// and cursor selection reset bugs.
-class _PropertyTextField extends StatefulWidget {
-  final String label;
-  final String initialValue;
-  final String? hint;
-  final int maxLines;
-  final ValueChanged<String>? onChanged;
-
-  const _PropertyTextField({
-    required this.label,
-    required this.initialValue,
-    this.hint,
-    this.maxLines = 1,
-    this.onChanged,
-  });
-
-  @override
-  State<_PropertyTextField> createState() => _PropertyTextFieldState();
-}
-
-class _PropertyTextFieldState extends State<_PropertyTextField> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void didUpdateWidget(covariant _PropertyTextField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialValue != oldWidget.initialValue && widget.initialValue != _controller.text) {
-      final selection = _controller.selection;
-      _controller.text = widget.initialValue;
-      try {
-        _controller.selection = selection;
-      } catch (_) {
-        _controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: _controller.text.length),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.label, style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
-        const SizedBox(height: 4),
-        TextField(
-          controller: _controller,
-          maxLines: widget.maxLines,
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            hintStyle: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary.withValues(alpha:0.5)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            filled: true,
-            fillColor: RevoTheme.background,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: RevoTheme.cardBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: RevoTheme.primaryLight, width: 1.5),
-            ),
-          ),
-          style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textPrimary),
-          onChanged: widget.onChanged,
-        ),
-      ],
-    );
-  }
-}
-
-class _PropertyDropdownField extends StatelessWidget {
-  final String label;
-  final String currentValue;
-  final List<String> items;
-  final ValueChanged<String>? onChanged;
-
-  const _PropertyDropdownField({
-    required this.label,
-    required this.currentValue,
-    required this.items,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: RevoTheme.background,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: RevoTheme.cardBorder),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: items.contains(currentValue) ? currentValue : items.first,
-              isExpanded: true,
-              dropdownColor: RevoTheme.cardBg,
-              style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textPrimary),
-              icon: Icon(Icons.arrow_drop_down, color: RevoTheme.textSecondary, size: 18),
-              items: items.map((String item) {
-                return DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(item),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null && onChanged != null) {
-                  onChanged!(val);
-                }
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

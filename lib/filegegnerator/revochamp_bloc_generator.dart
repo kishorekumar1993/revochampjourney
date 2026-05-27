@@ -32,7 +32,7 @@ enum Architecture { bloc, getx, riverpod }
 // Main entry point called from dashboard_screen.dart
 // ─────────────────────────────────────────────────────────────────────────────
 
-void generateAndSaveAllFiles({
+List<Map<String, String>> generateAllFilesData({
   required dynamic journeyConfig,
   Set<Architecture> architectures = const {
     Architecture.bloc,
@@ -40,7 +40,7 @@ void generateAndSaveAllFiles({
     Architecture.riverpod,
   },
 }) {
-  if (journeyConfig.steps.isEmpty) return;
+  if (journeyConfig.steps.isEmpty) return [];
 
   // "Motor Insurance Journey" → "motorInsurance"
   final journeyNamespace = _toJourneyNamespace(
@@ -74,7 +74,7 @@ void generateAndSaveAllFiles({
         : 'Step';
 
     debugPrint('  📋 Step: $screenName (${rawFields.length} fields)');
-  final journeyJson =
+    final journeyJson =
         jsonDecode(jsonEncode(journeyConfig)) as Map<String, dynamic>;
   
     // ── 1. BLoC ───────────────────────────────────────────────────────────
@@ -95,12 +95,12 @@ void generateAndSaveAllFiles({
         ),
       );
 
- final commonFiles = generateCommonCleanArchiFiles(
+      final commonFiles = generateCommonCleanArchiFiles(
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
         journeyJson: journeyJson,
-        statemanagement:"Bloc" // <-- pass the full JSON
+        statemanagement: "Bloc" // <-- pass the full JSON
       );
       allFiles.addAll(commonFiles);
     }
@@ -142,6 +142,22 @@ void generateAndSaveAllFiles({
       'textContent': globalDi.generateMain(),
     });
   }
+
+  return allFiles;
+}
+
+void generateAndSaveAllFiles({
+  required dynamic journeyConfig,
+  Set<Architecture> architectures = const {
+    Architecture.bloc,
+    Architecture.getx,
+    Architecture.riverpod,
+  },
+}) {
+  final allFiles = generateAllFilesData(
+    journeyConfig: journeyConfig,
+    architectures: architectures,
+  );
 
   if (allFiles.isEmpty) {
     debugPrint('❌ No files generated');

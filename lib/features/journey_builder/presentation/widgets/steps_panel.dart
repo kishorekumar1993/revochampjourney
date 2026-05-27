@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme.dart';
 import '../../data/models.dart';
@@ -213,7 +212,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
         ),
         title: Text(
           "Add New Journey Step",
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -307,7 +306,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                     Expanded(
                       child: Text(
                         config.journeyName,
-                        style: GoogleFonts.outfit(
+                        style: TextStyle(fontFamily: 'Outfit', 
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: RevoTheme.textPrimary,
@@ -358,7 +357,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                   children: [
                     Text(
                       "Version ${config.version}",
-                      style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -413,7 +412,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             fit: BoxFit.scaleDown,
             child: Text(
               text,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'Inter', 
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? RevoTheme.textPrimary : RevoTheme.textSecondary,
@@ -458,7 +457,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             children: [
               Text(
                 "Journey Steps",
-                style: GoogleFonts.outfit(
+                style: TextStyle(fontFamily: 'Outfit', 
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: RevoTheme.textPrimary,
@@ -469,7 +468,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 icon: Icon(Icons.add, size: 14, color: RevoTheme.primaryLight),
                 label: Text(
                   "Add Step",
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'Inter', 
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: RevoTheme.primaryLight,
@@ -542,7 +541,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                           alignment: Alignment.center,
                           child: Text(
                             "$stepNum",
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'Inter', 
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: isSelected ? Colors.white : RevoTheme.textPrimary,
@@ -553,7 +552,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                     ),
                     title: Text(
                       step.title,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'Inter', 
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: RevoTheme.textPrimary,
@@ -565,7 +564,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
                         "${step.fields.length} fields • id: ${step.id}",
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: RevoTheme.textSecondary,
@@ -646,7 +645,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                   children: [
                     Text(
                       "Journey Progress",
-                      style: GoogleFonts.outfit(
+                      style: TextStyle(fontFamily: 'Outfit', 
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: RevoTheme.textPrimary,
@@ -670,7 +669,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             ),
                             Text(
                               "$percentage%",
-                              style: GoogleFonts.outfit(
+                              style: TextStyle(fontFamily: 'Outfit', 
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: RevoTheme.textPrimary,
@@ -732,12 +731,12 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
         children: [
           Text(
             "Compile & Verify",
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+            style: TextStyle(fontFamily: 'Outfit', fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
             "Validate structural integrity, configurations, and API integrity checks.",
-            style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary),
           ),
           const SizedBox(height: 20),
 
@@ -777,7 +776,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Compiling rules and paths...", style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary)),
+                        Text("Compiling rules and paths...", style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textSecondary)),
                         const SizedBox(height: 12),
                         const SizedBox(
                           width: 32,
@@ -796,7 +795,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             const SizedBox(height: 12),
                             Text(
                               "Click button above to compile and run build checks.",
-                              style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -830,7 +829,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                       children: [
                                         Text(
                                           buildErrors.isEmpty ? "Build Verified Successfully" : "Build Verification Failed",
-                                          style: GoogleFonts.inter(
+                                          style: TextStyle(fontFamily: 'Inter', 
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                             color: buildErrors.isEmpty ? Colors.greenAccent : Colors.redAccent,
@@ -839,7 +838,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                         const SizedBox(height: 2),
                                         Text(
                                           "${buildErrors.length} Errors, ${buildWarnings.length} Warnings found.",
-                                          style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary),
+                                          style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary),
                                         ),
                                       ],
                                     ),
@@ -850,14 +849,14 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                             
                             if (buildErrors.isNotEmpty) ...[
                               const SizedBox(height: 16),
-                              Text("Errors (${buildErrors.length})", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                              Text("Errors (${buildErrors.length})", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent)),
                               const SizedBox(height: 6),
                               ...buildErrors.map((err) => _buildIssueTile(err, Colors.redAccent)),
                             ],
 
                             if (buildWarnings.isNotEmpty) ...[
                               const SizedBox(height: 16),
-                              Text("Warnings (${buildWarnings.length})", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
+                              Text("Warnings (${buildWarnings.length})", style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
                               const SizedBox(height: 6),
                               ...buildWarnings.map((warn) => _buildIssueTile(warn, Colors.orangeAccent)),
                             ],
@@ -868,7 +867,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                               const SizedBox(height: 12),
                               Text(
                                 "Excellent! All structural logic is verified and compiled cleanly.",
-                                style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.success, height: 1.4),
+                                style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.success, height: 1.4),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -898,7 +897,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary, height: 1.3),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textPrimary, height: 1.3),
             ),
           ),
         ],
@@ -914,17 +913,17 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
         children: [
           Text(
             "Global Journey Settings",
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+            style: TextStyle(fontFamily: 'Outfit', fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
             "Configure journey properties and settings globally.",
-            style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary),
           ),
           const SizedBox(height: 20),
 
           // Name field
-          Text("Journey Title", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Journey Title", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _nameController,
@@ -932,7 +931,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-            style: GoogleFonts.inter(fontSize: 12),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 12),
             onChanged: (val) {
               ref.read(journeyConfigProvider.notifier).updateJourneyName(val.trim());
             },
@@ -940,7 +939,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 16),
 
           // Description field
-          Text("Journey Description", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Journey Description", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _descriptionController,
@@ -949,7 +948,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-            style: GoogleFonts.inter(fontSize: 12),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 12),
             onChanged: (val) {
               ref.read(journeyConfigProvider.notifier).updateJourneyDescription(val.trim());
             },
@@ -957,7 +956,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 16),
 
           // Version field
-          Text("Semantic Version", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Semantic Version", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _versionController,
@@ -965,7 +964,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-            style: GoogleFonts.inter(fontSize: 12),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 12),
             onChanged: (val) {
               ref.read(journeyConfigProvider.notifier).updateJourneyVersion(val.trim());
             },
@@ -973,7 +972,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 16),
 
           // Category Selector
-          Text("Journey Category", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Journey Category", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -987,7 +986,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 value: _selectedCategory,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
-                style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
                 items: ['Onboarding', 'KYC Verification', 'Fintech Form', 'General Claim'].map((cat) {
                   return DropdownMenuItem(value: cat, child: Text(cat));
                 }).toList(),
@@ -1003,7 +1002,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 16),
 
           // Locale Selector
-          Text("Default System Language", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Default System Language", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1017,7 +1016,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 value: _selectedLocale,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
-                style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
                 items: ['English (US)', 'Spanish (ES)', 'Hindi (IN)', 'German (DE)'].map((loc) {
                   return DropdownMenuItem(value: loc, child: Text(loc));
                 }).toList(),
@@ -1033,7 +1032,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 16),
 
           // Platform selector
-          Text("Target Run Environment", style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
+          Text("Target Run Environment", style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1047,7 +1046,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 value: _selectedPlatform,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
-                style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
                 items: ['All Devices', 'Mobile Web Only', 'Desktop Only'].map((plat) {
                   return DropdownMenuItem(value: plat, child: Text(plat));
                 }).toList(),
@@ -1094,12 +1093,12 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
         children: [
           Text(
             "Change & State History",
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+            style: TextStyle(fontFamily: 'Outfit', fontSize: 16, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
             "Undo, redo, and review past builder sessions state trails.",
-            style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary),
           ),
           const SizedBox(height: 16),
 
@@ -1157,7 +1156,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
           const SizedBox(height: 20),
           Text(
             "Version Audit Timeline",
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
           ),
           const SizedBox(height: 8),
 
@@ -1171,7 +1170,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                         const SizedBox(height: 12),
                         Text(
                           "No past edits recorded yet.\nMake changes to log history checkpoints.",
-                          style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary, height: 1.4),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -1223,7 +1222,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                   children: [
                                     Text(
                                       isCurrent ? "Current Version (Active)" : "State Checkpoint #${index + 1}",
-                                      style: GoogleFonts.inter(
+                                      style: TextStyle(fontFamily: 'Inter', 
                                         fontSize: 11,
                                         fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                                         color: isCurrent ? RevoTheme.textPrimary : RevoTheme.textPrimary.withValues(alpha: 0.8),
@@ -1232,7 +1231,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                                     const SizedBox(height: 2),
                                     Text(
                                       "$stepsCount steps, $fieldsCount fields configured.",
-                                      style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary),
+                                      style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textSecondary),
                                     ),
                                   ],
                                 ),
@@ -1259,11 +1258,11 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: RevoTheme.textSecondary),
         ),
         Text(
           value,
-          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
         ),
       ],
     );

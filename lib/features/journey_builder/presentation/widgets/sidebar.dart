@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme.dart';
 
 class RevoSidebar extends StatelessWidget {
@@ -59,7 +58,7 @@ class RevoSidebar extends StatelessWidget {
                     child: Text(
                       "RevoJourney",
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: TextStyle(fontFamily: 'Outfit', 
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -114,7 +113,7 @@ class RevoSidebar extends StatelessWidget {
                                 child: Text(
                                   item['label'] as String,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'Inter', 
                                     color: isSelected ? RevoTheme.textPrimary : RevoTheme.textSecondary,
                                     fontSize: 14,
                                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -149,7 +148,7 @@ class RevoSidebar extends StatelessWidget {
                   radius: 18,
                   child: Text(
                     "AU",
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'Inter', 
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -166,7 +165,7 @@ class RevoSidebar extends StatelessWidget {
                         Text(
                           "Admin User",
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'Inter', 
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: RevoTheme.textPrimary,
@@ -175,7 +174,7 @@ class RevoSidebar extends StatelessWidget {
                         Text(
                           "Super Admin",
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'Inter', 
                             fontSize: 11,
                             color: RevoTheme.textSecondary,
                           ),

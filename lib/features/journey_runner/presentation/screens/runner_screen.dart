@@ -166,15 +166,27 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: RevoTheme.glassmorphicContainer(
-                      key: ValueKey(activeStep.id),
-                      width: 500,
-                      padding: const EdgeInsets.all(32),
-                      child: Form(
-                        key: _formKey,
+                  child: Container(
+                    width: 550,
+                    decoration: BoxDecoration(
+                      color: RevoTheme.cardBg.withValues(alpha:0.7),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: RevoTheme.cardBorder.withValues(alpha:0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: RevoTheme.primary.withValues(alpha:0.1),
+                          blurRadius: 40,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(40),
+                    child: Form(
+                      key: _formKey,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
                         child: Column(
+                          key: ValueKey(activeStep.id),
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -287,75 +299,116 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
 
   Widget _buildTimeline(JourneyConfig config, int activeIndex) {
     return Container(
-      height: 70,
+      height: 80,
       color: RevoTheme.sidebarBackground,
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: config.steps.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final step = entry.value;
-            final isCompleted = idx < activeIndex;
-            final isActive = idx == activeIndex;
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: config.steps.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final step = entry.value;
+              final isCompleted = idx < activeIndex;
+              final isActive = idx == activeIndex;
 
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Step Dot circle
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? RevoTheme.primary
-                        : isCompleted
-                            ? RevoTheme.secondary
-                            : RevoTheme.cardBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isActive ? RevoTheme.primaryLight : RevoTheme.cardBorder,
-                      width: 1.5,
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animated Step Pill
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? RevoTheme.primary.withValues(alpha:0.15)
+                          : isCompleted
+                              ? RevoTheme.secondary.withValues(alpha:0.15)
+                              : RevoTheme.cardBg,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: isActive
+                            ? RevoTheme.primary
+                            : isCompleted
+                                ? RevoTheme.secondary
+                                : RevoTheme.cardBorder,
+                        width: 1.5,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isActive || isCompleted ? 16 : 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icon or Number
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? RevoTheme.primary
+                                    : isCompleted
+                                        ? RevoTheme.secondary
+                                        : Colors.transparent,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: isCompleted
+                                  ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                                  : Text(
+                                      "${idx + 1}",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: isActive ? Colors.white : RevoTheme.textSecondary,
+                                      ),
+                                    ),
+                            ),
+                            // Label (Only show for Active or Completed)
+                            if (isActive || isCompleted) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                step.title,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                                  color: isActive
+                                      ? RevoTheme.primaryLight
+                                      : RevoTheme.textPrimary,
+                                ),
+                              ),
+                            ]
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: isCompleted
-                      ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                      : Text(
-                          "${idx + 1}",
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isActive || isCompleted ? Colors.white : RevoTheme.textSecondary,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  step.title,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    color: isActive
-                        ? RevoTheme.textPrimary
-                        : isCompleted
-                            ? RevoTheme.textSecondary
-                            : const Color(0xFF555577),
-                  ),
-                ),
-                if (idx < config.steps.length - 1) ...[
-                  Container(
-                    width: 40,
-                    height: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    color: isCompleted ? RevoTheme.secondary : RevoTheme.cardBorder,
-                  ),
+                  // Connecting Line
+                  if (idx < config.steps.length - 1) ...[
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 40,
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isCompleted ? RevoTheme.secondary : RevoTheme.cardBorder,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

@@ -8,10 +8,11 @@ import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
 import '../../../../core/theme.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
+import '../../../journey_builder/presentation/widgets/canvas_panel/canvas_panel_main.dart';
+import '../../../journey_builder/presentation/widgets/properties_panel/properties_panel_main.dart';
 import '../../../journey_builder/presentation/widgets/sidebar.dart';
 import '../../../journey_builder/presentation/widgets/steps_panel.dart';
-import '../../../journey_builder/presentation/widgets/canvas_panel.dart';
-import '../../../journey_builder/presentation/widgets/properties_panel.dart';
+import 'code_preview_dialog.dart';
 import 'templates_screen.dart';
 import 'journeys_screen.dart';
 import 'runs_screen.dart';
@@ -398,6 +399,50 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text("Cancel", style: TextStyle(color: RevoTheme.textSecondary)),
+                ),
+                OutlinedButton(
+                  onPressed: !hasSelection
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                          final architectures = <Architecture>{
+                            if (blocSelected) Architecture.bloc,
+                            if (getxSelected) Architecture.getx,
+                            if (riverpodSelected) Architecture.riverpod,
+                          };
+
+                          try {
+                            final files = generateAllFilesData(
+                              journeyConfig: journeyConfig,
+                              architectures: architectures,
+                            );
+                            
+                            if (files.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("No files generated!"), backgroundColor: Colors.orange),
+                              );
+                              return;
+                            }
+
+                            showDialog(
+                              context: context,
+                              builder: (context) => CodePreviewDialog(files: files),
+                            );
+                          } catch (e, stack) {
+                            debugPrint("Preview generation error: $e\n$stack");
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Preview error: $e"),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: RevoTheme.primary),
+                  ),
+                  child: Text("Preview Code", style: TextStyle(color: RevoTheme.primaryLight)),
                 ),
                 ElevatedButton(
                   onPressed: !hasSelection
