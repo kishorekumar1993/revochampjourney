@@ -1,14 +1,14 @@
 // Riverpod generators
-import 'package:revojourneytryone/common/common_usecas_bloc_generator.dart';
+import 'package:revojourneytryone/shared/common_usecase_bloc_generator.dart';
 import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
-import 'package:revojourneytryone/common/common_datasource.dart';
-import 'package:revojourneytryone/common/common_data_repositoryimpl.dart';
-import 'package:revojourneytryone/common/common_domain_repository.dart';
-import 'package:revojourneytryone/common/common_enitity_class.dart';
-import 'package:revojourneytryone/common/common_locator.dart';
-import 'package:revojourneytryone/common/common_temp_model.dart';
+import 'package:revojourneytryone/shared/common_datasource.dart';
+import 'package:revojourneytryone/shared/common_data_repositoryimpl.dart';
+import 'package:revojourneytryone/shared/common_domain_repository.dart';
+import 'package:revojourneytryone/shared/common_entity_class.dart';
+import 'package:revojourneytryone/shared/common_locator.dart';
+import 'package:revojourneytryone/shared/common_temp_model.dart';
 
-import 'package:revojourneytryone/common/commonapiservice.dart';
+import 'package:revojourneytryone/shared/common_api_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Riverpod Generator
@@ -18,7 +18,9 @@ List<Map<String, String>> generateCommonCleanArchiFiles({
   required String screenName,
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
-    required Map<String, dynamic> journeyJson, required String statemanagement,   // new parameter
+  required Map<String, dynamic> journeyJson,
+  required String statemanagement, // new parameter
+  List<Map<String, dynamic>>? flatFields, // reuse flattened fields from orchestrator
 
 
 }) {
@@ -28,10 +30,10 @@ List<Map<String, String>> generateCommonCleanArchiFiles({
   final fileName  = '${baseName}_form';
   final base      = 'lib/$statemanagement/features/$journeyNamespace/$baseName';
 
-  final flatFields = flattenFields(rawFields);
+  final effectiveFlatFields = flatFields ?? flattenFields(rawFields);
 
   // ── Riverpod model + entity files (per dropdown field) ───────────────────
-  for (final field in flatFields) {
+  for (final field in effectiveFlatFields) {
     final dropdownData = field['dropdowndata'];
     if (dropdownData == null) continue;
 
@@ -91,5 +93,6 @@ result.add({
 
   return result;
 }
+
 
 

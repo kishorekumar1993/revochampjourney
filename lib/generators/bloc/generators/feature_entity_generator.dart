@@ -4,7 +4,7 @@
 // FIXED: copyWith sentinel pattern, JSON key preservation, null safety,
 //        enum usage, and now uses Model class for dropdown deserialization.
 
-import 'field_schema.dart';
+import '../engine/field_schema.dart';
 
 enum StringFallback { emptyString, nullValue, throwOnNull }
 

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../../../core/theme.dart';
-import '../../../data/models.dart';
-import '../../providers/journey_provider.dart';
+import '../../../domain/entities/journey_models.dart';
+import '../../../application/controllers/journey_controller.dart';
 
 import 'canvas_toolbox.dart';
 import 'canvas_fields.dart';
@@ -2631,4 +2631,5 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
   }
 
 }
+
 

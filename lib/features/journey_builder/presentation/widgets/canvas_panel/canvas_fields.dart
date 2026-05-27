@@ -1,11 +1,5 @@
-import 'dart:convert';
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import '../../../../../core/theme.dart';
-import '../../../data/models.dart';
-import '../../providers/journey_provider.dart';
 
 
 class CanvasDropdownField extends StatelessWidget {
@@ -15,7 +9,7 @@ class CanvasDropdownField extends StatelessWidget {
   final String fallback;
   final ValueChanged<String> onChanged;
 
-  const CanvasDropdownField({
+  const CanvasDropdownField({super.key, 
     required this.label,
     required this.value,
     required this.items,
@@ -74,7 +68,7 @@ class CanvasTextField extends StatefulWidget {
   final int maxLines;
   final ValueChanged<String>? onChanged;
 
-  const CanvasTextField({
+  const CanvasTextField({super.key, 
     required this.label,
     required this.initialValue,
     this.hint,

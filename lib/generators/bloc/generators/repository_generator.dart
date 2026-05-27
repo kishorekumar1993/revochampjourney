@@ -7,7 +7,7 @@
 //   4. Use-case classes
 //   5. Result model class (breaks circular import)
 
-import 'field_schema.dart';
+import '../engine/field_schema.dart';
 
 // ---------------------------------------------------------------------------
 // Shared naming utilities (to avoid code duplication)

@@ -13,12 +13,14 @@
 import 'dart:convert';
 import 'dart:js' as js;
 
-import 'package:flutter/material.dart';
-import 'package:revojourneytryone/blocnew/di_generator.dart';
-import 'package:revojourneytryone/blocnew/field_schema.dart';
+import 'package:flutter/foundation.dart';
+import 'package:revojourneytryone/generators/bloc/generators/di_generator.dart';
+import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart';
 import 'package:revojourneytryone/filegegnerator/common_bloc_generator.dart';
 import 'package:revojourneytryone/filegegnerator/getx_generator.dart';
 import 'package:revojourneytryone/filegegnerator/riverpodgenerator.dart';
+
+import '../features/journey_builder/domain/entities/journey_models.dart';
 
 import 'bloc_files_generator.dart';
 
@@ -54,7 +56,8 @@ List<Map<String, String>> generateAllFilesData({
 
   final List<Map<String, String>> allFiles = [];
   bool coreFilesAdded = false;
-  blocFeaturesInfo.clear();
+  final blocFeaturesInfo = <FeatureInfo>[];
+  final journeyJson = (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
 
   for (final step in journeyConfig.steps) {
     if (step.fields.isEmpty) {
@@ -62,11 +65,14 @@ List<Map<String, String>> generateAllFilesData({
       continue;
     }
 
-    final fieldsJson = jsonEncode(step.fields.map((f) => f.toJson()).toList());
-    final rawFields = (jsonDecode(fieldsJson) as List<dynamic>)
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-    final fieldsForDi = rawFields.map(FieldSchema.fromJson).toList();
+    // Avoid jsonEncode/jsonDecode round-trips (CPU-heavy on web).
+    // Explicit List<Map<...>> — on web, .map().toList() is List<dynamic> and
+    // fails when passed to flattenFields / generateBlocFiles.
+    final rawFields = fieldsToJsonMaps(step.fields);
+    final fieldsForDi = rawFields
+        .map((e) => FieldSchema.fromJson(e))
+        .toList(growable: false);
+    final flatFields = flattenFields(rawFields);
 
     final cleanName = step.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     final screenName = cleanName.isNotEmpty
@@ -74,8 +80,6 @@ List<Map<String, String>> generateAllFilesData({
         : 'Step';
 
     debugPrint('  📋 Step: $screenName (${rawFields.length} fields)');
-    final journeyJson =
-        jsonDecode(jsonEncode(journeyConfig)) as Map<String, dynamic>;
   
     // ── 1. BLoC ───────────────────────────────────────────────────────────
     if (architectures.contains(Architecture.bloc)) {
@@ -99,6 +103,7 @@ List<Map<String, String>> generateAllFilesData({
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
+        flatFields: flatFields,
         journeyJson: journeyJson,
         statemanagement: "Bloc" // <-- pass the full JSON
       );
@@ -111,6 +116,7 @@ List<Map<String, String>> generateAllFilesData({
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
+        flatFields: flatFields,
       );
       allFiles.addAll(getxFiles);
     }
@@ -121,6 +127,7 @@ List<Map<String, String>> generateAllFilesData({
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
         journeyJson: journeyJson, // <-- pass the full JSON
+        flatFields: flatFields,
       );
       allFiles.addAll(riverpodFiles);
     }
@@ -146,15 +153,15 @@ List<Map<String, String>> generateAllFilesData({
   return allFiles;
 }
 
-void generateAndSaveAllFiles({
+Future<void> generateAndSaveAllFiles({
   required dynamic journeyConfig,
   Set<Architecture> architectures = const {
     Architecture.bloc,
     Architecture.getx,
     Architecture.riverpod,
   },
-}) {
-  final allFiles = generateAllFilesData(
+}) async {
+  final allFiles = await generateAllFilesDataIsolate(
     journeyConfig: journeyConfig,
     architectures: architectures,
   );
@@ -168,7 +175,63 @@ void generateAndSaveAllFiles({
   js.context.callMethod('saveMultipleFilesToFolders', [jsonEncode(allFiles)]);
 }
 
-final List<FeatureInfo> blocFeaturesInfo = [];
+/// Isolate wrapper: runs the *pure* generation work off the UI thread.
+Future<List<Map<String, String>>> generateAllFilesDataIsolate({
+  required dynamic journeyConfig,
+  Set<Architecture> architectures = const {
+    Architecture.bloc,
+    Architecture.getx,
+    Architecture.riverpod,
+  },
+}) async {
+  // Flutter Web does not support real isolates; run generation on main thread.
+  if (kIsWeb) {
+    return generateAllFilesData(
+      journeyConfig: journeyConfig,
+      architectures: architectures,
+    );
+  }
+
+  final journeyJson = (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
+  final archNames = architectures.map((a) => a.name).toList(growable: false);
+
+  return compute(
+    _generateAllFilesDataEntry,
+    <String, dynamic>{
+      'journeyJson': journeyJson,
+      'architectures': archNames,
+    },
+  );
+}
+
+// Top-level entrypoint for `compute()`.
+List<Map<String, String>> _generateAllFilesDataEntry(
+  Map<String, dynamic> payload,
+) {
+  final journeyJson = payload['journeyJson'] as Map<String, dynamic>;
+  final archNames = (payload['architectures'] as List<dynamic>).cast<String>();
+
+  final archSet = <Architecture>{};
+  for (final name in archNames) {
+    switch (name) {
+      case 'bloc':
+        archSet.add(Architecture.bloc);
+        break;
+      case 'getx':
+        archSet.add(Architecture.getx);
+        break;
+      case 'riverpod':
+        archSet.add(Architecture.riverpod);
+        break;
+    }
+  }
+
+  final journeyConfig = JourneyConfig.fromJson(journeyJson);
+  return generateAllFilesData(
+    journeyConfig: journeyConfig,
+    architectures: archSet,
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Convenience wrapper — still usable from old call sites
@@ -181,11 +244,10 @@ List<Map<String, String>> generateFileDataArray({
   bool generateTests = true,
   bool generateBarrels = true,
 }) {
-  final safeFields = deepClone(fieldJsonRaw);
   final files = RevochampBlocGenerator(
     screenName: screenName,
     modelName: modelName,
-    fieldJsonRaw: safeFields,
+    fieldJsonRaw: fieldJsonRaw,
     generateTests: generateTests,
     generateBarrels: generateBarrels,
   ).generate();
@@ -206,15 +268,15 @@ List<Map<String, String>> generateFileDataArray({
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Deep-clone via JSON round-trip: eliminates all JSArray/JSObject remnants
-List<Map<String, dynamic>> deepClone(List<Map<String, dynamic>> input) {
-  return (jsonDecode(jsonEncode(input)) as List<dynamic>)
-      .map((e) => Map<String, dynamic>.from(e as Map))
-      .toList();
+/// Converts journey fields to JSON maps with a web-safe list type.
+List<Map<String, dynamic>> fieldsToJsonMaps(List<JourneyField> fields) {
+  return List<Map<String, dynamic>>.from(
+    fields.map((f) => Map<String, dynamic>.from(f.toJson())),
+  );
 }
 
 /// Flattens nested fields so models for inner dropdowns are generated
-List<Map<String, dynamic>> flattenFields(List<Map<String, dynamic>> source) {
+List<Map<String, dynamic>> flattenFields(List<dynamic> source) {
   final result = <Map<String, dynamic>>[];
   void flatten(dynamic item) {
     if (item == null) return;
@@ -222,12 +284,13 @@ List<Map<String, dynamic>> flattenFields(List<Map<String, dynamic>> source) {
       for (final i in item) flatten(i);
       return;
     }
-    if (item is! Map<String, dynamic>) return;
+    if (item is! Map) return;
 
-    if (item.containsKey('type')) {
-      result.add(item);
-      flatten(item['nestedFields']);
-      final config = item['componentConfig'];
+    final map = Map<String, dynamic>.from(item);
+    if (map.containsKey('type')) {
+      result.add(map);
+      flatten(map['nestedFields']);
+      final config = map['componentConfig'];
       if (config is Map) {
         flatten(config['fields']);
         flatten(config['columns']);
@@ -278,3 +341,4 @@ String _toJourneyNamespace(String name) {
           .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
           .join();
 }
+

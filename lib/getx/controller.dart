@@ -1,3 +1,5 @@
+import 'package:revojourneytryone/getx/getx_model_naming.dart';
+
 String generatecontrollerClass(
   String className,
   List<dynamic> configList,

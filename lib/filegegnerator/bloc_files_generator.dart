@@ -2,18 +2,17 @@
 // 1. BLoC Generator
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
-import 'package:revojourneytryone/blocnew/widget_generator.dart';
-import 'package:revojourneytryone/blocnew/api_client_generator.dart';
-import 'package:revojourneytryone/blocnew/bloc_generator.dart';
-// import 'package:revojourneytryone/blocnew/entity_generator.dart';
-import 'package:revojourneytryone/blocnew/event_generator.dart';
-import 'package:revojourneytryone/blocnew/field_schema.dart' hide toSnakeCase;
-import 'package:revojourneytryone/blocnew/mapper_generator.dart';
-import 'package:revojourneytryone/blocnew/observer_generator.dart';
-import 'package:revojourneytryone/blocnew/runtime_sources.dart';
-import 'package:revojourneytryone/blocnew/screen_generator.dart';
-import 'package:revojourneytryone/blocnew/validation_generator.dart';
+import 'package:revojourneytryone/generators/bloc/generators/widget_generator.dart';
+import 'package:revojourneytryone/generators/bloc/generators/api_client_generator.dart';
+import 'package:revojourneytryone/generators/bloc/generators/bloc_generator.dart';
+// import 'package:revojourneytryone/generators/bloc/generators/entity_generator.dart';
+import 'package:revojourneytryone/generators/bloc/generators/event_generator.dart';
+import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart' hide toSnakeCase;
+import 'package:revojourneytryone/generators/bloc/generators/mapper_generator.dart';
+import 'package:revojourneytryone/generators/bloc/runtime/observer_generator.dart';
+import 'package:revojourneytryone/generators/bloc/runtime/runtime_sources.dart';
+import 'package:revojourneytryone/generators/bloc/generators/screen_generator.dart';
+import 'package:revojourneytryone/generators/bloc/validators/validation_generator.dart';
 
 List<Map<String, String>> generateBlocFiles({
   required String screenName,
@@ -23,11 +22,10 @@ List<Map<String, String>> generateBlocFiles({
 }) {
   final result = <Map<String, String>>[];
 
-  final safeFields = deepClone(rawFields);
   final files = RevochampBlocGenerator(
     screenName: screenName,
     modelName: 'Form',
-    fieldJsonRaw: safeFields,
+    fieldJsonRaw: rawFields,
     generateTests: true,
     generateBarrels: true,
   ).generate();
@@ -100,7 +98,9 @@ Map<String, String> generate() {
       .toList();
 
   // Legacy FieldSchema list (keep for older generators like EventGenerator)
-  final fields = fieldJsonRaw.map(FieldSchema.fromJson).toList();
+  final fields = fieldJsonRaw
+      .map((e) => FieldSchema.fromJson(Map<String, dynamic>.from(e)))
+      .toList();
 
   final files = <String, String>{};
 
@@ -358,3 +358,20 @@ Map<String, String> generate() {
     files['$base/widgets.dart'] = ReusableWidgetSources.widgetsBarrel;
   }
 }
+
+// Local helper (previously came from `revochamp_bloc_generator.dart`).
+String toSnakeCase(String text) {
+  if (text.isEmpty) return text;
+  final buffer = StringBuffer();
+  buffer.write(text[0].toLowerCase());
+  for (int i = 1; i < text.length; i++) {
+    final char = text[i];
+    if (char.toUpperCase() == char && char != char.toLowerCase()) {
+      buffer.write('_${char.toLowerCase()}');
+    } else {
+      buffer.write(char);
+    }
+  }
+  return buffer.toString();
+}
+

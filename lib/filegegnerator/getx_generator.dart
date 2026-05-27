@@ -7,6 +7,7 @@ import 'package:revojourneytryone/getx/controller.dart';
 import 'package:revojourneytryone/getx/repository.dart';
 import 'package:revojourneytryone/getx/viewscreen.dart';
 import 'package:revojourneytryone/getx/getx_model.dart';
+import 'package:revojourneytryone/getx/getx_model_naming.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. GetX Generator
@@ -16,6 +17,7 @@ List<Map<String, String>> generateGetxFiles({
   required String screenName,
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
+  List<Map<String, dynamic>>? flatFields,
 }) {
   final result    = <Map<String, String>>[];
   final baseName  = screenName.toLowerCase();
@@ -23,7 +25,7 @@ List<Map<String, String>> generateGetxFiles({
   final fileName  = '${baseName}_form';
   final base      = 'lib/getx/features/$journeyNamespace/$baseName';
 
-  final flatFields = flattenFields(rawFields);
+  final effectiveFlatFields = flatFields ?? flattenFields(rawFields);
 
   // ── Generate GetX files ──────────────────────────────────────────────────
   final binding    = generateBindingClass(
@@ -43,7 +45,7 @@ List<Map<String, String>> generateGetxFiles({
   ]);
 
   // ── GetX Model files (per dropdown field with data) ───────────────────────
-  for (final field in flatFields) {
+  for (final field in effectiveFlatFields) {
     final dropdownData = field['dropdowndata'];
     if (dropdownData == null) continue;
 
@@ -56,13 +58,12 @@ List<Map<String, String>> generateGetxFiles({
       continue;
     }
 
-    final rawLabel    = field['label'] as String? ?? 'Unnamed';
-    final safeLabel   = rawLabel.trim().isEmpty ? 'Unnamed' : rawLabel;
-    final modelName   = '${safeLabel.replaceAll(' ', '')}Model';
-    final modelFile   = safeLabel.toLowerCase().replaceAll(' ', '_');
-    final sampleData  = dataList.first is Map
-        ? Map<String, dynamic>.from(dataList.first as Map)
-        : <String, dynamic>{};
+    final modelName = resolveGetxModelClassName(field);
+    final modelFile = resolveGetxModelFileBase(field);
+    var sampleData = getxModelSampleJson(field);
+    if (sampleData.isEmpty && dataList.first is Map) {
+      sampleData = Map<String, dynamic>.from(dataList.first as Map);
+    }
 
     final generated = generateClass(modelName, sampleData);
 

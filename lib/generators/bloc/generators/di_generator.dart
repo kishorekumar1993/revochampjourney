@@ -2,7 +2,7 @@
 // Fixed: duplicate registration guards, lazy singletons, UseCases naming,
 // LoadEvent moved to BLoC constructor, no event coupling in main
 
-import 'field_schema.dart';
+import '../engine/field_schema.dart';
 
 class DiGenerator {
   DiGenerator({

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
+import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart'
+    deferred as bloc_gen;
 import '../../../../core/theme.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
@@ -403,16 +404,18 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                 OutlinedButton(
                   onPressed: !hasSelection
                       ? null
-                      : () {
+                      : () async {
+                          // Lazy-load the (large) generator code only when needed.
+                          await bloc_gen.loadLibrary();
                           Navigator.pop(dialogContext);
-                          final architectures = <Architecture>{
-                            if (blocSelected) Architecture.bloc,
-                            if (getxSelected) Architecture.getx,
-                            if (riverpodSelected) Architecture.riverpod,
+                          final architectures = {
+                            if (blocSelected) bloc_gen.Architecture.bloc,
+                            if (getxSelected) bloc_gen.Architecture.getx,
+                            if (riverpodSelected) bloc_gen.Architecture.riverpod,
                           };
 
                           try {
-                            final files = generateAllFilesData(
+                            final files = await bloc_gen.generateAllFilesDataIsolate(
                               journeyConfig: journeyConfig,
                               architectures: architectures,
                             );
@@ -447,16 +450,17 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                 ElevatedButton(
                   onPressed: !hasSelection
                       ? null
-                      : () {
+                      : () async {
+                          await bloc_gen.loadLibrary();
                           Navigator.pop(dialogContext);
-                          final architectures = <Architecture>{
-                            if (blocSelected) Architecture.bloc,
-                            if (getxSelected) Architecture.getx,
-                            if (riverpodSelected) Architecture.riverpod,
+                          final architectures = {
+                            if (blocSelected) bloc_gen.Architecture.bloc,
+                            if (getxSelected) bloc_gen.Architecture.getx,
+                            if (riverpodSelected) bloc_gen.Architecture.riverpod,
                           };
 
                           try {
-                            generateAndSaveAllFiles(
+                            await bloc_gen.generateAndSaveAllFiles(
                               journeyConfig: journeyConfig,
                               architectures: architectures,
                             );

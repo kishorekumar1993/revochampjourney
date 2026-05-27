@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme.dart';
-import '../../data/models.dart';
-import '../providers/journey_provider.dart';
+import '../../domain/entities/journey_models.dart';
+import '../../application/controllers/journey_controller.dart';
 
 class BuildAuditResult {
   final List<String> errors;
@@ -1268,3 +1268,4 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     );
   }
 }
+

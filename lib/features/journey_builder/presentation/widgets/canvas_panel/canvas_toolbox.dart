@@ -1,11 +1,6 @@
-import 'dart:convert';
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import '../../../../../core/theme.dart';
-import '../../../data/models.dart';
-import '../../providers/journey_provider.dart';
+import '../../../domain/entities/journey_models.dart';
 
 
 class CanvasToolbox extends StatelessWidget {
@@ -183,4 +178,5 @@ class CanvasBottomStats extends StatelessWidget {
     );
   }
 }
+
 

@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../../../core/theme.dart';
-import '../../../data/models.dart';
-import '../../providers/journey_provider.dart';
+import '../../../domain/entities/journey_models.dart';
+import '../../../application/controllers/journey_controller.dart';
 
 import 'property_fields.dart';
 
@@ -2957,4 +2957,5 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
     }
   }
 }
+
 

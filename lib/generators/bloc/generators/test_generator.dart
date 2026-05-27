@@ -7,7 +7,7 @@
 //   - Submit (valid form → success, invalid form → validation errors)
 //   - Reset
 
-import 'package:revojourneytryone/blocnew/field_schema.dart';
+import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart';
 
 
 class TestGenerator {
@@ -224,3 +224,4 @@ class TestGenerator {
     };
   }
 }
+
