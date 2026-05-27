@@ -8,6 +8,19 @@ import '../../../../core/theme.dart';
 import '../../data/models.dart';
 import '../providers/journey_provider.dart';
 
+final canvasActiveTabProvider = StateProvider.autoDispose<String>((ref) => 'Design');
+final canvasShowPreviewProvider = StateProvider.autoDispose<bool>((ref) => false);
+final canvasIsMobilePreviewProvider = StateProvider.autoDispose<bool>((ref) => true);
+
+class StepApiTestState {
+  final bool testing;
+  final int? index;
+  final bool success;
+  final String? result;
+  StepApiTestState({this.testing = false, this.index, this.success = false, this.result});
+}
+final stepApiTestStateProvider = StateProvider.autoDispose<StepApiTestState>((ref) => StepApiTestState());
+
 class RevoCanvasPanel extends ConsumerStatefulWidget {
   const RevoCanvasPanel({super.key});
 
@@ -16,15 +29,6 @@ class RevoCanvasPanel extends ConsumerStatefulWidget {
 }
 
 class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
-  String _activeTab = 'Design';
-  bool _isMobilePreview = true;
-  bool _showPreview = false;
-
-  bool _testingStepApi = false;
-  int? _testingStepApiIndex;
-  String? _stepApiTestResult;
-  bool _stepApiTestSuccess = false;
-
   late final Map<String, Widget Function(JourneyField, String)> _previewRegistry;
   late final Map<String, Widget Function(JourneyField, Map<String, dynamic>)> _mockupRegistry;
 
@@ -247,7 +251,6 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     }
 
     final selectedFieldId = ref.watch(selectedFieldIdProvider);
-    final formValues = ref.watch(formValuesProvider);
 
     return Expanded(
       child: Container(
@@ -274,8 +277,15 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                   _buildCanvas(step, selectedFieldId),
 
                   // 3. Mobile/Desktop Live simulator view
-                  if (_showPreview)
-                    _buildLivePreview(step, formValues, previousStepId, nextStepId),
+                  Consumer(
+                    builder: (context, cRef, _) {
+                      final showPreview = cRef.watch(canvasShowPreviewProvider);
+                      if (!showPreview) return const SizedBox.shrink();
+                      final formValues = cRef.watch(formValuesProvider);
+                      final isMobilePreview = cRef.watch(canvasIsMobilePreviewProvider);
+                      return _buildLivePreview(step, formValues, previousStepId, nextStepId, isMobilePreview);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -331,40 +341,44 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Screen switch
-                  Container(
-                    decoration: BoxDecoration(
-                      color: RevoTheme.cardBg,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      children: [
-                        _buildSwitchIconButton(
-                          Icons.phone_android_rounded, 
-                          _showPreview && _isMobilePreview, 
-                          () => setState(() {
-                            _showPreview = true;
-                            _isMobilePreview = true;
-                          }),
-                        ),
-                        _buildSwitchIconButton(
-                          Icons.laptop_chromebook_rounded, 
-                          _showPreview && !_isMobilePreview, 
-                          () => setState(() {
-                            _showPreview = true;
-                            _isMobilePreview = false;
-                          }),
-                        ),
-                        _buildSwitchIconButton(
-                          Icons.visibility_off_rounded, 
-                          !_showPreview, 
-                          () => setState(() {
-                            _showPreview = false;
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
+                  Consumer(builder: (context, cRef, _) {
+                    final showPreview = cRef.watch(canvasShowPreviewProvider);
+                    final isMobilePreview = cRef.watch(canvasIsMobilePreviewProvider);
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: RevoTheme.cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          _buildSwitchIconButton(
+                            Icons.phone_android_rounded, 
+                            showPreview && isMobilePreview, 
+                            () {
+                              cRef.read(canvasShowPreviewProvider.notifier).state = true;
+                              cRef.read(canvasIsMobilePreviewProvider.notifier).state = true;
+                            },
+                          ),
+                          _buildSwitchIconButton(
+                            Icons.laptop_chromebook_rounded, 
+                            showPreview && !isMobilePreview, 
+                            () {
+                              cRef.read(canvasShowPreviewProvider.notifier).state = true;
+                              cRef.read(canvasIsMobilePreviewProvider.notifier).state = false;
+                            },
+                          ),
+                          _buildSwitchIconButton(
+                            Icons.visibility_off_rounded, 
+                            !showPreview, 
+                            () {
+                              cRef.read(canvasShowPreviewProvider.notifier).state = false;
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                   const SizedBox(width: 16),
                   // Navigation buttons
                   OutlinedButton(
@@ -446,244 +460,251 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: tabs.map((tab) {
-            final isSelected = _activeTab == tab['id'];
-            return InkWell(
-              onTap: () => setState(() => _activeTab = tab['id'] as String),
-              child: Container(
-                height: 48,
-                margin: const EdgeInsets.only(right: 32),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: isSelected 
-                      ? Border(bottom: BorderSide(color: RevoTheme.primary, width: 2))
-                      : null,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      tab['icon'] as IconData,
-                      size: 16,
-                      color: isSelected ? RevoTheme.primaryLight : RevoTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      tab['label'] as String,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+        child: Consumer(builder: (context, cRef, _) {
+          final activeTab = cRef.watch(canvasActiveTabProvider);
+          return Row(
+            children: tabs.map((tab) {
+              final isSelected = activeTab == tab['id'];
+              return InkWell(
+                onTap: () => cRef.read(canvasActiveTabProvider.notifier).state = tab['id'] as String,
+                child: Container(
+                  height: 48,
+                  margin: const EdgeInsets.only(right: 32),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: isSelected 
+                        ? Border(bottom: BorderSide(color: RevoTheme.primary, width: 2))
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        tab['icon'] as IconData,
+                        size: 16,
+                        color: isSelected ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        tab['label'] as String,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
+              );
+            }).toList(),
+          );
+        }),
       ),
     );
   }
 
   Widget _buildCanvas(JourneyStep step, String? selectedFieldId) {
-    if (_activeTab == 'Rules') {
-      return _buildRulesTab(step);
-    } else if (_activeTab == 'Validations') {
-      return _buildValidationsTab(step);
-    } else if (_activeTab == 'API') {
-      return _buildApiTab(step);
-    } else if (_activeTab == 'Actions') {
-      return _buildActionsTab(step);
-    } else if (_activeTab == 'Settings') {
-      return _buildSettingsTab(step);
-    }
+    return Consumer(builder: (context, cRef, _) {
+      final activeTab = cRef.watch(canvasActiveTabProvider);
+      
+      if (activeTab == 'Rules') {
+        return _buildRulesTab(step);
+      } else if (activeTab == 'Validations') {
+        return _buildValidationsTab(step);
+      } else if (activeTab == 'API') {
+        return _buildApiTab(step);
+      } else if (activeTab == 'Actions') {
+        return _buildActionsTab(step);
+      } else if (activeTab == 'Settings') {
+        return _buildSettingsTab(step);
+      }
 
-    return Expanded(
-      flex: 3,
-      child: DragTarget<String>(
-        onAcceptWithDetails: (details) {
-          _addField(details.data);
-        },
-        builder: (context, candidateData, rejectedData) {
-          final isOver = candidateData.isNotEmpty;
+      return Expanded(
+        flex: 3,
+        child: DragTarget<String>(
+          onAcceptWithDetails: (details) {
+            _addField(details.data);
+          },
+          builder: (context, candidateData, rejectedData) {
+            final isOver = candidateData.isNotEmpty;
 
-          return Container(
-            color: isOver ? RevoTheme.primary.withValues(alpha:0.08) : RevoTheme.background,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Canvas Header Title
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        step.title,
-                        style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        step.description.isNotEmpty ? step.description : "Drag widgets here to build details",
-                        style: GoogleFonts.inter(color: RevoTheme.textSecondary, fontSize: 13),
-                      ),
-                    ],
+            return Container(
+              color: isOver ? RevoTheme.primary.withValues(alpha:0.08) : RevoTheme.background,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Canvas Header Title
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          step.title,
+                          style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          step.description.isNotEmpty ? step.description : "Drag widgets here to build details",
+                          style: GoogleFonts.inter(color: RevoTheme.textSecondary, fontSize: 13),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                // Canvas Fields list
-                Expanded(
-                  child: step.fields.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.art_track_rounded, size: 48, color: RevoTheme.cardBorder),
-                              const SizedBox(height: 12),
-                              Text(
-                                "Drag tools here or click items to insert field",
-                                style: GoogleFonts.inter(color: RevoTheme.textSecondary, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Theme(
-                          data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
-                          child: ReorderableListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: step.fields.length,
-                            onReorder: (oldIndex, newIndex) {
-                              ref.read(journeyConfigProvider.notifier)
-                                  .reorderFieldsInStep(step.id, oldIndex, newIndex);
-                            },
-                            itemBuilder: (context, index) {
-                              final field = step.fields[index];
-                              final isSelected = field.id == selectedFieldId;
+                  // Canvas Fields list
+                  Expanded(
+                    child: step.fields.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.art_track_rounded, size: 48, color: RevoTheme.cardBorder),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "Drag tools here or click items to insert field",
+                                  style: GoogleFonts.inter(color: RevoTheme.textSecondary, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Theme(
+                            data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
+                            child: ReorderableListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: step.fields.length,
+                              onReorder: (oldIndex, newIndex) {
+                                ref.read(journeyConfigProvider.notifier)
+                                    .reorderFieldsInStep(step.id, oldIndex, newIndex);
+                              },
+                              itemBuilder: (context, index) {
+                                final field = step.fields[index];
+                                final isSelected = field.id == selectedFieldId;
 
-                              return InkWell(
-                                key: ValueKey(field.id),
-                                onTap: () {
-                                  ref.read(selectedFieldIdProvider.notifier).state = field.id;
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 6),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: RevoTheme.cardBg,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: isSelected
-                                        ? Border.all(color: RevoTheme.primary, width: 1.5)
-                                        : Border.all(color: RevoTheme.cardBorder),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          ReorderableDragStartListener(
-                                            index: index,
-                                            child: Icon(Icons.drag_indicator_rounded, color: RevoTheme.textSecondary),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        field.label,
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 14,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                    if (field.required)
-                                                      const Text(" *", style: TextStyle(color: Colors.red)),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  field.placeholder ?? "No placeholder configured",
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 12,
-                                                    color: RevoTheme.textSecondary,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildCanvasComponentPreview(field, step.id),
-                                      if (isSelected) ...[
-                                        const SizedBox(height: 12),
-                                        Divider(color: RevoTheme.cardBorder, height: 1),
-                                        const SizedBox(height: 8),
+                                return InkWell(
+                                  key: ValueKey(field.id),
+                                  onTap: () {
+                                    ref.read(selectedFieldIdProvider.notifier).state = field.id;
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 6),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: RevoTheme.cardBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: isSelected
+                                          ? Border.all(color: RevoTheme.primary, width: 1.5)
+                                          : Border.all(color: RevoTheme.cardBorder),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: RevoTheme.primary.withValues(alpha:0.15),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: RevoTheme.primary.withValues(alpha:0.3)),
-                                              ),
-                                              child: Text(
-                                                field.type.toUpperCase(),
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 9,
-                                                  color: RevoTheme.primaryLight,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
+                                            ReorderableDragStartListener(
+                                              index: index,
+                                              child: Icon(Icons.drag_indicator_rounded, color: RevoTheme.textSecondary),
                                             ),
-                                            Row(
-                                              children: [
-                                                IconButton(
-                                                  icon: Icon(Icons.copy_rounded, size: 16, color: RevoTheme.primaryLight),
-                                                  onPressed: () => _duplicateField(field),
-                                                  constraints: const BoxConstraints(),
-                                                  padding: const EdgeInsets.all(8),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
-                                                  onPressed: () {
-                                                    ref.read(journeyConfigProvider.notifier)
-                                                        .removeFieldFromStep(step.id, field.id);
-                                                  },
-                                                  constraints: const BoxConstraints(),
-                                                  padding: const EdgeInsets.all(8),
-                                                ),
-                                              ],
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          field.label,
+                                                          style: GoogleFonts.inter(
+                                                            fontSize: 14,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      if (field.required)
+                                                        const Text(" *", style: TextStyle(color: Colors.red)),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    field.placeholder ?? "No placeholder configured",
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12,
+                                                      color: RevoTheme.textSecondary,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),
+                                        const SizedBox(height: 12),
+                                        _buildCanvasComponentPreview(field, step.id),
+                                        if (isSelected) ...[
+                                          const SizedBox(height: 12),
+                                          Divider(color: RevoTheme.cardBorder, height: 1),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: RevoTheme.primary.withValues(alpha:0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(color: RevoTheme.primary.withValues(alpha:0.3)),
+                                                ),
+                                                child: Text(
+                                                  field.type.toUpperCase(),
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    color: RevoTheme.primaryLight,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              Row(
+                                                children: [
+                                                  IconButton(
+                                                    icon: Icon(Icons.copy_rounded, size: 16, color: RevoTheme.primaryLight),
+                                                    onPressed: () => _duplicateField(field),
+                                                    constraints: const BoxConstraints(),
+                                                    padding: const EdgeInsets.all(8),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                                    onPressed: () {
+                                                      ref.read(journeyConfigProvider.notifier)
+                                                          .removeFieldFromStep(step.id, field.id);
+                                                    },
+                                                    constraints: const BoxConstraints(),
+                                                    padding: const EdgeInsets.all(8),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    });
   }
 
   Widget _buildCanvasComponentPreview(JourneyField field, String stepId) {
@@ -1515,8 +1536,10 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                       itemCount: step.apiCalls.length,
                       itemBuilder: (context, index) {
                         final api = step.apiCalls[index];
-                        final isTestingThis = _testingStepApi && _testingStepApiIndex == index;
-                        return Container(
+                        return Consumer(builder: (context, cRef, _) {
+                          final apiTestState = cRef.watch(stepApiTestStateProvider);
+                          final isTestingThis = apiTestState.testing && apiTestState.index == index;
+                          return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -1640,18 +1663,18 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     ),
                                     onPressed: isTestingThis ? null : () async {
-                                      setState(() {
-                                        _testingStepApi = true;
-                                        _testingStepApiIndex = index;
-                                        _stepApiTestResult = null;
-                                      });
+                                      cRef.read(stepApiTestStateProvider.notifier).state = StepApiTestState(
+                                        testing: true,
+                                        index: index,
+                                      );
                                       
                                       if (api.url.isEmpty) {
-                                        setState(() {
-                                          _testingStepApi = false;
-                                          _stepApiTestSuccess = false;
-                                          _stepApiTestResult = "Error: Endpoint URL Path is required to test.";
-                                        });
+                                        cRef.read(stepApiTestStateProvider.notifier).state = StepApiTestState(
+                                          testing: false,
+                                          index: index,
+                                          success: false,
+                                          result: "Error: Endpoint URL Path is required to test.",
+                                        );
                                         return;
                                       }
                                       
@@ -1675,17 +1698,19 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                             ? '${response.body.substring(0, 200)}...' 
                                             : response.body;
                                         
-                                        setState(() {
-                                          _testingStepApi = false;
-                                          _stepApiTestSuccess = response.statusCode >= 200 && response.statusCode < 300;
-                                          _stepApiTestResult = "Status: ${response.statusCode} ${response.reasonPhrase}\nResponse:\n$responseBody";
-                                        });
+                                        cRef.read(stepApiTestStateProvider.notifier).state = StepApiTestState(
+                                          testing: false,
+                                          index: index,
+                                          success: response.statusCode >= 200 && response.statusCode < 300,
+                                          result: "Status: ${response.statusCode} ${response.reasonPhrase}\nResponse:\n$responseBody",
+                                        );
                                       } catch (e) {
-                                        setState(() {
-                                          _testingStepApi = false;
-                                          _stepApiTestSuccess = false;
-                                          _stepApiTestResult = "Error: Failed to connect.\n${e.toString()}";
-                                        });
+                                        cRef.read(stepApiTestStateProvider.notifier).state = StepApiTestState(
+                                          testing: false,
+                                          index: index,
+                                          success: false,
+                                          result: "Error: Failed to connect.\n${e.toString()}",
+                                        );
                                       }
                                     },
                                     icon: isTestingThis
@@ -1714,7 +1739,7 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                   ),
                                 ],
                               ),
-                              if (_stepApiTestResult != null && _testingStepApiIndex == index) ...[
+                              if (apiTestState.result != null && apiTestState.index == index) ...[
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,
@@ -1723,16 +1748,16 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                                     color: RevoTheme.background,
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: _stepApiTestSuccess 
+                                      color: apiTestState.success 
                                           ? RevoTheme.success.withValues(alpha:0.3) 
                                           : RevoTheme.error.withValues(alpha:0.3),
                                     ),
                                   ),
                                   child: Text(
-                                    _stepApiTestResult!,
+                                    apiTestState.result!,
                                     style: GoogleFonts.inter(
                                       fontSize: 10,
-                                      color: _stepApiTestSuccess ? Colors.greenAccent : Colors.redAccent,
+                                      color: apiTestState.success ? Colors.greenAccent : Colors.redAccent,
                                       height: 1.4,
                                     ),
                                   ),
@@ -1740,7 +1765,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
                               ],
                             ],
                           ),
-                        );
+                          );
+                        });
                       },
                     ),
             ),
@@ -1993,8 +2019,8 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     );
   }
 
-  Widget _buildLivePreview(JourneyStep step, Map<String, dynamic> formValues, String? previousStepId, String? nextStepId) {
-    if (!_isMobilePreview) {
+  Widget _buildLivePreview(JourneyStep step, Map<String, dynamic> formValues, String? previousStepId, String? nextStepId, bool isMobilePreview) {
+    if (!isMobilePreview) {
       // Laptop / Desktop Preview
       return Expanded(
         flex: 4, // Make it wider to display desktop format cleanly
@@ -2658,7 +2684,7 @@ class _CanvasToolbox extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
                 group['title'] as String,
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: RevoTheme.textSecondary,
@@ -2687,7 +2713,7 @@ class _CanvasToolbox extends StatelessWidget {
                         Expanded(
                           child: Text(
                             item['label'] as String,
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
+                            style: TextStyle(fontSize: 11, color: Colors.white),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -2714,7 +2740,7 @@ class _CanvasToolbox extends StatelessWidget {
                           Expanded(
                             child: Text(
                               item['label'] as String,
-                              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textPrimary),
+                              style: TextStyle(fontSize: 10, color: RevoTheme.textPrimary),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),

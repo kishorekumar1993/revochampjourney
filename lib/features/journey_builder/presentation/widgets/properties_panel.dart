@@ -131,17 +131,16 @@ class _RevoPropertiesPanelState extends ConsumerState<RevoPropertiesPanel> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeModeProvider);
-    final config = ref.watch(journeyConfigProvider);
     final activeStepId = ref.watch(activeStepIdProvider);
     final selectedFieldId = ref.watch(selectedFieldIdProvider);
 
     // Find the highlighted field in the active step
-    JourneyField? selectedField;
-    final stepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
-    if (stepIndex != -1) {
-      final step = config.steps[stepIndex];
-      selectedField = _findFieldById(step.fields, selectedFieldId);
-    }
+    final selectedField = ref.watch(journeyConfigProvider.select((config) {
+      if (selectedFieldId == null) return null;
+      final stepIndex = config.steps.indexWhere((s) => s.id == activeStepId);
+      if (stepIndex == -1) return null;
+      return _findFieldById(config.steps[stepIndex].fields, selectedFieldId);
+    }));
 
     final isRadioOrSelectionOrDivider = selectedField?.type == 'radio' ||
         selectedField?.type == 'checkbox' ||

@@ -59,7 +59,9 @@ String generateriverpodviewClass(
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;

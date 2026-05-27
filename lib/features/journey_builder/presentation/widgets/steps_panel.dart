@@ -282,7 +282,11 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
   Widget build(BuildContext context) {
     // Watch themeModeProvider to trigger a rebuild when the global theme changes
     ref.watch(themeModeProvider);
-    final config = ref.watch(journeyConfigProvider);
+    
+    // Select only high-level metadata to prevent full rebuilds on deep canvas edits
+    final journeyName = ref.watch(journeyConfigProvider.select((c) => c.journeyName));
+    final version = ref.watch(journeyConfigProvider.select((c) => c.version));
+    
     final activeStepId = ref.watch(activeStepIdProvider);
 
     return Container(
@@ -306,7 +310,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                   children: [
                     Expanded(
                       child: Text(
-                        config.journeyName,
+                        journeyName,
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -322,7 +326,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                       icon: Icon(Icons.edit, size: 16, color: RevoTheme.textSecondary),
                       onPressed: () {
                         // Rename journey dialog
-                        final nameCtrl = TextEditingController(text: config.journeyName);
+                        final nameCtrl = TextEditingController(text: journeyName);
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
@@ -357,7 +361,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 Row(
                   children: [
                     Text(
-                      "Version ${config.version}",
+                      "Version $version",
                       style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textSecondary),
                     ),
                   ],
@@ -391,7 +395,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
 
           // Active Tab Content
           Expanded(
-            child: _buildTabContent(config, activeStepId),
+            child: _buildTabContent(activeStepId),
           ),
         ],
       ),
@@ -425,23 +429,25 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     );
   }
 
-  Widget _buildTabContent(JourneyConfig config, String activeStepId) {
+  Widget _buildTabContent(String activeStepId) {
     switch (_activeSidebarTab) {
       case 'Build':
-        return _buildBuildTabContent(config);
+        return _buildBuildTabContent();
       case 'Settings':
-        return _buildSettingsTabContent(config);
+        return _buildSettingsTabContent();
       case 'History':
-        return _buildHistoryTabContent(config);
+        return _buildHistoryTabContent();
       case 'Journey Flow':
       default:
-        return _buildJourneyFlowTabContent(config, activeStepId);
+        return _buildJourneyFlowTabContent(activeStepId);
     }
   }
 
-  Widget _buildJourneyFlowTabContent(JourneyConfig config, String activeStepId) {
-    final totalSteps = config.steps.length;
-    final activeIndex = config.steps.indexWhere((s) => s.id == activeStepId);
+  Widget _buildJourneyFlowTabContent(String activeStepId) {
+    // Scope rebuilds ONLY to the step sequence
+    final steps = ref.watch(journeyConfigProvider.select((c) => c.steps));
+    final totalSteps = steps.length;
+    final activeIndex = steps.indexWhere((s) => s.id == activeStepId);
     final completedSteps = activeIndex >= 0 ? activeIndex : 0;
     final percentage = totalSteps > 0 
         ? ((completedSteps / totalSteps) * 100).round() 
@@ -492,12 +498,12 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
               canvasColor: Colors.transparent,
             ),
             child: ReorderableListView.builder(
-              itemCount: config.steps.length,
+              itemCount: steps.length,
               onReorder: (oldIndex, newIndex) {
                 ref.read(journeyConfigProvider.notifier).reorderSteps(oldIndex, newIndex);
               },
               itemBuilder: (context, index) {
-                final step = config.steps[index];
+                final step = steps[index];
                 final isSelected = step.id == activeStepId;
                 final stepNum = index + 1;
 
@@ -719,7 +725,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     );
   }
 
-  Widget _buildBuildTabContent(JourneyConfig config) {
+  Widget _buildBuildTabContent() {
     // 1. Run validation audits on config
     final auditResult = ref.watch(buildAuditProvider);
     final buildErrors = auditResult.errors;
@@ -906,7 +912,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     );
   }
 
-  Widget _buildSettingsTabContent(JourneyConfig config) {
+  Widget _buildSettingsTabContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1082,7 +1088,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     );
   }
 
-  Widget _buildHistoryTabContent(JourneyConfig config) {
+  Widget _buildHistoryTabContent() {
     final historyState = ref.watch(historyProvider);
     final past = historyState.past;
     final future = historyState.future;
