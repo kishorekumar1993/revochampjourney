@@ -291,9 +291,9 @@ class BlocGenerator {
     b.writeln();
 
     b.writeln("class ${featureName}Bloc extends Bloc<${featureName}Event, ${featureName}State> {");
-    b.writeln("  final ${featureName}Usecases usecases;");
+    b.writeln("  final ${featureName}Usecases? usecases;");
     b.writeln();
-    b.writeln("  ${featureName}Bloc({required this.usecases})");
+    b.writeln("  ${featureName}Bloc({this.usecases})");
     b.writeln("      : super(${featureName}State.initial()) {");
     b.writeln("    on<${featureName}FieldChangedEvent>(_onFieldChanged);");
     b.writeln("    on<${featureName}BatchUpdateEvent>(_onBatchUpdate);");

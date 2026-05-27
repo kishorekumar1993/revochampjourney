@@ -121,6 +121,13 @@ String generateRepositoryInterface(
     }
   }
 
+  buffer.writeln();
+  buffer.writeln("  Future<Either<Failure, Map<String, dynamic>?>> submitStep({");
+  buffer.writeln("    required String stepId,");
+  buffer.writeln("    required Map<String, dynamic> formData,");
+  buffer.writeln("    required String trigger,");
+  buffer.writeln("  });");
+
   buffer.writeln("}");
   return buffer.toString();
 }

@@ -84,7 +84,6 @@ String generateRepositoryImplInterface(
   buffer.writeln("import 'package:dartz/dartz.dart';");
   buffer.writeln("import '/core/network/failure_mapper.dart';");
   buffer.writeln("import '/core/runtime/failure.dart';");
-  buffer.writeln("import '/core/errors/failures.dart';");
 
   // 2. Package-based entity import (first field only, if packageName given)
   if (packageName != null &&
@@ -191,6 +190,30 @@ String generateRepositoryImplInterface(
     buffer.writeln("  }");
     buffer.writeln();
   }
+
+  buffer.writeln("  @override");
+  buffer.writeln("  Future<Either<Failure, Map<String, dynamic>?>> submitStep({");
+  buffer.writeln("    required String stepId,");
+  buffer.writeln("    required Map<String, dynamic> formData,");
+  buffer.writeln("    required String trigger,");
+  buffer.writeln("  }) async {");
+  buffer.writeln("    try {");
+  buffer.writeln(
+    "      final result = await (${classLower}Datasource as dynamic).submitStep(",
+  );
+  buffer.writeln("        stepId: stepId,");
+  buffer.writeln("        formData: formData,");
+  buffer.writeln("        trigger: trigger,");
+  buffer.writeln("      );");
+  buffer.writeln("      if (result is Map<String, dynamic> || result == null) {");
+  buffer.writeln("        return Right(result as Map<String, dynamic>?);");
+  buffer.writeln("      }");
+  buffer.writeln("      return Right(<String, dynamic>{});");
+  buffer.writeln("    } catch (e) {");
+  buffer.writeln("      return Left(mapExceptionToFailure(e));");
+  buffer.writeln("    }");
+  buffer.writeln("  }");
+  buffer.writeln();
 
   buffer.writeln("}");
   return buffer.toString();

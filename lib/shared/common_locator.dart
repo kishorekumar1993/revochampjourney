@@ -63,14 +63,33 @@ String generateLocatorInterface(
   buffer.writeln("import '../../data/dataSource/${fileSnake}_data_source.dart';");
   buffer.writeln("import '../../data/repositoryimpl/${fileSnake}_repositoryimpl.dart';");
   buffer.writeln("import '../repository/${fileSnake}_repository.dart';");
-  buffer.writeln("import '../usecases/${fileSnake}_usecases.dart';");      // ✅ plural 'usecases'
+  buffer.writeln("import '../usecases/${fileSnake}_usecases.dart';");     
+  buffer.writeln("import '$corePath/network/dio_client.dart';"); // ✅ plural 'usecases'
   buffer.writeln();
 
   // ─── apiServiceProvider (top-level) ───────────────────────────
-  buffer.writeln("final apiServiceProvider = Provider<ApiService>((ref) {");
-  buffer.writeln("  return ApiService(baseUrl: 'https://your-api-base-url.com');");
-  buffer.writeln("});");
-  buffer.writeln();
+  // buffer.writeln("final apiServiceProvider = Provider<ApiService>((ref) {");
+  // buffer.writeln("  return ApiService(baseUrl: 'https://your-api-base-url.com');");
+  // buffer.writeln("});");
+  // buffer.writeln();
+
+buffer.writeln("final dioClientProvider = Provider<DioClient>((ref) {");
+buffer.writeln("  return DioClient(baseUrl:"");");
+buffer.writeln("});");
+buffer.writeln();
+
+buffer.writeln("final apiServiceProvider = Provider<ApiService>((ref) {");
+buffer.writeln("  final dioClient = ref.watch(dioClientProvider);");
+buffer.writeln();
+buffer.writeln("  final service = ApiService(");
+buffer.writeln("    dioClient,");
+buffer.writeln("    baseUrl: 'https://your-api-base-url.com',");
+buffer.writeln("  );");
+buffer.writeln();
+buffer.writeln("  ref.onDispose(service.dispose);");
+buffer.writeln();
+buffer.writeln("  return service;");
+buffer.writeln("});");
 
   // ─── DataSource provider ──────────────────────────────────────
   buffer.writeln("/// DataSource provider.");

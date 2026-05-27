@@ -127,6 +127,21 @@ class JourneyBlocUseCaseGenerator {
     }
 
     buf.writeln();
+    buf.writeln('class StepSubmissionResult {');
+    buf.writeln('  final String? nextStepId;');
+    buf.writeln('  final Map<String, dynamic>? payload;');
+    buf.writeln();
+    buf.writeln('  const StepSubmissionResult({');
+    buf.writeln('    this.nextStepId,');
+    buf.writeln('    this.payload,');
+    buf.writeln('  });');
+    buf.writeln();
+    buf.writeln('  factory StepSubmissionResult.fromMap(Map<String, dynamic>? map) {');
+    buf.writeln('    if (map == null) return const StepSubmissionResult();');
+    buf.writeln("    return StepSubmissionResult(nextStepId: map['nextStepId']?.toString(), payload: map);");
+    buf.writeln('  }');
+    buf.writeln('}');
+    buf.writeln();
 
     /// ==================================================
     /// GENERATE INDIVIDUAL USECASES
@@ -212,6 +227,7 @@ class JourneyBlocUseCaseGenerator {
     /// --------------------------------------------------
 
     buf.writeln('  const $facadeClass({');
+    buf.writeln('    this.repository,');
 
     for (final d in uniqueDropdowns) {
       final field = _findFieldByLabel(
@@ -252,6 +268,7 @@ class JourneyBlocUseCaseGenerator {
         '  final $className $variableName;',
       );
     }
+    buf.writeln('  final $repoClass? repository;');
 
     buf.writeln();
 
@@ -297,6 +314,27 @@ class JourneyBlocUseCaseGenerator {
 
       buf.writeln();
     }
+
+    buf.writeln('  Future<StepSubmissionResult?> submitStep({');
+    buf.writeln('    required String stepId,');
+    buf.writeln('    required Map<String, dynamic> formData,');
+    buf.writeln('    required String trigger,');
+    buf.writeln('  }) async {');
+    buf.writeln('    final repo = repository;');
+    buf.writeln('    if (repo == null) {');
+    buf.writeln("      throw StateError('Repository is required for submitStep');");
+    buf.writeln('    }');
+    buf.writeln('    final result = await repo.submitStep(');
+    buf.writeln('      stepId: stepId,');
+    buf.writeln('      formData: formData,');
+    buf.writeln('      trigger: trigger,');
+    buf.writeln('    );');
+    buf.writeln('    return result.fold(');
+    buf.writeln("      (failure) => throw Exception(failure.toString()),");
+    buf.writeln('      (data) => StepSubmissionResult.fromMap(data),');
+    buf.writeln('    );');
+    buf.writeln('  }');
+    buf.writeln();
 
     buf.writeln('}');
 
