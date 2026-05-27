@@ -62,6 +62,13 @@ class GlobalDiGenerator {
       final bn = targetFeat.baseName;
       buf.writeln("import 'features/$journeyNamespace/$bn/presentation/screens/${sn}_screen.dart';");
       buf.writeln("import 'features/$journeyNamespace/$bn/presentation/bloc/${sn}_bloc.dart';");
+      for (final feat in features) {
+        final featSn = toSnakeCase(feat.featureName);
+        final featBn = feat.baseName;
+        if (featBn == bn) continue;
+        buf.writeln("import 'features/$journeyNamespace/$featBn/presentation/screens/${featSn}_screen.dart';");
+        buf.writeln("import 'features/$journeyNamespace/$featBn/presentation/bloc/${featSn}_bloc.dart';");
+      }
     }
 
     buf.writeln();
@@ -87,6 +94,27 @@ class GlobalDiGenerator {
       buf.writeln('        create: (_) => getIt<${pascalFeat}Bloc>(),');
       buf.writeln('        child: const ${pascalFeat}Screen(),');
       buf.writeln('      ),');
+      buf.writeln('      onGenerateRoute: (settings) {');
+      buf.writeln("        final name = settings.name ?? '';");
+      buf.writeln("        if (name.startsWith('/journey/')) {");
+      buf.writeln("          final stepId = name.substring('/journey/'.length);");
+      buf.writeln('          switch (stepId) {');
+      for (final feat in features) {
+        final featPascal = toPascalCase(feat.featureName);
+        buf.writeln("            case '${feat.baseName}':");
+        buf.writeln('              return MaterialPageRoute(');
+        buf.writeln('                builder: (_) => BlocProvider(');
+        buf.writeln('                  create: (_) => getIt<${featPascal}Bloc>(),');
+        buf.writeln('                  child: const ${featPascal}Screen(),');
+        buf.writeln('                ),');
+        buf.writeln('              );');
+      }
+      buf.writeln('            default:');
+      buf.writeln('              return null;');
+      buf.writeln('          }');
+      buf.writeln('        }');
+      buf.writeln('        return null;');
+      buf.writeln('      },');
     } else {
       buf.writeln('      home: const Scaffold(body: Center(child: Text("No screens generated"))),');
     }
@@ -103,12 +131,9 @@ class GlobalDiGenerator {
     buf.writeln("import 'package:get_it/get_it.dart';");
     buf.writeln("import 'package:shared_preferences/shared_preferences.dart';");
 
-    // Only import networking classes if at least one feature needs them
-    final needsDio = features.any((f) => f.hasRemoteDataSource);
-    if (needsDio) {
-      buf.writeln("import 'core/network/dio_client.dart';");
-      buf.writeln("import 'core/network/interceptors/auth_interceptor.dart';");
-      buf.writeln("import 'core/config/api_config.dart';");
+    final needsRemote = features.any((f) => f.hasRemoteDataSource);
+    if (needsRemote) {
+      buf.writeln("import 'core/service/api_service.dart';");
     }
 
     // Storage service (for caching async dropdowns) if any feature uses it
@@ -130,22 +155,14 @@ class GlobalDiGenerator {
       final sn = toSnakeCase(feat.featureName);
       final bn = feat.baseName;
 
-      // Only import data layer if the feature actually has remote calls
-      if (feat.hasRemoteDataSource) {
-        buf.writeln(
-            "import 'features/$journeyNamespace/$bn/data/datasources/${sn}_datasource.dart';");
-        buf.writeln(
-            "import 'features/$journeyNamespace/$bn/data/repositories/${sn}_repository_impl.dart';");
-        buf.writeln(
-            "import 'features/$journeyNamespace/$bn/domain/repositories/${sn}_repository.dart';");
-      }
-
-      final hasUseCases =
-          feat.fields.where((x) => x.isAsyncDropdown).isNotEmpty;
-      if (hasUseCases) {
-        buf.writeln(
-            "import 'features/$journeyNamespace/$bn/domain/usecases/${sn}_usecases.dart';");
-      }
+      buf.writeln(
+          "import 'features/$journeyNamespace/$bn/data/dataSource/${sn}_data_source.dart';");
+      buf.writeln(
+          "import 'features/$journeyNamespace/$bn/data/repositoryimpl/${sn}_repositoryimpl.dart';");
+      buf.writeln(
+          "import 'features/$journeyNamespace/$bn/domain/repository/${sn}_repository.dart';");
+      buf.writeln(
+          "import 'features/$journeyNamespace/$bn/domain/usecases/${sn}_usecases.dart';");
       buf.writeln(
           "import 'features/$journeyNamespace/$bn/presentation/bloc/${sn}_bloc.dart';");
     }
@@ -162,18 +179,15 @@ class GlobalDiGenerator {
     buf.writeln('}');
     buf.writeln();
 
-    buf.write(buildAppDependenciesMethod(anyCached, needsDio));
+    buf.write(buildAppDependenciesMethod(anyCached, needsRemote));
 
     for (final feat in features) {
       final fn = feat.featureName;
       final hasCached = feat.fields.where((x) => x.isAsyncDropdown).any(
           (x) => x.cacheKey != null || x.isLocalStorageEnabled);
-      final hasUseCases =
-          feat.fields.where((x) => x.isAsyncDropdown).isNotEmpty;
-
       buf.writeln();
       buf.write(
-        buildFeatureDiMethod(fn, hasCached, hasUseCases, feat.hasRemoteDataSource),
+        buildFeatureDiMethod(fn, hasCached, true, feat.hasRemoteDataSource),
       );
     }
 
@@ -199,17 +213,11 @@ String buildAppDependenciesMethod(bool hasCached, bool needsDio) {
   }
   if (needsDio) {
     buf.writeln();
-    buf.writeln('  // ── Dio Client (lazy singleton) ─────────────────────────');
-    buf.writeln('  if (!getIt.isRegistered<DioClient>()) {');
-    buf.writeln('    getIt.registerLazySingleton<DioClient>(() => DioClient(');
-    buf.writeln('        baseUrl: ApiConfig.baseUrl,');
-    buf.writeln('        extraInterceptors: [');
-    buf.writeln('          AuthInterceptor(');
-    buf.writeln(
-        '            getToken: () async => prefs.getString(\'auth_token\'),');
-    buf.writeln('          ),');
-    buf.writeln('        ],');
-    buf.writeln('      ));');
+    buf.writeln('  // ── ApiService (lazy singleton) ─────────────────────────');
+    buf.writeln('  if (!getIt.isRegistered<ApiService>()) {');
+    buf.writeln('    getIt.registerLazySingleton<ApiService>(() => ApiService(');
+    buf.writeln("      baseUrl: '',");
+    buf.writeln('    ));');
     buf.writeln('  }');
   }
   buf.writeln('}');
@@ -228,16 +236,11 @@ String buildFeatureDiMethod(
     buf.writeln(
         '  // ── DataSource ───────────────────────────────────────────');
     buf.writeln(
-        '  if (!getIt.isRegistered<${pascalFeat}RemoteDataSource>()) {');
+        '  if (!getIt.isRegistered<${pascalFeat}DataSource>()) {');
     buf.writeln(
-        '    getIt.registerLazySingleton<${pascalFeat}RemoteDataSource>(');
+        '    getIt.registerLazySingleton<${pascalFeat}DataSource>(');
     buf.writeln(
-        '      () => ${pascalFeat}RemoteDataSourceImpl(');
-    buf.writeln('        client: getIt<DioClient>(),');
-    if (hasCached) {
-      buf.writeln('        storage: getIt<StorageService>(),');
-    }
-    buf.writeln('      ),');
+        '      () => ${pascalFeat}DataSourceImpl(getIt<ApiService>()),');
     buf.writeln('    );');
     buf.writeln('  }');
     buf.writeln();
@@ -248,7 +251,7 @@ String buildFeatureDiMethod(
     buf.writeln(
         '    getIt.registerLazySingleton<${pascalFeat}Repository>(');
     buf.writeln(
-        '      () => ${pascalFeat}RepositoryImpl(getIt<${pascalFeat}RemoteDataSource>()),');
+        '      () => ${pascalFeat}RepoImpl(getIt<${pascalFeat}DataSource>()),');
     buf.writeln('    );');
     buf.writeln('  }');
     buf.writeln();
@@ -256,28 +259,23 @@ String buildFeatureDiMethod(
 
   buf.writeln(
       '  // ── Use Cases (combined) ─────────────────────────────────');
-  if (hasUseCases) {
-    buf.writeln(
-        '  if (!getIt.isRegistered<${pascalFeat}Usecases>()) {');
-    buf.writeln('    getIt.registerLazySingleton(');
-    buf.writeln('      () => ${pascalFeat}Usecases(');
-    buf.writeln('        getIt<${pascalFeat}Repository>(),');
-    buf.writeln('      ),');
-    buf.writeln('    );');
-    buf.writeln('  }');
-  }
+  buf.writeln(
+      '  if (!getIt.isRegistered<${pascalFeat}Usecases>()) {');
+  buf.writeln(
+      '    getIt.registerLazySingleton<${pascalFeat}Usecases>(');
+  buf.writeln('      () => ${pascalFeat}Usecases(');
+  buf.writeln('        repository: getIt<${pascalFeat}Repository>(),');
+  buf.writeln('      ),');
+  buf.writeln('    );');
+  buf.writeln('  }');
   buf.writeln();
   buf.writeln(
       '  // ── BLoC ────────────────────────────────────────────────');
   buf.writeln('  if (!getIt.isRegistered<${pascalFeat}Bloc>()) {');
   buf.writeln('    getIt.registerFactory(');
-  if (hasUseCases && hasRemoteDataSource) {
-    buf.writeln('      () => ${pascalFeat}Bloc(');
-    buf.writeln('        usecases: getIt<${pascalFeat}Usecases>(),');
-    buf.writeln('      ),');
-  } else {
-    buf.writeln('      () => ${pascalFeat}Bloc(),');
-  }
+  buf.writeln('      () => ${pascalFeat}Bloc(');
+  buf.writeln('        usecases: getIt<${pascalFeat}Usecases>(),');
+  buf.writeln('      ),');
   buf.writeln('    );');
   buf.writeln('  }');
   buf.writeln('}');

@@ -45,25 +45,12 @@ String generateviewClass(
 
   // ─── Name helpers ──────────────────────────────────────────────
 
-  // ─── Conditional imports ───────────────────────────────────────
-  final hasRadio = flatFields.any(
-    (f) => (f['type'] ?? '').toString().toLowerCase().startsWith('radio'),
-  );
-  final hasDropdown = flatFields.any((f) {
-    final t = (f['type'] ?? '').toString().toLowerCase();
-    return t == 'dropdown' || t == 'api_dropdown';
-  });
-
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase().replaceAll(' ', '_')}_controller.dart';",
   );
-  buffer.writeln("import '/widget/common_text_form.dart';");
-  if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
-  if (hasDropdown) {
-    buffer.writeln("import '/widget/common_dropdown_search.dart';");
-  }
+  buffer.writeln("import '/core/widgets/widgets.dart';");
 
   // ✅ Model imports derived from dropdowndata keys — not from label
   final emittedModelFiles = <String>{};
@@ -76,6 +63,27 @@ String generateviewClass(
   }
 
   buffer.writeln();
+  buffer.writeln("DateTime? _parseDateInput(String input) {");
+  buffer.writeln("  if (input.trim().isEmpty) return null;");
+  buffer.writeln("  final parts = input.split('/');");
+  buffer.writeln("  if (parts.length == 3) {");
+  buffer.writeln("    final day = int.tryParse(parts[0]);");
+  buffer.writeln("    final month = int.tryParse(parts[1]);");
+  buffer.writeln("    final year = int.tryParse(parts[2]);");
+  buffer.writeln("    if (day != null && month != null && year != null) {");
+  buffer.writeln("      return DateTime(year, month, day);");
+  buffer.writeln("    }");
+  buffer.writeln("  }");
+  buffer.writeln("  return DateTime.tryParse(input);");
+  buffer.writeln("}");
+  buffer.writeln();
+  buffer.writeln("String _formatDateInput(DateTime date) {");
+  buffer.writeln("  final d = date.day.toString().padLeft(2, '0');");
+  buffer.writeln("  final m = date.month.toString().padLeft(2, '0');");
+  buffer.writeln("  final y = date.year.toString();");
+  buffer.writeln("  return '\$d/\$m/\$y';");
+  buffer.writeln("}");
+  buffer.writeln();
   buffer.writeln("class ${className}View extends StatelessWidget {");
   buffer.writeln("  const ${className}View({super.key});");
   buffer.writeln();
@@ -85,18 +93,43 @@ String generateviewClass(
   buffer.writeln("    final formKey = GlobalKey<FormState>();");
   buffer.writeln();
   buffer.writeln("    return Scaffold(");
-  buffer.writeln("      appBar: AppBar(title: const Text('${stepMeta.escapedTitle}')),");
-  buffer.writeln("      body: Padding(");
-  buffer.writeln("        padding: const EdgeInsets.all(16.0),");
-  buffer.writeln("        child: Form(");
-  buffer.writeln("          key: formKey,");
+  buffer.writeln("      backgroundColor: const Color(0xFFF8FAFC),");
+  buffer.writeln("      appBar: AppBar(");
   buffer.writeln(
-    "          autovalidateMode: AutovalidateMode.onUserInteraction,",
+    "        title: const Text('${stepMeta.escapedTitle}', style: TextStyle(fontWeight: FontWeight.w600)),",
   );
-  buffer.writeln("          child: SingleChildScrollView(");
-  buffer.writeln("            child: Column(");
-  buffer.writeln("              crossAxisAlignment: CrossAxisAlignment.start,");
-  buffer.writeln("              children: [");
+  buffer.writeln("        backgroundColor: Colors.transparent,");
+  buffer.writeln("        foregroundColor: const Color(0xFF0F172A),");
+  buffer.writeln("        elevation: 0,");
+  buffer.writeln("        centerTitle: true,");
+  buffer.writeln("      ),");
+  buffer.writeln("      body: SafeArea(");
+  buffer.writeln("        child: Center(");
+  buffer.writeln("          child: ConstrainedBox(");
+  buffer.writeln("            constraints: const BoxConstraints(maxWidth: 600),");
+  buffer.writeln("            child: SingleChildScrollView(");
+  buffer.writeln(
+    "              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),",
+  );
+  buffer.writeln("              child: Container(");
+  buffer.writeln("                padding: const EdgeInsets.all(24),");
+  buffer.writeln("                decoration: BoxDecoration(");
+  buffer.writeln("                  color: Colors.white,");
+  buffer.writeln(
+    "                  borderRadius: BorderRadius.circular(20),",
+  );
+  buffer.writeln(
+    "                  border: Border.all(color: const Color(0xFFE2E8F0)),",
+  );
+  buffer.writeln("                ),");
+  buffer.writeln("                child: Form(");
+  buffer.writeln("                  key: formKey,");
+  buffer.writeln(
+    "                  autovalidateMode: AutovalidateMode.onUserInteraction,",
+  );
+  buffer.writeln("                  child: Column(");
+  buffer.writeln("                    crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("                    children: [");
   stepMeta.writeFlutterStepHeader(buffer);
 
   void buildWidgets(List<dynamic> currentFields) {
@@ -183,108 +216,44 @@ String generateviewClass(
               : 'Enter a valid phone number',
         );
       } else if (type == 'date') {
-        buffer.writeln("                CustomTextFormField(");
-        buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  hint: '$hint',");
-        buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln(
-          "                  controller: controller.${name}Controller,",
+        _writeDatePickerField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isReadOnly: isReadOnly,
         );
-        buffer.writeln("                  isDatePicker: true,");
-        buffer.writeln("                  readOnly: $isReadOnly,");
-        buffer.writeln("                  validator: (value) {");
-        buffer.writeln("                    try {");
-        if (isRequired) {
-          buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        if (pattern.isNotEmpty) {
-          buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-          );
-        }
-        buffer.writeln("                      return null;");
-        buffer.writeln("                    } catch (e) {");
-        buffer.writeln("                      return 'Invalid input';");
-        buffer.writeln("                    }");
-        buffer.writeln("                  },");
-        buffer.writeln("                ),");
       } else if (type == 'datetime' || type == 'date time') {
-        buffer.writeln("                CustomTextFormField(");
-        buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  hint: '$hint',");
-        buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln(
-          "                  controller: controller.${name}Controller,",
+        _writeDateTimePickerField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isReadOnly: isReadOnly,
+          pattern: pattern,
+          errorMessage: errorMessage,
         );
-        buffer.writeln("                  isDateTimePicker: true,");
-        buffer.writeln("                  readOnly: $isReadOnly,");
-        buffer.writeln("                  validator: (value) {");
-        buffer.writeln("                    try {");
-        if (isRequired) {
-          buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        if (pattern.isNotEmpty) {
-          buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-          );
-        }
-        buffer.writeln("                      return null;");
-        buffer.writeln("                    } catch (e) {");
-        buffer.writeln("                      return 'Invalid input';");
-        buffer.writeln("                    }");
-        buffer.writeln("                  },");
-        buffer.writeln("                ),");
       } else if (type == 'textarea') {
-        buffer.writeln("                CustomTextFormField(");
-        buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  hint: '$hint',");
-        buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln(
-          "                  controller: controller.${name}Controller,",
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'multiline',
+          isNumber: false,
+          textInputAction: 'newline',
+          textCapitalization: textCapitalization,
+          minLength: minLength,
+          maxLength: maxLength,
+          pattern: pattern,
+          errorMessage: errorMessage,
+          maxLines: 4,
+          minLines: 3,
         );
-        buffer.writeln("                  maxLines: 4,");
-        if (maxLength > 0) {
-          buffer.writeln("                  maxLength: $maxLength,");
-        }
-        buffer.writeln("                  readOnly: $isReadOnly,");
-        buffer.writeln(
-          "                  keyboardType: TextInputType.multiline,",
-        );
-        buffer.writeln(
-          "                  textInputAction: TextInputAction.newline,",
-        );
-        buffer.writeln("                  validator: (value) {");
-        buffer.writeln("                    try {");
-        if (isRequired) {
-          buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        if (minLength > 0) {
-          buffer.writeln(
-            "                      if (value != null && value.length < $minLength) return 'Minimum $minLength characters';",
-          );
-        }
-        if (maxLength > 0) {
-          buffer.writeln(
-            "                      if (value != null && value.length > $maxLength) return 'Maximum $maxLength characters';",
-          );
-        }
-        if (pattern.isNotEmpty) {
-          buffer.writeln(
-            "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-          );
-        }
-        buffer.writeln("                      return null;");
-        buffer.writeln("                    } catch (e) {");
-        buffer.writeln("                      return 'Invalid input';");
-        buffer.writeln("                    }");
-        buffer.writeln("                  },");
-        buffer.writeln("                ),");
 
         // ══════════════════════════════════════════════
         // dropdown ✅ FIXED: model from dropdowndata key
@@ -292,19 +261,15 @@ String generateviewClass(
       } else if (type == 'dropdown' || type == 'api_dropdown') {
         if (isApiDropdown) {
           final dropdownmodel = resolveGetxModelClassName(field);
-          // final dropdownKey = (field['dropdownValue'] ?? 'name').toString();
           final dropdownKey = (field['dropdownValue'] ?? 'title')
-              .toString(); // better default
+              .toString();
           buffer.writeln(
-            "                Obx(() => DropdownSearch<$dropdownmodel>(",
+            "                Obx(() => AppDropdownField<$dropdownmodel>(",
           );
-          buffer.writeln("                  hint: '$rawLabel',");
           buffer.writeln("                  label: '$rawLabel',");
-          buffer.writeln("                  isMandatory: $isRequired,");
-          buffer.writeln("                  labelType: LabelType.top,");
-          // Using item.property (non‑nullable item)
+          buffer.writeln("                  hint: '$hint',");
           buffer.writeln(
-            "                  itemAsString: (item) => item.$dropdownKey?.toString() ?? '',",
+            "                  itemLabelBuilder: (item) => item.$dropdownKey?.toString() ?? '',",
           );
           buffer.writeln("                  items: controller.${name}Options,");
           buffer.writeln(
@@ -313,42 +278,22 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          if (isRequired) {
-            buffer.writeln("                  validator: (value) {");
-            buffer.writeln(
-              "                    if (value == null) return '$rawLabel is required';",
-            );
-            buffer.writeln("                    return null;");
-            buffer.writeln("                  },");
-          }
+          buffer.writeln("                  errorText: null,");
           buffer.writeln("                )),");
         } else if (staticOpts != null && staticOpts.isNotEmpty) {
-          final optionsList = staticOpts
-              .map((o) {
-                if (o is Map) {
-                  final k = (o['key'] ?? o['value'] ?? o['id'] ?? '')
-                      .toString()
-                      .replaceAll("'", "\\'");
-                  final v = (o['value'] ?? o['label'] ?? o['title'] ?? '')
-                      .toString()
-                      .replaceAll("'", "\\'");
-                  return "DropdownItem(key: '$k', value: '$v')";
-                }
-                final val = o.toString().replaceAll("'", "\\'");
-                return "DropdownItem(key: '$val', value: '$val')";
-              })
-              .join(', ');
+          final optionsList = staticOpts.map((o) {
+            if (o is Map) {
+              return "'${(o['value'] ?? o['label'] ?? o['title'] ?? o['key'] ?? o['id'] ?? '').toString().replaceAll("'", "\\'")}'";
+            }
+            return "'${o.toString().replaceAll("'", "\\'")}'";
+          }).join(', ');
 
           buffer.writeln(
-            "                Obx(() => DropdownSearch<DropdownItem>(",
+            "                Obx(() => AppDropdownField<String>(",
           );
-          buffer.writeln("                  hint: '$rawLabel',");
           buffer.writeln("                  label: '$rawLabel',");
-          buffer.writeln("                  isMandatory: $isRequired,");
-          buffer.writeln("                  labelType: LabelType.top,");
-          buffer.writeln(
-            "                  itemAsString: (item) => item.value,",
-          );
+          buffer.writeln("                  hint: '$hint',");
+          buffer.writeln("                  itemLabelBuilder: (item) => item,");
           buffer.writeln("                  items: [$optionsList],");
           buffer.writeln(
             "                  value: controller.selected$capitalLabel.value,",
@@ -356,14 +301,7 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          if (isRequired) {
-            buffer.writeln("                  validator: (value) {");
-            buffer.writeln(
-              "                    if (value == null) return '$rawLabel is required';",
-            );
-            buffer.writeln("                    return null;");
-            buffer.writeln("                  },");
-          }
+          buffer.writeln("                  errorText: null,");
           buffer.writeln("                )),");
         }
       } else if (type == 'radio' || type == 'radio buttons') {
@@ -371,34 +309,26 @@ String generateviewClass(
             ? staticOpts
                   .map((o) {
                     final val = o.toString().replaceAll("'", "\\'");
-                    return "RadioOption<String>(value: '$val', label: '$val')";
+                    return "'$val'";
                   })
                   .join(', ')
             : '';
 
-        buffer.writeln("                Obx(() => CustomRadioGroup<String>(");
+        buffer.writeln("                Obx(() => AppRadioGroupField(");
         buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  isMandatory: $isRequired,");
+        buffer.writeln("                  errorText: null,");
         buffer.writeln(
-          "                  selectedValue: controller.selected$capitalLabel.value,",
+          "                  value: controller.selected$capitalLabel.value?.toString(),",
         );
         buffer.writeln(
-          "                  onChanged: (value) => controller.selected$capitalLabel.value = value!,",
+          "                  onChanged: (value) => controller.selected$capitalLabel.value = value ?? '',",
         );
         if (optionsList.isNotEmpty) {
           buffer.writeln("                  options: [$optionsList],");
         } else {
           buffer.writeln(
-            "                  options: controller.${name}Options,",
+            "                  options: controller.${name}Options.map((e) => e.toString()).toList(),",
           );
-        }
-        if (isRequired) {
-          buffer.writeln("                  validator: (value) {");
-          buffer.writeln(
-            "                    if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-          buffer.writeln("                    return null;");
-          buffer.writeln("                  },");
         }
         buffer.writeln("                )),");
       } else if (type == 'switch') {
@@ -454,159 +384,30 @@ String generateviewClass(
         buffer.writeln("                  ),");
         buffer.writeln("                )),");
       } else if (type == 'file') {
-        buffer.writeln("                Obx(() => FormField<String>(");
-        buffer.writeln(
-          "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty",
+        _writeFilePickerField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          pickMethod: "pick${capitalLabel}File",
         );
-        buffer.writeln(
-          "                      ? '$rawLabel is required' : null,",
-        );
-        buffer.writeln("                  builder: (formState) => Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Text(");
-        buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),",
-        );
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      GestureDetector(");
-        buffer.writeln("                        onTap: () async {");
-        buffer.writeln(
-          "                          await controller.pick${capitalLabel}File();",
-        );
-        buffer.writeln(
-          "                          formState.didChange(controller.${name}FileName.value);",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln("                        child: Container(");
-        buffer.writeln("                          width: double.infinity,");
-        buffer.writeln(
-          "                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),",
-        );
-        buffer.writeln("                          decoration: BoxDecoration(");
-        buffer.writeln(
-          "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),",
-        );
-        buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln("                          child: Row(");
-        buffer.writeln("                            children: [");
-        buffer.writeln(
-          "                              const Icon(Icons.upload_file, color: Colors.grey),",
-        );
-        buffer.writeln(
-          "                              const SizedBox(width: 8),",
-        );
-        buffer.writeln("                              Expanded(");
-        buffer.writeln("                                child: Text(");
-        buffer.writeln(
-          "                                  controller.${name}FileName.value.isEmpty",
-        );
-        buffer.writeln(
-          "                                      ? 'Tap to upload $rawLabel'",
-        );
-        buffer.writeln(
-          "                                      : controller.${name}FileName.value,",
-        );
-        buffer.writeln(
-          "                                  style: TextStyle(color: Colors.grey[700]),",
-        );
-        buffer.writeln(
-          "                                  overflow: TextOverflow.ellipsis,",
-        );
-        buffer.writeln("                                ),");
-        buffer.writeln("                              ),");
-        buffer.writeln("                            ],");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ),");
-        buffer.writeln("                      if (formState.hasError)");
-        buffer.writeln("                        Padding(");
-        buffer.writeln(
-          "                          padding: const EdgeInsets.only(top: 6, left: 4),",
-        );
-        buffer.writeln("                          child: Text(");
-        buffer.writeln(
-          "                            formState.errorText ?? '',",
-        );
-        buffer.writeln(
-          "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-        buffer.writeln("                )),");
       } else if (type == 'otp') {
-        buffer.writeln("                Column(");
-        buffer.writeln(
-          "                  crossAxisAlignment: CrossAxisAlignment.start,",
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'number',
+          isNumber: true,
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          minLength: minLength > 0 ? minLength : 6,
+          maxLength: maxLength > 0 ? maxLength : 6,
+          pattern: pattern,
+          errorMessage: errorMessage,
         );
-        buffer.writeln("                  children: [");
-        buffer.writeln("                    Text(");
-        buffer.writeln(
-          "                      '$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),",
-        );
-        buffer.writeln("                    ),");
-        buffer.writeln("                    const SizedBox(height: 8),");
-        buffer.writeln("                    CustomTextFormField(");
-        buffer.writeln("                      label: '',");
-        buffer.writeln("                      hint: '$hint',");
-        buffer.writeln("                      isMandatory: $isRequired,");
-        buffer.writeln(
-          "                      controller: controller.${name}Controller,",
-        );
-        buffer.writeln(
-          "                      keyboardType: TextInputType.number,",
-        );
-        buffer.writeln("                      maxLines: 1,");
-        buffer.writeln("                      validator: (value) {");
-        buffer.writeln("                        try {");
-        if (isRequired) {
-          buffer.writeln(
-            "                          if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        if (minLength > 0 || maxLength > 0) {
-          if (minLength > 0) {
-            buffer.writeln(
-              "                          if (value != null && value.length < $minLength) return 'Minimum $minLength digits';",
-            );
-          }
-          if (maxLength > 0) {
-            buffer.writeln(
-              "                          if (value != null && value.length > $maxLength) return 'Maximum $maxLength digits';",
-            );
-          }
-        } else {
-          buffer.writeln(
-            "                          if (value != null && value.length != 6) return 'Enter a valid 6-digit code';",
-          );
-        }
-        if (pattern.isNotEmpty) {
-          buffer.writeln(
-            "                          if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-          );
-        }
-        buffer.writeln("                          return null;");
-        buffer.writeln("                        } catch (e) {");
-        buffer.writeln("                          return 'Invalid input';");
-        buffer.writeln("                        }");
-        buffer.writeln("                      },");
-        buffer.writeln("                    ),");
-        buffer.writeln("                  ],");
-        buffer.writeln("                ),");
       } else if (type == 'divider') {
         buffer.writeln("                Padding(");
         buffer.writeln(
@@ -629,61 +430,13 @@ String generateviewClass(
         buffer.writeln("                  ),");
         buffer.writeln("                ),");
       } else if (type == 'checkbox') {
-        buffer.writeln("                Obx(() => FormField<bool>(");
-        buffer.writeln("                  initialValue: false,");
-        buffer.writeln("                  validator: (value) {");
-        if (isRequired) {
-          buffer.writeln(
-            "                    if (value != true) return '$rawLabel is required';",
-          );
-        }
-        buffer.writeln("                    return null;");
-        buffer.writeln("                  },");
-        buffer.writeln("                  builder: (formState) => Column(");
+        buffer.writeln("                Obx(() => AppCheckboxField(");
+        buffer.writeln("                  label: '$rawLabel',");
+        buffer.writeln("                  value: controller.${name}Value.value,");
         buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
+          "                  onChanged: (val) => controller.${name}Value.value = val ?? false,",
         );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      CheckboxListTile(");
-        buffer.writeln(
-          "                        title: Text('$rawLabel${isRequired ? ' *' : ''}'),",
-        );
-        buffer.writeln(
-          "                        value: controller.${name}Value.value,",
-        );
-        buffer.writeln("                        onChanged: (val) {");
-        buffer.writeln(
-          "                          controller.${name}Value.value = val ?? false;",
-        );
-        buffer.writeln(
-          "                          formState.didChange(val ?? false);",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,",
-        );
-        buffer.writeln(
-          "                        controlAffinity: ListTileControlAffinity.leading,",
-        );
-        buffer.writeln("                      ),");
-        if (isRequired) {
-          buffer.writeln("                      if (formState.hasError)");
-          buffer.writeln("                        Padding(");
-          buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),",
-          );
-          buffer.writeln("                          child: Text(");
-          buffer.writeln(
-            "                            formState.errorText ?? '',",
-          );
-          buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
-          );
-          buffer.writeln("                          ),");
-          buffer.writeln("                        ),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
+        buffer.writeln("                  errorText: null,");
         buffer.writeln("                )),");
       } else if (type == 'number' || type == 'integer' || type == 'int') {
         _writeTextFormField(
@@ -760,28 +513,14 @@ String generateviewClass(
           errorMessage: errorMessage,
         );
       } else if (type == 'time') {
-        buffer.writeln("                CustomTextFormField(");
-        buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  hint: '$hint',");
-        buffer.writeln("                  isMandatory: $isRequired,");
-        buffer.writeln(
-          "                  controller: controller.${name}Controller,",
+        _writeTimePickerField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          hint: hint,
+          isRequired: isRequired,
+          isReadOnly: isReadOnly,
         );
-        buffer.writeln("                  isTimePicker: true,");
-        buffer.writeln("                  readOnly: $isReadOnly,");
-        buffer.writeln("                  validator: (value) {");
-        buffer.writeln("                    try {");
-        if (isRequired) {
-          buffer.writeln(
-            "                      if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        buffer.writeln("                      return null;");
-        buffer.writeln("                    } catch (e) {");
-        buffer.writeln("                      return 'Invalid input';");
-        buffer.writeln("                    }");
-        buffer.writeln("                  },");
-        buffer.writeln("                ),");
       } else if (type == 'multiselect' ||
           type == 'multi select' ||
           type == 'multi_select') {
@@ -794,82 +533,22 @@ String generateviewClass(
                   .join(', ')
             : '';
 
-        buffer.writeln("                Obx(() => FormField<List<String>>(");
-        buffer.writeln("                  initialValue: const [],");
-        buffer.writeln("                  validator: (value) {");
-        if (isRequired) {
-          buffer.writeln(
-            "                    if (value == null || value.isEmpty) return '$rawLabel is required';",
-          );
-        }
-        buffer.writeln("                    return null;");
-        buffer.writeln("                  },");
-        buffer.writeln("                  builder: (formState) => Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Text(");
-        buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),",
-        );
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
+        buffer.writeln("                Obx(() => AppMultiSelectField(");
+        buffer.writeln("                  label: '$rawLabel',");
         if (optionsList.isNotEmpty) {
-          buffer.writeln(
-            "                      ...[$optionsList].map((option) => CheckboxListTile(",
-          );
+          buffer.writeln("                  options: [$optionsList],");
         } else {
           buffer.writeln(
-            "                      ...controller.${name}Options.map((option) => CheckboxListTile(",
+            "                  options: controller.${name}Options.map((e) => e.toString()).toList(),",
           );
         }
-        buffer.writeln("                        title: Text(option),");
         buffer.writeln(
-          "                        value: controller.${name}Selected.contains(option),",
+          "                  selectedValues: controller.${name}Selected.toList(),",
         );
-        buffer.writeln("                        onChanged: (val) {");
-        buffer.writeln("                          if (val == true) {");
-        buffer.writeln(
-          "                            controller.${name}Selected.add(option);",
-        );
-        buffer.writeln("                          } else {");
-        buffer.writeln(
-          "                            controller.${name}Selected.remove(option);",
-        );
-        buffer.writeln("                          }");
-        buffer.writeln(
-          "                          formState.didChange(controller.${name}Selected.toList());",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,",
-        );
-        buffer.writeln(
-          "                        controlAffinity: ListTileControlAffinity.leading,",
-        );
-        buffer.writeln("                      )).toList(),");
-        if (isRequired) {
-          buffer.writeln("                      if (formState.hasError)");
-          buffer.writeln("                        Padding(");
-          buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),",
-          );
-          buffer.writeln("                          child: Text(");
-          buffer.writeln(
-            "                            formState.errorText ?? '',",
-          );
-          buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
-          );
-          buffer.writeln("                          ),");
-          buffer.writeln("                        ),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
+        buffer.writeln("                  errorText: null,");
+        buffer.writeln("                  onChanged: (values) {");
+        buffer.writeln("                    controller.${name}Selected.assignAll(values);");
+        buffer.writeln("                  },");
         buffer.writeln("                )),");
       } else if (type == 'slider' || type == 'range slider') {
         final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
@@ -926,92 +605,12 @@ String generateviewClass(
       } else if (type == 'hidden') {
         continue;
       } else if (type == 'image') {
-        buffer.writeln("                Obx(() => FormField<String>(");
-        buffer.writeln(
-          "                  validator: (_) => $isRequired && controller.${name}FileName.value.isEmpty",
+        _writeFilePickerField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          pickMethod: "pick${capitalLabel}Image",
         );
-        buffer.writeln(
-          "                      ? '$rawLabel is required' : null,",
-        );
-        buffer.writeln("                  builder: (formState) => Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Text(");
-        buffer.writeln(
-          "                        '$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),",
-        );
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      GestureDetector(");
-        buffer.writeln("                        onTap: () async {");
-        buffer.writeln(
-          "                          await controller.pick${capitalLabel}Image();",
-        );
-        buffer.writeln(
-          "                          formState.didChange(controller.${name}FileName.value);",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln("                        child: Container(");
-        buffer.writeln("                          width: double.infinity,");
-        buffer.writeln("                          height: 120,");
-        buffer.writeln("                          decoration: BoxDecoration(");
-        buffer.writeln(
-          "                            border: Border.all(color: formState.hasError ? Colors.red : Colors.grey),",
-        );
-        buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln(
-          "                          child: controller.${name}FileName.value.isEmpty",
-        );
-        buffer.writeln(
-          "                              ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [",
-        );
-        buffer.writeln(
-          "                                  const Icon(Icons.add_photo_alternate_outlined, size: 36, color: Colors.grey),",
-        );
-        buffer.writeln(
-          "                                  const SizedBox(height: 8),",
-        );
-        buffer.writeln(
-          "                                  Text('Tap to select $rawLabel', style: TextStyle(color: Colors.grey[600])),",
-        );
-        buffer.writeln("                                ])");
-        buffer.writeln("                              : ClipRRect(");
-        buffer.writeln(
-          "                                  borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln(
-          "                                  child: Image.network(controller.${name}FileName.value, fit: BoxFit.cover, width: double.infinity),",
-        );
-        buffer.writeln("                                ),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ),");
-        if (isRequired) {
-          buffer.writeln("                      if (formState.hasError)");
-          buffer.writeln("                        Padding(");
-          buffer.writeln(
-            "                          padding: const EdgeInsets.only(top: 6, left: 4),",
-          );
-          buffer.writeln("                          child: Text(");
-          buffer.writeln(
-            "                            formState.errorText ?? '',",
-          );
-          buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
-          );
-          buffer.writeln("                          ),");
-          buffer.writeln("                        ),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-        buffer.writeln("                )),");
       } else if (type == 'starrating' ||
           type == 'rating' ||
           type == 'star rating') {
@@ -1454,12 +1053,12 @@ String generateviewClass(
         buffer.writeln(
           "                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {",
         );
-        buffer.writeln("                    return CustomTextFormField(");
+        buffer.writeln("                    return AppTextField(");
         buffer.writeln("                      label: '$rawLabel',");
         buffer.writeln("                      hint: '$hint',");
-        buffer.writeln("                      isMandatory: $isRequired,");
         buffer.writeln("                      controller: textController,");
         buffer.writeln("                      focusNode: focusNode,");
+        buffer.writeln("                      errorText: null,");
         buffer.writeln("                      validator: (value) {");
         if (isRequired) {
           buffer.writeln(
@@ -1588,14 +1187,14 @@ String generateviewClass(
         buffer.writeln("                  ],");
         buffer.writeln("                ),");
       } else if (type == 'formula') {
-        buffer.writeln("                Obx(() => CustomTextFormField(");
+        buffer.writeln("                Obx(() => AppTextField(");
         buffer.writeln("                  label: '$rawLabel',");
         buffer.writeln("                  hint: '$hint',");
-        buffer.writeln("                  isMandatory: false,");
         buffer.writeln(
           "                  controller: TextEditingController(text: controller.$name.value),",
         );
         buffer.writeln("                  readOnly: true,");
+        buffer.writeln("                  errorText: null,");
         buffer.writeln("                  validator: (value) => null,");
         buffer.writeln("                )),");
       } else {
@@ -1614,7 +1213,10 @@ String generateviewClass(
     buffer,
     onPressedHandler: '() => controller.onPrimaryAction()',
   );
-  buffer.writeln("              ],");
+  buffer.writeln("                    ],");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
   buffer.writeln("            ),");
   buffer.writeln("          ),");
   buffer.writeln("        ),");
@@ -1643,17 +1245,17 @@ void _writeTextFormField(
   required int maxLength,
   required String pattern,
   required String errorMessage,
+  int? maxLines,
+  int? minLines,
 }) {
-  buffer.writeln("                CustomTextFormField(");
+  buffer.writeln("                AppTextField(");
   buffer.writeln("                  label: '$label',");
   buffer.writeln("                  hint: '$hint',");
-  buffer.writeln("                  isMandatory: $isRequired,");
   buffer.writeln("                  controller: controller.${name}Controller,");
   buffer.writeln(
     "                  keyboardType: TextInputType.$keyboardType,",
   );
-  buffer.writeln("                  isPassword: $isPassword,");
-  buffer.writeln("                  isNumber: $isNumber,");
+  buffer.writeln("                  obscureText: $isPassword,");
   buffer.writeln("                  readOnly: $isReadOnly,");
   buffer.writeln(
     "                  textInputAction: TextInputAction.$textInputAction,",
@@ -1664,6 +1266,13 @@ void _writeTextFormField(
   if (maxLength > 0) {
     buffer.writeln("                  maxLength: $maxLength,");
   }
+  if (maxLines != null) {
+    buffer.writeln("                  maxLines: $maxLines,");
+  }
+  if (minLines != null) {
+    buffer.writeln("                  minLines: $minLines,");
+  }
+  buffer.writeln("                  errorText: null,");
   buffer.writeln("                  validator: (value) {");
   buffer.writeln("                    try {");
   if (isRequired) {
@@ -1692,6 +1301,151 @@ void _writeTextFormField(
   buffer.writeln("                    }");
   buffer.writeln("                  },");
   buffer.writeln("                ),");
+}
+
+void _writeDatePickerField(
+  StringBuffer buffer, {
+  required String label,
+  required String name,
+  required String hint,
+  required bool isReadOnly,
+}) {
+  buffer.writeln("                Obx(() => AppDatePickerField(");
+  buffer.writeln("                  label: '$label',");
+  buffer.writeln("                  hint: '${hint.isNotEmpty ? hint : 'Select date'}',");
+  buffer.writeln(
+    "                  value: _parseDateInput(controller.${name}Controller.text),",
+  );
+  buffer.writeln("                  errorText: null,");
+  buffer.writeln("                  enabled: ${!isReadOnly},");
+  buffer.writeln("                  onChanged: (picked) {");
+  buffer.writeln("                    if (picked != null) {");
+  buffer.writeln(
+    "                      controller.${name}Controller.text = _formatDateInput(picked);",
+  );
+  buffer.writeln("                    }");
+  buffer.writeln("                  },");
+  buffer.writeln("                )),");
+}
+
+void _writeTimePickerField(
+  StringBuffer buffer, {
+  required String label,
+  required String name,
+  required String hint,
+  required bool isRequired,
+  required bool isReadOnly,
+}) {
+  buffer.writeln("                GestureDetector(");
+  buffer.writeln("                  onTap: ${isReadOnly ? 'null' : '() async {'}");
+  if (!isReadOnly) {
+    buffer.writeln(
+      "                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());",
+    );
+    buffer.writeln(
+      "                    if (picked != null) controller.${name}Controller.text = picked.format(context);",
+    );
+    buffer.writeln("                  },");
+  }
+  buffer.writeln("                  child: AbsorbPointer(");
+  buffer.writeln("                    child: AppTextField(");
+  buffer.writeln("                      label: '$label',");
+  buffer.writeln("                      hint: '${hint.isNotEmpty ? hint : 'Select time'}',");
+  buffer.writeln("                      controller: controller.${name}Controller,");
+  buffer.writeln("                      readOnly: true,");
+  buffer.writeln("                      errorText: null,");
+  buffer.writeln(
+    "                      suffixIcon: const Icon(Icons.access_time_rounded),",
+  );
+  buffer.writeln("                      validator: (value) {");
+  if (isRequired) {
+    buffer.writeln(
+      "                        if (value == null || value.isEmpty) return '$label is required';",
+    );
+  }
+  buffer.writeln("                        return null;");
+  buffer.writeln("                      },");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+}
+
+void _writeDateTimePickerField(
+  StringBuffer buffer, {
+  required String label,
+  required String name,
+  required String hint,
+  required bool isRequired,
+  required bool isReadOnly,
+  required String pattern,
+  required String errorMessage,
+}) {
+  buffer.writeln("                GestureDetector(");
+  buffer.writeln("                  onTap: ${isReadOnly ? 'null' : '() async {'}");
+  if (!isReadOnly) {
+    buffer.writeln(
+      "                    final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime(2100));",
+    );
+    buffer.writeln("                    if (date == null) return;");
+    buffer.writeln(
+      "                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());",
+    );
+    buffer.writeln("                    if (time == null) return;");
+    buffer.writeln(
+      "                    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);",
+    );
+    buffer.writeln(
+      "                    controller.${name}Controller.text = '\${_formatDateInput(dt)} \${time.format(context)}';",
+    );
+    buffer.writeln("                  },");
+  }
+  buffer.writeln("                  child: AbsorbPointer(");
+  buffer.writeln("                    child: AppTextField(");
+  buffer.writeln("                      label: '$label',");
+  buffer.writeln(
+    "                      hint: '${hint.isNotEmpty ? hint : 'Select date and time'}',",
+  );
+  buffer.writeln("                      controller: controller.${name}Controller,");
+  buffer.writeln("                      readOnly: true,");
+  buffer.writeln("                      errorText: null,");
+  buffer.writeln(
+    "                      suffixIcon: const Icon(Icons.calendar_month_rounded),",
+  );
+  buffer.writeln("                      validator: (value) {");
+  if (isRequired) {
+    buffer.writeln(
+      "                        if (value == null || value.isEmpty) return '$label is required';",
+    );
+  }
+  if (pattern.isNotEmpty) {
+    buffer.writeln(
+      "                        if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
+    );
+  }
+  buffer.writeln("                        return null;");
+  buffer.writeln("                      },");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+}
+
+void _writeFilePickerField(
+  StringBuffer buffer, {
+  required String label,
+  required String name,
+  required String pickMethod,
+}) {
+  buffer.writeln("                Obx(() => AppFileUploadField(");
+  buffer.writeln("                  label: '$label',");
+  buffer.writeln(
+    "                  value: controller.${name}FileName.value.isEmpty ? null : controller.${name}FileName.value,",
+  );
+  buffer.writeln("                  hint: 'Tap Browse to select file',");
+  buffer.writeln("                  errorText: null,");
+  buffer.writeln("                  onChanged: (_) async {");
+  buffer.writeln("                    await controller.$pickMethod();");
+  buffer.writeln("                  },");
+  buffer.writeln("                )),");
 }
 
 String _mapKeyboardType(String raw) {

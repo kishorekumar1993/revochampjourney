@@ -226,26 +226,7 @@ class JourneyBlocUseCaseGenerator {
     /// Constructor
     /// --------------------------------------------------
 
-    buf.writeln('  const $facadeClass({');
-    buf.writeln('    this.repository,');
-
-    for (final d in uniqueDropdowns) {
-      final field = _findFieldByLabel(
-        d.originalLabel,
-      );
-
-      final className =
-          _buildUsecaseName(d, field);
-
-      final variableName =
-          _toCamelCase(className);
-
-      buf.writeln(
-        '    required this.$variableName,',
-      );
-    }
-
-    buf.writeln('  });');
+    buf.writeln('  const $facadeClass({required this.repository});');
 
     buf.writeln();
 
@@ -253,22 +234,7 @@ class JourneyBlocUseCaseGenerator {
     /// Variables
     /// --------------------------------------------------
 
-    for (final d in uniqueDropdowns) {
-      final field = _findFieldByLabel(
-        d.originalLabel,
-      );
-
-      final className =
-          _buildUsecaseName(d, field);
-
-      final variableName =
-          _toCamelCase(className);
-
-      buf.writeln(
-        '  final $className $variableName;',
-      );
-    }
-    buf.writeln('  final $repoClass? repository;');
+    buf.writeln('  final $repoClass repository;');
 
     buf.writeln();
 
@@ -297,17 +263,15 @@ class JourneyBlocUseCaseGenerator {
           ? 'load${_pluralize(d.pascalName)}'
           : 'load${d.pascalName}';
 
-      final className = _buildUsecaseName(d, field);
-      final variableName = _toCamelCase(
-        className,
-      );
+      final repositoryMethod =
+          'getAll${_pluralize(d.pascalName)}';
 
       buf.writeln(
         '  Future<Either<Failure, $returnType>> $methodName() async {',
       );
 
       buf.writeln(
-        '    return await $variableName();',
+        '    return await repository.$repositoryMethod();',
       );
 
       buf.writeln('  }');
@@ -315,24 +279,90 @@ class JourneyBlocUseCaseGenerator {
       buf.writeln();
     }
 
+    final steps = (journeyJson['steps'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    final currentStep =
+        steps.isNotEmpty ? steps.first : const <String, dynamic>{};
+    final stepNext = currentStep['nextStep']?.toString();
+    final stepValidations = (currentStep['validations'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    final stepApiCalls = (currentStep['apiCalls'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    final defaultApi = stepApiCalls.isNotEmpty
+        ? stepApiCalls.first
+        : const <String, dynamic>{};
+    final defaultMethod = (defaultApi['method'] ?? 'POST').toString();
+    final defaultUrl = (defaultApi['url'] ?? '').toString();
+
     buf.writeln('  Future<StepSubmissionResult?> submitStep({');
     buf.writeln('    required String stepId,');
     buf.writeln('    required Map<String, dynamic> formData,');
     buf.writeln('    required String trigger,');
     buf.writeln('  }) async {');
-    buf.writeln('    final repo = repository;');
-    buf.writeln('    if (repo == null) {');
-    buf.writeln("      throw StateError('Repository is required for submitStep');");
-    buf.writeln('    }');
-    buf.writeln('    final result = await repo.submitStep(');
-    buf.writeln('      stepId: stepId,');
-    buf.writeln('      formData: formData,');
-    buf.writeln('      trigger: trigger,');
-    buf.writeln('    );');
-    buf.writeln('    return result.fold(');
-    buf.writeln("      (failure) => throw Exception(failure.toString()),");
-    buf.writeln('      (data) => StepSubmissionResult.fromMap(data),');
-    buf.writeln('    );');
+    for (final v in stepValidations) {
+      final type = (v['type'] ?? '').toString().toLowerCase();
+      final field = (v['field'] ?? '').toString();
+      final msg = (v['message'] ?? 'Validation failed')
+          .toString()
+          .replaceAll("'", "\\'");
+      if (field.isEmpty) continue;
+      if (type == 'required') {
+        buf.writeln("    final v_$field = formData['$field'];");
+        buf.writeln(
+            "    if (v_$field == null || v_$field.toString().trim().isEmpty) {");
+        buf.writeln("      throw Exception('$msg');");
+        buf.writeln('    }');
+      } else if (type == 'regex' || type == 'pattern') {
+        final regex = (v['regexPattern'] ?? '')
+            .toString()
+            .replaceAll(r"\", r"\\")
+            .replaceAll("'", "\\'");
+        if (regex.isEmpty) continue;
+        buf.writeln("    final v_$field = formData['$field']?.toString() ?? '';");
+        buf.writeln(
+            "    if (v_$field.isNotEmpty && !RegExp(r'$regex').hasMatch(v_$field)) {");
+        buf.writeln("      throw Exception('$msg');");
+        buf.writeln('    }');
+      }
+    }
+    if (defaultUrl.isNotEmpty) {
+      buf.writeln("    final method = '$defaultMethod';");
+      buf.writeln("    final url = '$defaultUrl';");
+      buf.writeln('    final result = await repository.submitStep(');
+      buf.writeln('      stepId: stepId,');
+      buf.writeln('      formData: formData,');
+      buf.writeln('      trigger: trigger,');
+      buf.writeln('      method: method,');
+      buf.writeln('      url: url,');
+      buf.writeln('      body: formData,');
+      buf.writeln('    );');
+      buf.writeln('    return result.fold(');
+      buf.writeln("      (failure) => throw Exception(failure.toString()),");
+      if (stepNext != null && stepNext.isNotEmpty) {
+        buf.writeln(
+            "      (data) => StepSubmissionResult.fromMap({'nextStepId': '$stepNext', ...?data}),");
+      } else {
+        buf.writeln(
+            "      (data) => StepSubmissionResult.fromMap(data),");
+      }
+      buf.writeln('    );');
+    } else {
+      if (stepNext != null && stepNext.isNotEmpty) {
+        buf.writeln(
+            "    return const StepSubmissionResult(nextStepId: '$stepNext');");
+      } else {
+        buf.writeln('    return const StepSubmissionResult();');
+      }
+    }
     buf.writeln('  }');
     buf.writeln();
 

@@ -34,6 +34,7 @@ class ScreenGenerator {
     buf.writeln("import '../bloc/${snakeName}_state.dart';");
     buf.writeln("import '../bloc/${snakeName}_event.dart';");
     buf.writeln("import '../../../../../core/widgets/widgets.dart';");
+    buf.writeln("import '../../../../../../core/routing/journey_routes.dart';");
     buf.writeln("import '/core/runtime/async_state.dart' as runtime;");
     buf.writeln("import '../../presentation/bloc/async_value.dart' as asyncv;");
     buf.writeln("import '../../../../../core/runtime/failure.dart';");
@@ -116,9 +117,7 @@ runtime.AsyncState<T> _toAsyncState<T>(
     buf.writeln('      listener: (context, state) {');
     buf.writeln('        final target = state.navigationTargetStepId;');
     buf.writeln('        if (target != null && target.isNotEmpty) {');
-    buf.writeln(
-      "          Navigator.of(context).pushNamed('/journey/\$target');",
-    );
+    buf.writeln("          Navigator.of(context).pushNamed(JourneyRoutes.pathForStep(target));");
     buf.writeln('        }');
     buf.writeln('        if (state.errorMessage != null) {');
     buf.writeln('          ScaffoldMessenger.of(context).showSnackBar(');
@@ -252,6 +251,8 @@ runtime.AsyncState<T> _toAsyncState<T>(
       _writeFileUpload(buf, field, stateName, blocName);
     } else if (type == 'multiselect' || type == 'multi_select') {
       _writeMultiSelect(buf, field, stateName, blocName);
+    } else if (type == 'table_grid' || type == 'data_grid') {
+      _writeDataGrid(buf, field, stateName, blocName);
     } else if (type == 'divider') {
       _writeDivider(buf, field);
     } else {
@@ -668,6 +669,69 @@ runtime.AsyncState<T> _toAsyncState<T>(
     buf.writeln('}');
   }
 
+  void _writeDataGrid(
+    StringBuffer buf,
+    Map<String, dynamic> field,
+    String stateName,
+    String blocName,
+  ) {
+    final fieldKey = _fieldName(field);
+    final label = field['label'] ?? fieldKey;
+    final columnsRaw = ((field['componentConfig'] as Map?)?['columns'] as List?) ??
+        (field['columns'] as List?) ??
+        const [];
+    final columns = columnsRaw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
+
+    buf.writeln('class _${_cap(fieldKey)}Field extends StatelessWidget {');
+    buf.writeln('  const _${_cap(fieldKey)}Field({super.key});');
+    buf.writeln('  @override');
+    buf.writeln('  Widget build(BuildContext context) {');
+    buf.writeln('    return BlocSelector<$blocName, $stateName, List<Map<String, dynamic>>>(');
+    buf.writeln(
+      "      selector: (state) => (state.formValues['$fieldKey'] as List<dynamic>? ?? const [])",
+    );
+    buf.writeln(
+      "          .whereType<Map>()",
+    );
+    buf.writeln(
+      "          .map((e) => Map<String, dynamic>.from(e))",
+    );
+    buf.writeln(
+      "          .toList(growable: false),",
+    );
+    buf.writeln('      builder: (context, rows) => AppDataGrid(');
+    buf.writeln("        label: '${_escape(label.toString())}',");
+    buf.writeln('        columns: [');
+    if (columns.isEmpty) {
+      buf.writeln("          const AppDataGridColumn(keyName: 'value', label: 'Value'),");
+    } else {
+      for (final c in columns) {
+        final key = (c['key'] ?? c['field'] ?? c['id'] ?? c['name'] ?? 'value')
+            .toString()
+            .replaceAll("'", "\\'");
+        final colLabel = (c['label'] ?? key).toString().replaceAll("'", "\\'");
+        final readOnly = c['readOnly'] == true;
+        buf.writeln(
+          "          const AppDataGridColumn(keyName: '$key', label: '$colLabel', readOnly: $readOnly),",
+        );
+      }
+    }
+    buf.writeln('        ],');
+    buf.writeln('        rows: rows,');
+    buf.writeln('        onRowsChanged: (nextRows) => context.read<$blocName>().add(');
+    buf.writeln(
+      "          ${featureName}FieldChangedEvent(fieldName: '$fieldKey', value: nextRows),",
+    );
+    buf.writeln('        ),');
+    buf.writeln('      ),');
+    buf.writeln('    );');
+    buf.writeln('  }');
+    buf.writeln('}');
+  }
+
   void _writePlaceholder(StringBuffer buf, Map<String, dynamic> field) {
     final label = field['label'] ?? _fieldName(field);
     buf.writeln(
@@ -740,7 +804,6 @@ runtime.AsyncState<T> _toAsyncState<T>(
       'row',
       'column',
       'accordion',
-      'table_grid',
       'timeline',
       'repeater',
     };

@@ -624,7 +624,6 @@ class AsyncError<T> extends AsyncValue<T> {
       'row',
       'column',
       'accordion',
-      'table_grid',
       'timeline',
       'repeater',
       'divider',
@@ -648,6 +647,8 @@ class AsyncError<T> extends AsyncValue<T> {
         return 'false';
       case 'multiselect': case 'multi_select':
         return '<String>[]';
+      case 'table_grid': case 'data_grid':
+        return '<Map<String, dynamic>>[]';
       default:
         return 'null';
     }

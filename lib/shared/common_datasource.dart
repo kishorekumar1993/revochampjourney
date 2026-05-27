@@ -105,6 +105,15 @@ String generateDataSourceInterface(
       buffer.writeln("  Future<List<$modelClass>> $methodName();");
     }
   }
+  buffer.writeln("  Future<Map<String, dynamic>?> submitStep({");
+  buffer.writeln("    required String stepId,");
+  buffer.writeln("    required Map<String, dynamic> formData,");
+  buffer.writeln("    required String trigger,");
+  buffer.writeln("    String? method,");
+  buffer.writeln("    String? url,");
+  buffer.writeln("    Map<String, String>? headers,");
+  buffer.writeln("    dynamic body,");
+  buffer.writeln("  });");
   buffer.writeln("}");
   buffer.writeln();
 
@@ -221,6 +230,44 @@ String generateDataSourceInterface(
     buffer.writeln("  }");
     buffer.writeln();
   }
+
+  buffer.writeln("  @override");
+  buffer.writeln("  Future<Map<String, dynamic>?> submitStep({");
+  buffer.writeln("    required String stepId,");
+  buffer.writeln("    required Map<String, dynamic> formData,");
+  buffer.writeln("    required String trigger,");
+  buffer.writeln("    String? method,");
+  buffer.writeln("    String? url,");
+  buffer.writeln("    Map<String, String>? headers,");
+  buffer.writeln("    dynamic body,");
+  buffer.writeln("  }) async {");
+  buffer.writeln("    if (url == null || url.trim().isEmpty) {");
+  buffer.writeln("      return <String, dynamic>{};");
+  buffer.writeln("    }");
+  buffer.writeln("    final httpMethod = (method ?? 'POST').toUpperCase();");
+  buffer.writeln("    final payload = body ?? formData;");
+  buffer.writeln("    dynamic response;");
+  buffer.writeln("    switch (httpMethod) {");
+  buffer.writeln("      case 'GET':");
+  buffer.writeln("        response = await apiService.get(url, headers: headers, requiresAuth: false);");
+  buffer.writeln("        break;");
+  buffer.writeln("      case 'PUT':");
+  buffer.writeln("        response = await apiService.put(url, headers: headers, body: payload, requiresAuth: false);");
+  buffer.writeln("        break;");
+  buffer.writeln("      case 'PATCH':");
+  buffer.writeln("        response = await apiService.patch(url, headers: headers, body: payload, requiresAuth: false);");
+  buffer.writeln("        break;");
+  buffer.writeln("      case 'DELETE':");
+  buffer.writeln("        response = await apiService.delete(url, headers: headers, body: payload, requiresAuth: false);");
+  buffer.writeln("        break;");
+  buffer.writeln("      default:");
+  buffer.writeln("        response = await apiService.post(url, headers: headers, body: payload, requiresAuth: false);");
+  buffer.writeln("        break;");
+  buffer.writeln("    }");
+  buffer.writeln("    if (response is Map<String, dynamic>) return response;");
+  buffer.writeln("    return <String, dynamic>{'data': response};");
+  buffer.writeln("  }");
+  buffer.writeln();
 
   buffer.writeln("}");
   return buffer.toString();

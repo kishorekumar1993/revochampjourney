@@ -970,6 +970,135 @@ class AppLoadingWidget extends StatelessWidget {
 """;
 
   // ─────────────────────────────────────────────────────────────────────────
+  // app_data_grid.dart
+  // ─────────────────────────────────────────────────────────────────────────
+  static const String appDataGrid = r"""
+// lib/bloc/core/widgets/app_data_grid.dart
+import 'package:flutter/material.dart';
+import 'form_field_wrapper.dart';
+
+class AppDataGridColumn {
+  const AppDataGridColumn({
+    required this.keyName,
+    required this.label,
+    this.flex = 1,
+    this.readOnly = false,
+  });
+
+  final String keyName;
+  final String label;
+  final int flex;
+  final bool readOnly;
+}
+
+class AppDataGrid extends StatelessWidget {
+  const AppDataGrid({
+    super.key,
+    required this.label,
+    required this.columns,
+    required this.rows,
+    required this.onRowsChanged,
+    this.errorText,
+    this.enabled = true,
+    this.maxRows = 100,
+  });
+
+  final String label;
+  final List<AppDataGridColumn> columns;
+  final List<Map<String, dynamic>> rows;
+  final ValueChanged<List<Map<String, dynamic>>> onRowsChanged;
+  final String? errorText;
+  final bool enabled;
+  final int maxRows;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormFieldWrapper(
+      label: label,
+      errorText: errorText,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: columns
+                  .map((c) => DataColumn(label: Text(c.label)))
+                  .toList(growable: false),
+              rows: List<DataRow>.generate(rows.length, (rowIndex) {
+                final row = rows[rowIndex];
+                return DataRow(
+                  cells: columns.map((col) {
+                    final value = row[col.keyName]?.toString() ?? '';
+                    if (col.readOnly || !enabled) {
+                      return DataCell(Text(value));
+                    }
+                    return DataCell(
+                      SizedBox(
+                        width: 160,
+                        child: TextFormField(
+                          initialValue: value,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (newVal) {
+                            final copy = rows
+                                .map((e) => Map<String, dynamic>.from(e))
+                                .toList(growable: true);
+                            copy[rowIndex][col.keyName] = newVal;
+                            onRowsChanged(copy);
+                          },
+                        ),
+                      ),
+                    );
+                  }).toList(growable: false),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: enabled && rows.length < maxRows
+                    ? () {
+                        final newRow = <String, dynamic>{
+                          for (final c in columns) c.keyName: null,
+                        };
+                        onRowsChanged([
+                          ...rows.map((e) => Map<String, dynamic>.from(e)),
+                          newRow,
+                        ]);
+                      }
+                    : null,
+                icon: const Icon(Icons.add),
+                label: const Text('Add row'),
+              ),
+              OutlinedButton.icon(
+                onPressed: enabled && rows.isNotEmpty
+                    ? () {
+                        final copy = rows
+                            .map((e) => Map<String, dynamic>.from(e))
+                            .toList(growable: true);
+                        copy.removeLast();
+                        onRowsChanged(copy);
+                      }
+                    : null,
+                icon: const Icon(Icons.remove),
+                label: const Text('Remove row'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+""";
+
+  // ─────────────────────────────────────────────────────────────────────────
   // widgets barrel export
   // ─────────────────────────────────────────────────────────────────────────
   static const String widgetsBarrel = r"""
@@ -985,6 +1114,7 @@ export 'app_multi_select_field.dart';
 export 'app_form_button.dart';
 export 'app_error_widget.dart';
 export 'app_loading_widget.dart';
+export 'app_data_grid.dart';
 export 'form_field_wrapper.dart';
 """;
 }

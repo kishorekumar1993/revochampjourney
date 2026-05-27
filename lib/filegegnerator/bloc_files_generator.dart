@@ -330,6 +330,7 @@ Map<String, String> generate() {
     files['$base/app_error_widget.dart'] = ReusableWidgetSources.appErrorWidget;
     files['$base/app_loading_widget.dart'] =
         ReusableWidgetSources.appLoadingWidget;
+    files['$base/app_data_grid.dart'] = ReusableWidgetSources.appDataGrid;
     files['$base/widgets.dart'] = ReusableWidgetSources.widgetsBarrel;
   }
 }

@@ -126,6 +126,10 @@ String generateRepositoryInterface(
   buffer.writeln("    required String stepId,");
   buffer.writeln("    required Map<String, dynamic> formData,");
   buffer.writeln("    required String trigger,");
+  buffer.writeln("    String? method,");
+  buffer.writeln("    String? url,");
+  buffer.writeln("    Map<String, String>? headers,");
+  buffer.writeln("    dynamic body,");
   buffer.writeln("  });");
 
   buffer.writeln("}");

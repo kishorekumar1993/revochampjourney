@@ -196,6 +196,10 @@ String generateRepositoryImplInterface(
   buffer.writeln("    required String stepId,");
   buffer.writeln("    required Map<String, dynamic> formData,");
   buffer.writeln("    required String trigger,");
+  buffer.writeln("    String? method,");
+  buffer.writeln("    String? url,");
+  buffer.writeln("    Map<String, String>? headers,");
+  buffer.writeln("    dynamic body,");
   buffer.writeln("  }) async {");
   buffer.writeln("    try {");
   buffer.writeln(
@@ -204,6 +208,10 @@ String generateRepositoryImplInterface(
   buffer.writeln("        stepId: stepId,");
   buffer.writeln("        formData: formData,");
   buffer.writeln("        trigger: trigger,");
+  buffer.writeln("        method: method,");
+  buffer.writeln("        url: url,");
+  buffer.writeln("        headers: headers,");
+  buffer.writeln("        body: body,");
   buffer.writeln("      );");
   buffer.writeln("      if (result is Map<String, dynamic> || result == null) {");
   buffer.writeln("        return Right(result as Map<String, dynamic>?);");

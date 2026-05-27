@@ -99,6 +99,7 @@ List<Map<String, String>> generateAllFilesData({
           featureName: '${screenName}Form',
           baseName: screenName.toLowerCase(),
           fields: fieldsForDi,
+          hasRemoteDataSource: true,
         ),
       );
 
@@ -360,14 +361,148 @@ String _toJourneyNamespace(String name) {
 /// Route constants from journey JSON steps (used by generated Next navigation).
 String _generateJourneyRoutes(dynamic journeyConfig) {
   final buf = StringBuffer();
-  buf.writeln('// AUTO-GENERATED — journey step routes from JSON');
+  final steps = journeyConfig.steps;
+  buf.writeln('// AUTO-GENERATED — enterprise journey routing registry');
+  buf.writeln("import 'package:flutter/material.dart';");
+  buf.writeln();
+  buf.writeln('class JourneyRouteMeta {');
+  buf.writeln('  const JourneyRouteMeta({');
+  buf.writeln('    required this.stepId,');
+  buf.writeln('    required this.path,');
+  buf.writeln('    required this.title,');
+  buf.writeln('    required this.index,');
+  buf.writeln('    this.description,');
+  buf.writeln('    this.requiresValidation = false,');
+  buf.writeln('    this.guardKey,');
+  buf.writeln('  });');
+  buf.writeln('  final String stepId;');
+  buf.writeln('  final String path;');
+  buf.writeln('  final String title;');
+  buf.writeln('  final int index;');
+  buf.writeln('  final String? description;');
+  buf.writeln('  final bool requiresValidation;');
+  buf.writeln('  final String? guardKey;');
+  buf.writeln('}');
+  buf.writeln();
+  buf.writeln('typedef StepGuard = bool Function(String stepId, Map<String, String> query);');
+  buf.writeln('typedef StepValidator = bool Function(String stepId, Map<String, dynamic> payload);');
+  buf.writeln();
   buf.writeln('class JourneyRoutes {');
   buf.writeln('  JourneyRoutes._();');
+  buf.writeln("  static const String journeyPrefix = '/journey';");
   buf.writeln();
-  for (final step in journeyConfig.steps) {
+  for (final step in steps) {
     final id = step.id.replaceAll("'", "\\'");
+    final title = (step.title ?? step.id).toString().replaceAll("'", "\\'");
+    final desc = (step.description ?? '').toString().replaceAll("'", "\\'");
     buf.writeln("  static const String $id = '/journey/$id';");
+    buf.writeln("  static const JourneyRouteMeta ${id}Meta = JourneyRouteMeta(");
+    buf.writeln("    stepId: '$id',");
+    buf.writeln("    path: $id,");
+    buf.writeln("    title: '$title',");
+    buf.writeln("    index: ${steps.indexOf(step)},");
+    buf.writeln(desc.isNotEmpty ? "    description: '$desc'," : "    description: null,");
+    buf.writeln("  );");
+    buf.writeln();
   }
+  buf.writeln('  static const List<JourneyRouteMeta> orderedSteps = <JourneyRouteMeta>[');
+  for (final step in steps) {
+    final id = step.id.replaceAll("'", "\\'");
+    buf.writeln('    ${id}Meta,');
+  }
+  buf.writeln('  ];');
+  buf.writeln();
+  buf.writeln('  static final Map<String, JourneyRouteMeta> byStepId = {');
+  for (final step in steps) {
+    final id = step.id.replaceAll("'", "\\'");
+    buf.writeln("    '$id': ${id}Meta,");
+  }
+  buf.writeln('  };');
+  buf.writeln();
+  buf.writeln('  static final Map<String, JourneyRouteMeta> byPath = {');
+  buf.writeln('    for (final meta in orderedSteps) meta.path: meta,');
+  buf.writeln('  };');
+  buf.writeln();
+  buf.writeln('  static String pathForStep(String stepId, {Map<String, String>? query}) {');
+  buf.writeln("    final base = byStepId[stepId]?.path ?? '\$journeyPrefix/\$stepId';");
+  buf.writeln('    if (query == null || query.isEmpty) return base;');
+  buf.writeln('    final uri = Uri(path: base, queryParameters: query);');
+  buf.writeln('    return uri.toString();');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static String? stepIdFromLocation(String location) {');
+  buf.writeln("    final uri = Uri.tryParse(location) ?? Uri(path: location);");
+  buf.writeln("    if (!uri.path.startsWith('\$journeyPrefix/')) return null;");
+  buf.writeln("    final segments = uri.path.split('/').where((e) => e.isNotEmpty).toList();");
+  buf.writeln('    if (segments.length < 2) return null;');
+  buf.writeln('    return segments[1];');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static Map<String, String> parseQuery(String location) {');
+  buf.writeln("    final uri = Uri.tryParse(location) ?? Uri(path: location);");
+  buf.writeln('    return uri.queryParameters;');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static bool existsStep(String stepId) => byStepId.containsKey(stepId);');
+  buf.writeln('  static bool existsPath(String path) => byPath.containsKey(path);');
+  buf.writeln('  static int indexOfStep(String stepId) => byStepId[stepId]?.index ?? -1;');
+  buf.writeln('  static JourneyRouteMeta? metaForStep(String stepId) => byStepId[stepId];');
+  buf.writeln('  static String titleForStep(String stepId) => byStepId[stepId]?.title ?? stepId;');
+  buf.writeln();
+  buf.writeln('  static String? nextStepId(String currentStepId) {');
+  buf.writeln('    final i = indexOfStep(currentStepId);');
+  buf.writeln('    if (i < 0 || i + 1 >= orderedSteps.length) return null;');
+  buf.writeln('    return orderedSteps[i + 1].stepId;');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static String? previousStepId(String currentStepId) {');
+  buf.writeln('    final i = indexOfStep(currentStepId);');
+  buf.writeln('    if (i <= 0) return null;');
+  buf.writeln('    return orderedSteps[i - 1].stepId;');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static String? nextPath(String currentStepId, {Map<String, String>? query}) {');
+  buf.writeln('    final next = nextStepId(currentStepId);');
+  buf.writeln('    if (next == null) return null;');
+  buf.writeln('    return pathForStep(next, query: query);');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static String? previousPath(String currentStepId, {Map<String, String>? query}) {');
+  buf.writeln('    final prev = previousStepId(currentStepId);');
+  buf.writeln('    if (prev == null) return null;');
+  buf.writeln('    return pathForStep(prev, query: query);');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static bool canNavigate({');
+  buf.writeln('    required String toStepId,');
+  buf.writeln('    Map<String, String>? query,');
+  buf.writeln('    StepGuard? guard,');
+  buf.writeln('  }) {');
+  buf.writeln('    if (!existsStep(toStepId)) return false;');
+  buf.writeln('    if (guard == null) return true;');
+  buf.writeln('    return guard(toStepId, query ?? const <String, String>{});');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static bool validateBeforeNavigation({');
+  buf.writeln('    required String fromStepId,');
+  buf.writeln('    required Map<String, dynamic> payload,');
+  buf.writeln('    StepValidator? validator,');
+  buf.writeln('  }) {');
+  buf.writeln('    if (validator == null) return true;');
+  buf.writeln('    return validator(fromStepId, payload);');
+  buf.writeln('  }');
+  buf.writeln();
+  buf.writeln('  static String? normalizeDeepLinkLocation(String location) {');
+  buf.writeln("    final uri = Uri.tryParse(location) ?? Uri(path: location);");
+  buf.writeln("    if (uri.path == '/' || uri.path.isEmpty) {");
+  buf.writeln('      if (orderedSteps.isEmpty) return null;');
+  buf.writeln('      return orderedSteps.first.path;');
+  buf.writeln('    }');
+  buf.writeln('    final stepId = stepIdFromLocation(uri.toString());');
+  buf.writeln('    if (stepId == null || !existsStep(stepId)) return null;');
+  buf.writeln('    return pathForStep(stepId, query: uri.queryParameters);');
+  buf.writeln('  }');
   buf.writeln('}');
+
   return buf.toString();
 }
