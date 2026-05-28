@@ -43,20 +43,15 @@ String generateviewClass(
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(fields, flatFields);
 
-  // ─── Check if any date field needs helpers (none now) ─────────
-  // Helpers moved to DateHelper, no need to emit them in the view.
-
   // ─── Imports ──────────────────────────────────────────────────
   buffer.writeln("import 'package:flutter/material.dart';");
-  buffer.writeln("import 'package:flutter/services.dart';"); // for FilteringTextInputFormatter
+  buffer.writeln("import 'package:flutter/services.dart';");
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase().replaceAll(' ', '_')}_controller.dart';",
   );
-  buffer.writeln("import '/core/widgets.dart';");
-  buffer.writeln("import '/utils/date_helper.dart';"); // centralized date formatting
+  buffer.writeln("import '../../../../core/widgets/widgets.dart';");
 
-  // Model imports (unchanged)
   final emittedModelFiles = <String>{};
   for (final field in flatFields) {
     if (!fieldNeedsGetxModel(field)) continue;
@@ -69,7 +64,9 @@ String generateviewClass(
   buffer.writeln();
 
   // ─── View class ──────────────────────────────────────────────
-  buffer.writeln("class ${className}View extends GetView<${className}Controller> {");
+  buffer.writeln(
+    "class ${className}View extends GetView<${className}Controller> {",
+  );
   buffer.writeln("  const ${className}View({super.key});");
   buffer.writeln();
   buffer.writeln("  @override");
@@ -94,7 +91,9 @@ String generateviewClass(
   buffer.writeln("            children: [");
   buffer.writeln("              Center(");
   buffer.writeln("                child: ConstrainedBox(");
-  buffer.writeln("                  constraints: const BoxConstraints(maxWidth: 600),");
+  buffer.writeln(
+    "                  constraints: const BoxConstraints(maxWidth: 600),",
+  );
   buffer.writeln("                  child: SingleChildScrollView(");
   buffer.writeln(
     "                    padding: EdgeInsets.symmetric(horizontal: context.width < 600 ? 16 : 24, vertical: 16),",
@@ -102,16 +101,21 @@ String generateviewClass(
   buffer.writeln(
     "                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,",
   );
-  buffer.writeln("                    child: AppFormContainer(");
+  buffer.writeln("                    child: Container(");
+  buffer.writeln("                      padding: const EdgeInsets.all(16),");
   buffer.writeln("                      child: Form(");
   buffer.writeln("                        key: controller.formKey,");
-  buffer.writeln("                        autovalidateMode: AutovalidateMode.onUserInteraction,");
+  buffer.writeln(
+    "                        autovalidateMode: AutovalidateMode.onUserInteraction,",
+  );
   buffer.writeln("                        child: Column(");
-  buffer.writeln("                          crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln(
+    "                          crossAxisAlignment: CrossAxisAlignment.start,",
+  );
   buffer.writeln("                          children: [");
   stepMeta.writeFlutterStepHeader(buffer);
 
-  // ─── Recursive widget builder (controller‑validated) ─────────
+  // ─── Recursive widget builder ────────────────────────────────
   void buildWidgets(List<dynamic> currentFields) {
     for (int i = 0; i < currentFields.length; i++) {
       final rawField = currentFields[i];
@@ -134,7 +138,6 @@ String generateviewClass(
           .toString()
           .toLowerCase();
       final keyboardType = _mapKeyboardType(rawKeyboard);
-      final isNumber = rawKeyboard == 'number';
       final textInputAction = (field['textInputAction'] ?? 'done')
           .toString()
           .toLowerCase();
@@ -143,9 +146,6 @@ String generateviewClass(
           .toLowerCase();
       final minLength = int.tryParse(field['minLength']?.toString() ?? '') ?? 0;
       final maxLength = int.tryParse(field['maxLength']?.toString() ?? '') ?? 0;
-      final pattern = (field['validationPattern'] ?? '').toString();
-      final errorMessage = (field['errorMessage'] ?? 'Invalid format')
-          .toString();
       final staticOpts =
           (field['options'] as List<dynamic>?) ??
           (field['staticOptions'] as List<dynamic>?);
@@ -169,7 +169,11 @@ String generateviewClass(
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           textCapitalization: textCapitalization,
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
+          inputFormatters: null,
+          maxLength: null,
+          maxLines: null,
+          minLines: null,
         );
       } else if (type == 'phone') {
         _writeTextFormField(
@@ -184,7 +188,7 @@ String generateviewClass(
           keyboardType: 'phone',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
           inputFormatters: 'FilteringTextInputFormatter.digitsOnly',
         );
       } else if (type == 'email') {
@@ -200,7 +204,7 @@ String generateviewClass(
           keyboardType: 'emailAddress',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel', // uses GetUtils.isEmail
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'password') {
         _writeTextFormField(
@@ -215,7 +219,7 @@ String generateviewClass(
           keyboardType: 'text',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'textarea') {
         _writeTextFormField(
@@ -229,8 +233,8 @@ String generateviewClass(
           isReadOnly: isReadOnly,
           keyboardType: 'multiline',
           textInputAction: 'newline',
-          textCapitalization: 'sentences', // better UX for addresses
-          validatorReference: 'controller.validate$capitalLabel',
+          textCapitalization: 'sentences',
+          fieldId: field['id'].toString(),
           maxLines: 4,
           minLines: 3,
         );
@@ -247,7 +251,7 @@ String generateviewClass(
           keyboardType: 'number',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'decimal' || type == 'double' || type == 'float') {
         _writeTextFormField(
@@ -262,7 +266,7 @@ String generateviewClass(
           keyboardType: 'decimalPad',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'otp') {
         _writeTextFormField(
@@ -277,7 +281,7 @@ String generateviewClass(
           keyboardType: 'number',
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          validatorReference: 'controller.validate$capitalLabel',
+          fieldId: field['id'].toString(),
           maxLength: maxLength > 0 ? maxLength : 6,
         );
       } else if (type == 'date') {
@@ -288,6 +292,7 @@ String generateviewClass(
           capitalLabel: capitalLabel,
           hint: hint,
           isReadOnly: isReadOnly,
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'datetime' || type == 'date time') {
         _writeDateTimePickerField(
@@ -298,6 +303,7 @@ String generateviewClass(
           hint: hint,
           isRequired: isRequired,
           isReadOnly: isReadOnly,
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'time') {
         _writeTimePickerField(
@@ -308,6 +314,7 @@ String generateviewClass(
           hint: hint,
           isRequired: isRequired,
           isReadOnly: isReadOnly,
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'dropdown' || type == 'api_dropdown') {
         if (isApiDropdown) {
@@ -328,35 +335,50 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          buffer.writeln("                  errorText: controller.${name}Error.value,");
-          buffer.writeln("                  validator: controller.validate$capitalLabel,");
+          buffer.writeln(
+            "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+          );
           buffer.writeln("                )),");
-        } else if (staticOpts != null && staticOpts.isNotEmpty) {
-          final optionsList = staticOpts.map((o) {
-            if (o is Map) {
-              return "'${(o['value'] ?? o['label'] ?? o['title'] ?? o['key'] ?? o['id'] ?? '').toString().replaceAll("'", "\\'")}'";
-            }
-            return "'${o.toString().replaceAll("'", "\\'")}'";
-          }).join(', ');
+     } else if (staticOpts != null && staticOpts.isNotEmpty) {
+  buffer.writeln(
+    "                Obx(() => AppDropdownField<DropdownItem>(",
+  );
 
-          buffer.writeln(
-            "                Obx(() => AppDropdownField<String>(",
-          );
-          buffer.writeln("                  label: '$rawLabel',");
-          buffer.writeln("                  hint: '$hint',");
-          buffer.writeln("                  itemLabelBuilder: (item) => item,");
-          buffer.writeln("                  items: [$optionsList],");
-          buffer.writeln(
-            "                  value: controller.selected$capitalLabel.value,",
-          );
-          buffer.writeln(
-            "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
-          );
-          buffer.writeln("                  errorText: controller.${name}Error.value,");
-          buffer.writeln("                  validator: controller.validate$capitalLabel,");
-          buffer.writeln("                )),");
-        }
-      } else if (type == 'radio' || type == 'radio buttons') {
+  buffer.writeln("                  label: '$rawLabel',");
+
+  buffer.writeln("                  hint: '$hint',");
+
+  buffer.writeln(
+    "                  itemLabelBuilder: (item) => item.value,",
+  );
+
+  buffer.writeln(
+    "                  items: controller.${name}Options,",
+  );
+
+  buffer.writeln(
+    "                  value: controller.selected$capitalLabel.value,",
+  );
+
+  buffer.writeln(
+    "                  onChanged: (val) {",
+  );
+
+  buffer.writeln(
+    "                    controller.selected$capitalLabel.value = val;",
+  );
+
+  buffer.writeln(
+    "                  },",
+  );
+
+  buffer.writeln(
+    "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+  );
+
+  buffer.writeln("                )),");
+
+} else if (type == 'radio' || type == 'radio buttons') {
         final optionsList = staticOpts != null
             ? staticOpts
                   .map((o) {
@@ -368,7 +390,9 @@ String generateviewClass(
 
         buffer.writeln("                Obx(() => AppRadioGroupField(");
         buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  errorText: controller.${name}Error.value,");
+        buffer.writeln(
+          "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+        );
         buffer.writeln(
           "                  value: controller.selected$capitalLabel.value?.toString(),",
         );
@@ -382,52 +406,18 @@ String generateviewClass(
             "                  options: controller.${name}Options.map((e) => e.toString()).toList(),",
           );
         }
-        buffer.writeln("                  validator: controller.validate$capitalLabel,");
         buffer.writeln("                )),");
-      } else if (type == 'switch') {
-        buffer.writeln("                Obx(() => FormField<bool>(");
-        buffer.writeln("                  initialValue: false,");
+      }} else if (type == 'switch') {
+        // Simplified: no FormField wrapper, validation handled in validateStep()
+        buffer.writeln("                Obx(() => SwitchListTile(");
+        buffer.writeln("                  title: Text('$rawLabel'),");
         buffer.writeln(
-          "                  validator: controller.validate$capitalLabel,",
-        );
-        buffer.writeln("                  builder: (formState) => Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      SwitchListTile(");
-        buffer.writeln(
-          "                        title: Text('$rawLabel'),",
+          "                  value: controller.${name}Value.value,",
         );
         buffer.writeln(
-          "                        value: controller.${name}Value.value,",
+          "                  onChanged: (val) => controller.${name}Value.value = val,",
         );
-        buffer.writeln("                        onChanged: (val) {");
-        buffer.writeln(
-          "                          controller.${name}Value.value = val;",
-        );
-        buffer.writeln("                          formState.didChange(val);");
-        buffer.writeln("                        },");
-        buffer.writeln(
-          "                        contentPadding: EdgeInsets.zero,",
-        );
-        buffer.writeln("                      ),");
-        if (isRequired) {
-          buffer.writeln("                      if (formState.hasError)");
-          buffer.writeln("                        Padding(");
-          buffer.writeln(
-            "                          padding: const EdgeInsets.only(left: 4, bottom: 4),",
-          );
-          buffer.writeln("                          child: Text(");
-          buffer.writeln("                            formState.errorText ?? '',");
-          buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
-          );
-          buffer.writeln("                          ),");
-          buffer.writeln("                        ),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
+        buffer.writeln("                  contentPadding: EdgeInsets.zero,");
         buffer.writeln("                )),");
       } else if (type == 'file') {
         _writeFilePickerField(
@@ -436,16 +426,20 @@ String generateviewClass(
           name: name,
           capitalLabel: capitalLabel,
           pickMethod: "pick${capitalLabel}File",
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'checkbox') {
         buffer.writeln("                Obx(() => AppCheckboxField(");
         buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  value: controller.${name}Value.value,");
+        buffer.writeln(
+          "                  value: controller.${name}Value.value,",
+        );
         buffer.writeln(
           "                  onChanged: (val) => controller.${name}Value.value = val ?? false,",
         );
-        buffer.writeln("                  errorText: controller.${name}Error.value,");
-        buffer.writeln("                  validator: controller.validate$capitalLabel,");
+        buffer.writeln(
+          "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+        );
         buffer.writeln("                )),");
       } else if (type == 'multiselect' ||
           type == 'multi select' ||
@@ -471,11 +465,14 @@ String generateviewClass(
         buffer.writeln(
           "                  selectedValues: controller.${name}Selected.toList(),",
         );
-        buffer.writeln("                  errorText: controller.${name}Error.value,");
+        buffer.writeln(
+          "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+        );
         buffer.writeln("                  onChanged: (values) {");
-        buffer.writeln("                    controller.${name}Selected.assignAll(values);");
+        buffer.writeln(
+          "                    controller.${name}Selected.assignAll(values);",
+        );
         buffer.writeln("                  },");
-        buffer.writeln("                  validator: controller.validate$capitalLabel,");
         buffer.writeln("                )),");
       } else if (type == 'slider' || type == 'range slider') {
         final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
@@ -538,6 +535,7 @@ String generateviewClass(
           name: name,
           capitalLabel: capitalLabel,
           pickMethod: "pick${capitalLabel}Image",
+          fieldId: field['id'].toString(),
         );
       } else if (type == 'starrating' ||
           type == 'rating' ||
@@ -593,7 +591,9 @@ String generateviewClass(
         );
         buffer.writeln("                      ),");
         buffer.writeln("                      const SizedBox(height: 4),");
-        buffer.writeln("                      Divider(thickness: 1.5, color: theme.colorScheme.outline),");
+        buffer.writeln(
+          "                      Divider(thickness: 1.5, color: theme.colorScheme.outline),",
+        );
         buffer.writeln("                      const SizedBox(height: 8),");
         final nested = field['nestedFields'] as List<dynamic>? ?? [];
         if (nested.isNotEmpty) buildWidgets(nested);
@@ -699,7 +699,7 @@ String generateviewClass(
         );
         buffer.writeln("                  shape: RoundedRectangleBorder(");
         buffer.writeln(
-          "                    side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),",
+          "                    side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),",
         );
         buffer.writeln(
           "                    borderRadius: BorderRadius.circular(8),",
@@ -709,15 +709,17 @@ String generateviewClass(
           "                  collapsedShape: RoundedRectangleBorder(",
         );
         buffer.writeln(
-          "                    side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),",
+          "                    side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),",
         );
         buffer.writeln(
           "                    borderRadius: BorderRadius.circular(8),",
         );
         buffer.writeln("                  ),");
-        buffer.writeln("                  children: const [");
+        buffer.writeln("                  children: [");
         buffer.writeln("                    Padding(");
-        buffer.writeln("                      padding: EdgeInsets.all(16.0),");
+        buffer.writeln(
+          "                      padding: const EdgeInsets.all(16.0),",
+        );
         buffer.writeln("                      child: Column(");
         buffer.writeln(
           "                        crossAxisAlignment: CrossAxisAlignment.start,",
@@ -936,7 +938,7 @@ String generateviewClass(
         );
         buffer.writeln("                                ),");
         buffer.writeln(
-          "                                if (!isLast) Expanded(child: Container(width: 2, color: theme.colorScheme.outline.withOpacity(0.3))),",
+          "                                if (!isLast) Expanded(child: Container(width: 2, color: theme.colorScheme.outline.withValues(alpha: 0.3))),",
         );
         buffer.writeln("                              ],");
         buffer.writeln("                            ),");
@@ -985,88 +987,84 @@ String generateviewClass(
         buffer.writeln("                      hint: '$hint',");
         buffer.writeln("                      controller: textController,");
         buffer.writeln("                      focusNode: focusNode,");
-        buffer.writeln("                      errorText: controller.${name}Error.value,");
-        buffer.writeln("                      validator: controller.validate$capitalLabel,");
+        buffer.writeln(
+          "                      errorText: controller.fieldErrors['${field['id']}']?.value,",
+        );
         buffer.writeln("                    );");
         buffer.writeln("                  },");
         buffer.writeln("                ),");
       } else if (type == 'signature') {
-        buffer.writeln("                Obx(() => FormField<bool>(");
-        buffer.writeln("                  initialValue: false,");
+        // Simplified: no FormField, just a button to capture signature
+        buffer.writeln("                Obx(() => Column(");
         buffer.writeln(
-          "                  validator: controller.validate$capitalLabel,",
+          "                  crossAxisAlignment: CrossAxisAlignment.start,",
         );
-        buffer.writeln("                  builder: (formState) => Column(");
+        buffer.writeln("                  children: [");
         buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln(
-          "                      Text('$rawLabel${isRequired ? ' *' : ''}',",
+          "                    Text('$rawLabel${isRequired ? ' *' : ''}',",
         );
         buffer.writeln(
-          "                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
+          "                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
         );
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      GestureDetector(");
-        buffer.writeln("                        onTap: () async {");
+        buffer.writeln("                    const SizedBox(height: 8),");
+        buffer.writeln("                    GestureDetector(");
+        buffer.writeln("                      onTap: () async {");
         buffer.writeln(
-          "                          await controller.capture${capitalLabel}Signature();",
+          "                        await controller.capture${capitalLabel}Signature();",
         );
+        buffer.writeln("                      },");
+        buffer.writeln("                      child: Container(");
+        buffer.writeln("                        width: double.infinity,");
+        buffer.writeln("                        height: 120,");
+        buffer.writeln("                        decoration: BoxDecoration(");
+        buffer.writeln("                          border: Border.all(");
         buffer.writeln(
-          "                          formState.didChange(controller.${name}Signed.value);",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln("                        child: Container(");
-        buffer.writeln("                          width: double.infinity,");
-        buffer.writeln("                          height: 120,");
-        buffer.writeln("                          decoration: BoxDecoration(");
-        buffer.writeln("                            border: Border.all(");
-        buffer.writeln(
-          "                              color: formState.hasError ? Colors.red : theme.colorScheme.outline,",
-        );
-        buffer.writeln("                            ),");
-        buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),",
+          "                            color: controller.fieldErrors['${field['id']}'] != null ? Colors.red : theme.colorScheme.outline,",
         );
         buffer.writeln("                          ),");
         buffer.writeln(
-          "                          child: controller.${name}Signed.value",
+          "                          borderRadius: BorderRadius.circular(8),",
         );
-        buffer.writeln(
-          "                              ? const Center(child: Icon(Icons.check_circle, color: Colors.green, size: 40))",
-        );
-        buffer.writeln(
-          "                              : const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [",
-        );
-        buffer.writeln(
-          "                                  Icon(Icons.draw, color: Colors.grey),",
-        );
-        buffer.writeln(
-          "                                  SizedBox(height: 4),",
-        );
-        buffer.writeln(
-          "                                  Text('Tap to sign', style: TextStyle(color: Colors.grey)),",
-        );
-        buffer.writeln("                                ])),");
         buffer.writeln("                        ),");
+        buffer.writeln(
+          "                        child: controller.${name}Signed.value",
+        );
+        buffer.writeln(
+          "                            ? const Center(child: Icon(Icons.check_circle, color: Colors.green, size: 40))",
+        );
+        buffer.writeln(
+          "                            : const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [",
+        );
+        buffer.writeln(
+          "                                Icon(Icons.draw, color: Colors.grey),",
+        );
+        buffer.writeln("                                SizedBox(height: 4),");
+        buffer.writeln(
+          "                                Text('Tap to sign', style: TextStyle(color: Colors.grey)),",
+        );
+        buffer.writeln("                              ])),");
         buffer.writeln("                      ),");
+        buffer.writeln("                    ),");
         if (isRequired) {
-          buffer.writeln("                      if (formState.hasError)");
-          buffer.writeln("                        Padding(");
           buffer.writeln(
-            "                          padding: const EdgeInsets.only(top: 6, left: 4),",
+            "                    Obx(() => controller.fieldErrors['${field['id']}'] != null",
           );
-          buffer.writeln("                          child: Text(");
-          buffer.writeln("                            formState.errorText ?? '',");
+          buffer.writeln("                        ? Padding(");
           buffer.writeln(
-            "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
+            "                            padding: const EdgeInsets.only(top: 6, left: 4),",
           );
-          buffer.writeln("                          ),");
-          buffer.writeln("                        ),");
+          buffer.writeln("                            child: Text(");
+          buffer.writeln(
+            "                              controller.fieldErrors['${field['id']}']!.value,",
+          );
+          buffer.writeln(
+            "                              style: const TextStyle(color: Colors.red, fontSize: 12),",
+          );
+          buffer.writeln("                            ),");
+          buffer.writeln("                          )");
+          buffer.writeln("                        : const SizedBox.shrink()),");
         }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
+        buffer.writeln("                  ],");
         buffer.writeln("                )),");
       } else if (type == 'row') {
         buffer.writeln("                Wrap(");
@@ -1107,8 +1105,9 @@ String generateviewClass(
           "                  controller: TextEditingController(text: controller.$name.value),",
         );
         buffer.writeln("                  readOnly: true,");
-        buffer.writeln("                  errorText: controller.${name}Error.value,");
-        buffer.writeln("                  validator: controller.validate$capitalLabel,");
+        buffer.writeln(
+          "                  errorText: controller.fieldErrors['${field['id']}']?.value,",
+        );
         buffer.writeln("                ),");
       } else {
         buffer.writeln(
@@ -1116,7 +1115,6 @@ String generateviewClass(
         );
       }
 
-      // ---- spacing between fields (except after the last one) ----
       if (i < currentFields.length - 1) {
         buffer.writeln("                const SizedBox(height: 16),");
       }
@@ -1132,36 +1130,57 @@ String generateviewClass(
   buffer.writeln("                  width: double.infinity,");
   buffer.writeln("                  child: ElevatedButton(");
   buffer.writeln("                    style: ElevatedButton.styleFrom(");
-  buffer.writeln("                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),");
+  buffer.writeln(
+    "                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),",
+  );
   buffer.writeln("                      shape: RoundedRectangleBorder(");
-  buffer.writeln("                        borderRadius: BorderRadius.circular(12),");
+  buffer.writeln(
+    "                        borderRadius: BorderRadius.circular(12),",
+  );
   buffer.writeln("                      ),");
-  buffer.writeln("                      backgroundColor: theme.colorScheme.primary,");
-  buffer.writeln("                      foregroundColor: theme.colorScheme.onPrimary,");
+  buffer.writeln(
+    "                      backgroundColor: theme.colorScheme.primary,",
+  );
+  buffer.writeln(
+    "                      foregroundColor: theme.colorScheme.onPrimary,",
+  );
   buffer.writeln("                    ),");
-  buffer.writeln("                    onPressed: () => controller.onPrimaryAction(),");
-  buffer.writeln("                    child: Obx(() => controller.isExecuting.value");
+  buffer.writeln(
+    "                    onPressed: () => controller.onPrimaryAction(),",
+  );
+  buffer.writeln(
+    "                    child: Obx(() => controller.isExecuting.value",
+  );
   buffer.writeln("                        ? const SizedBox(");
   buffer.writeln("                            height: 20, width: 20,");
-  buffer.writeln("                            child: CircularProgressIndicator(color: Colors.white))");
+  buffer.writeln(
+    "                            child: CircularProgressIndicator(color: Colors.white))",
+  );
   buffer.writeln("                        : Text('$primaryLabel')),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
 
   buffer.writeln("                        ],"); // Column children
   buffer.writeln("                      ),"); // Form
-  buffer.writeln("                    ),"); // AppFormContainer
+  buffer.writeln(
+    "                    ),",
+  ); // Container (replaced AppFormContainer)
   buffer.writeln("                  ),"); // SingleChildScrollView
   buffer.writeln("                ),"); // ConstrainedBox
   buffer.writeln("              ),"); // Center
+  buffer.writeln("              ),"); // Center
 
-  // ─── Loading overlay (FIXED reactivity) ───────────────────────
+  // Loading overlay – fixed deprecated withOpacity
   buffer.writeln("              Obx(() {");
-  buffer.writeln("                if (!controller.isExecuting.value) return const SizedBox.shrink();");
+  buffer.writeln(
+    "                if (!controller.isExecuting.value) return const SizedBox.shrink();",
+  );
   buffer.writeln("                return AbsorbPointer(");
   buffer.writeln("                  absorbing: true,");
   buffer.writeln("                  child: Container(");
-  buffer.writeln("                    color: Colors.black.withOpacity(0.15),");
+  buffer.writeln(
+    "                    color: Colors.black.withValues(alpha: 0.15),",
+  );
   buffer.writeln("                    child: const Center(");
   buffer.writeln("                      child: CircularProgressIndicator(),");
   buffer.writeln("                    ),");
@@ -1180,7 +1199,7 @@ String generateviewClass(
   return buffer.toString();
 }
 
-// ─── Helper: text field with controller validation ──────────────
+// ─── Helper: text field ────────────────────────────────────────
 void _writeTextFormField(
   StringBuffer buffer, {
   required String label,
@@ -1193,21 +1212,27 @@ void _writeTextFormField(
   required String keyboardType,
   required String textInputAction,
   required String textCapitalization,
-  String? validatorReference,
+  required String fieldId,
   String? inputFormatters,
   int? maxLength,
   int? maxLines,
   int? minLines,
 }) {
-  buffer.writeln("                AppTextField(");
+buffer.writeln("                Obx(() => AppTextField(");
   buffer.writeln("                  label: '$label',");
   buffer.writeln("                  hint: '$hint',");
   buffer.writeln("                  controller: controller.${name}Controller,");
-  buffer.writeln("                  keyboardType: TextInputType.$keyboardType,");
+  buffer.writeln(
+    "                  keyboardType: TextInputType.$keyboardType,",
+  );
   buffer.writeln("                  obscureText: $isPassword,");
   buffer.writeln("                  readOnly: $isReadOnly,");
-  buffer.writeln("                  textInputAction: TextInputAction.$textInputAction,");
-  buffer.writeln("                  textCapitalization: TextCapitalization.$textCapitalization,");
+  buffer.writeln(
+    "                  textInputAction: TextInputAction.$textInputAction,",
+  );
+  buffer.writeln(
+    "                  textCapitalization: TextCapitalization.$textCapitalization,",
+  );
   if (maxLength != null && maxLength > 0) {
     buffer.writeln("                  maxLength: $maxLength,");
   }
@@ -1220,14 +1245,13 @@ void _writeTextFormField(
   if (inputFormatters != null) {
     buffer.writeln("                  inputFormatters: [$inputFormatters],");
   }
-  buffer.writeln("                  errorText: controller.${name}Error.value,");
-  if (validatorReference != null) {
-    buffer.writeln("                  validator: $validatorReference,");
-  }
-  buffer.writeln("                ),");
+  buffer.writeln(
+    "                  errorText: controller.fieldErrors['$fieldId']?.value,",
+  );
+buffer.writeln("                )),");
 }
 
-// ─── Date picker (uses controller Rx<DateTime?>) ─────────────────
+// ─── Date picker ───────────────────────────────────────────────
 void _writeDatePickerField(
   StringBuffer buffer, {
   required String label,
@@ -1235,26 +1259,31 @@ void _writeDatePickerField(
   required String capitalLabel,
   required String hint,
   required bool isReadOnly,
+  required String fieldId,
 }) {
   buffer.writeln("                Obx(() => AppDatePickerField(");
   buffer.writeln("                  label: '$label',");
-  buffer.writeln("                  hint: '${hint.isNotEmpty ? hint : 'Select date'}',");
   buffer.writeln(
-    "                  value: controller.selected$capitalLabel.value,",
+    "                  hint: '${hint.isNotEmpty ? hint : 'Select date'}',",
   );
-  buffer.writeln("                  errorText: controller.${name}Error.value,");
+  buffer.writeln(
+    "                  value: controller.${name}Controller.value,",
+  );
+  buffer.writeln(
+    "                  errorText: controller.fieldErrors['$fieldId']?.value,",
+  );
   buffer.writeln("                  enabled: ${!isReadOnly},");
   buffer.writeln("                  onChanged: (picked) {");
   buffer.writeln("                    if (picked != null) {");
   buffer.writeln(
-    "                      controller.selected$capitalLabel.value = picked;",
+    "                      controller.${name}Controller.value = picked;",
   );
   buffer.writeln("                    }");
   buffer.writeln("                  },");
   buffer.writeln("                )),");
 }
 
-// ─── Time picker ─────────────────────────────────────────────────
+// ─── Time picker ───────────────────────────────────────────────
 void _writeTimePickerField(
   StringBuffer buffer, {
   required String label,
@@ -1263,37 +1292,75 @@ void _writeTimePickerField(
   required String hint,
   required bool isRequired,
   required bool isReadOnly,
+  required String fieldId,
 }) {
   buffer.writeln("                GestureDetector(");
-  buffer.writeln("                  onTap: ${isReadOnly ? 'null' : '() async {'}");
+
+  buffer.writeln(
+    "                  onTap: ${isReadOnly ? 'null' : '() async {'}",
+  );
+
   if (!isReadOnly) {
     buffer.writeln(
-      "                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());",
+      "                    final picked = await showTimePicker(",
     );
+
+    buffer.writeln("                      context: context,");
+
     buffer.writeln(
-      "                    if (picked != null) controller.selected$capitalLabel.value = picked;",
+      "                      initialTime: controller.${name}Controller.value ?? TimeOfDay.now(),",
     );
+
+    buffer.writeln("                    );");
+
+    buffer.writeln("                    if (picked != null) {");
+
+    buffer.writeln(
+      "                      controller.${name}Controller.value = picked;",
+    );
+
+    buffer.writeln("                    }");
+
     buffer.writeln("                  },");
   }
+
   buffer.writeln("                  child: AbsorbPointer(");
-  buffer.writeln("                    child: AppTextField(");
+
+  buffer.writeln("                    child: Obx(() => AppTextField(");
+
   buffer.writeln("                      label: '$label',");
-  buffer.writeln("                      hint: '${hint.isNotEmpty ? hint : 'Select time'}',");
+
   buffer.writeln(
-    "                      controller: TextEditingController(text: controller.selected$capitalLabel.value?.format(context) ?? ''),",
+    "                      hint: '${hint.isNotEmpty ? hint : 'Select time'}',",
   );
+
+  buffer.writeln(
+    "                      controller: TextEditingController(",
+  );
+
+  buffer.writeln(
+    "                        text: controller.${name}Controller.value?.format(context) ?? '',",
+  );
+
+  buffer.writeln("                      ),");
+
   buffer.writeln("                      readOnly: true,");
-  buffer.writeln("                      errorText: controller.${name}Error.value,");
+
+  buffer.writeln(
+    "                      errorText: controller.fieldErrors['$fieldId']?.value,",
+  );
+
   buffer.writeln(
     "                      suffixIcon: const Icon(Icons.access_time_rounded),",
   );
-  buffer.writeln("                      validator: controller.validate$capitalLabel,");
-  buffer.writeln("                    ),");
+
+  buffer.writeln("                    )),");
+
   buffer.writeln("                  ),");
+
   buffer.writeln("                ),");
 }
-
-// ─── DateTime picker ─────────────────────────────────────────────
+// ─── DateTime picker ───────────────────────────────────────────
 void _writeDateTimePickerField(
   StringBuffer buffer, {
   required String label,
@@ -1302,79 +1369,145 @@ void _writeDateTimePickerField(
   required String hint,
   required bool isRequired,
   required bool isReadOnly,
+  required String fieldId,
 }) {
   buffer.writeln("                GestureDetector(");
-  buffer.writeln("                  onTap: ${isReadOnly ? 'null' : '() async {'}");
+
+  buffer.writeln(
+    "                  onTap: ${isReadOnly ? 'null' : '() async {'}",
+  );
+
   if (!isReadOnly) {
+    buffer.writeln("                    final date = await showDatePicker(");
+    buffer.writeln("                      context: context,");
     buffer.writeln(
-      "                    final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime(2100));",
+      "                      initialDate: controller.${name}Controller.value ?? DateTime.now(),",
     );
+    buffer.writeln("                      firstDate: DateTime(1900),");
+    buffer.writeln("                      lastDate: DateTime(2100),");
+    buffer.writeln("                    );");
+
     buffer.writeln("                    if (date == null) return;");
+
+    buffer.writeln("                    final time = await showTimePicker(");
+    buffer.writeln("                      context: context,");
     buffer.writeln(
-      "                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());",
+      "                      initialTime: controller.${name}Controller.value != null",
     );
+    buffer.writeln(
+      "                          ? TimeOfDay.fromDateTime(controller.${name}Controller.value!)",
+    );
+    buffer.writeln("                          : TimeOfDay.now(),");
+    buffer.writeln("                    );");
+
     buffer.writeln("                    if (time == null) return;");
+
     buffer.writeln(
-      "                    controller.selected$capitalLabel.value = DateTime(date.year, date.month, date.day, time.hour, time.minute);",
+      "                    controller.${name}Controller.value = DateTime(",
     );
+
+    buffer.writeln("                      date.year,");
+    buffer.writeln("                      date.month,");
+    buffer.writeln("                      date.day,");
+    buffer.writeln("                      time.hour,");
+    buffer.writeln("                      time.minute,");
+    buffer.writeln("                    );");
+
     buffer.writeln("                  },");
   }
+
   buffer.writeln("                  child: AbsorbPointer(");
-  buffer.writeln("                    child: AppTextField(");
-  buffer.writeln("                      label: '$label',");
+
+  buffer.writeln("                    child: Obx(() {");
+
   buffer.writeln(
-    "                      hint: '${hint.isNotEmpty ? hint : 'Select date and time'}',",
+    "                      final value = controller.${name}Controller.value;",
   );
+
   buffer.writeln(
-    "                      controller: TextEditingController(text: controller.selected$capitalLabel.value != null ? DateHelper.formatDateTime(controller.selected$capitalLabel.value!) : ''),",
+    "                      return AppTextField(",
   );
-  buffer.writeln("                      readOnly: true,");
-  buffer.writeln("                      errorText: controller.${name}Error.value,");
+
+  buffer.writeln("                        label: '$label',");
+
   buffer.writeln(
-    "                      suffixIcon: const Icon(Icons.calendar_month_rounded),",
+    "                        hint: '${hint.isNotEmpty ? hint : 'Select date and time'}',",
   );
-  buffer.writeln("                      validator: controller.validate$capitalLabel,");
-  buffer.writeln("                    ),");
+
+  buffer.writeln(
+    "                        controller: TextEditingController(",
+  );
+
+  buffer.writeln(
+    "                          text: value != null",
+  );
+
+  buffer.writeln(
+    "                              ? DateHelper.formatDateTime(value)",
+  );
+
+  buffer.writeln("                              : '',");
+
+  buffer.writeln("                        ),");
+
+  buffer.writeln("                        readOnly: true,");
+
+  buffer.writeln(
+    "                        errorText: controller.fieldErrors['$fieldId']?.value,",
+  );
+
+  buffer.writeln(
+    "                        suffixIcon: const Icon(Icons.calendar_month_rounded),",
+  );
+
+  buffer.writeln("                      );");
+
+  buffer.writeln("                    }),");
+
   buffer.writeln("                  ),");
+
   buffer.writeln("                ),");
 }
-
-// ─── File picker (unchanged except error binding) ────────────────
+// ─── File picker ───────────────────────────────────────────────
 void _writeFilePickerField(
   StringBuffer buffer, {
   required String label,
   required String name,
   required String capitalLabel,
   required String pickMethod,
+  required String fieldId,
 }) {
   buffer.writeln("                Container(");
   buffer.writeln("                  padding: const EdgeInsets.all(16),");
   buffer.writeln("                  decoration: BoxDecoration(");
-  buffer.writeln("                    borderRadius: BorderRadius.circular(16),");
+  buffer.writeln(
+    "                    borderRadius: BorderRadius.circular(16),",
+  );
   buffer.writeln("                    color: Colors.grey.shade50,");
-  buffer.writeln("                    border: Border.all(");
-  buffer.writeln("                      color: Colors.grey.shade200,");
-  buffer.writeln("                    ),");
+  buffer.writeln(
+    "                    border: Border.all(color: Colors.grey.shade200),",
+  );
   buffer.writeln("                  ),");
   buffer.writeln("                  child: Tooltip(");
   buffer.writeln("                    message: 'Upload $label',");
   buffer.writeln("                    child: Obx(() => AppFileUploadField(");
   buffer.writeln("                      label: '$label',");
-  buffer.writeln("                      value: controller.${name}FileName.value.isEmpty");
-  buffer.writeln("                          ? null");
-  buffer.writeln("                          : controller.${name}FileName.value,");
+  buffer.writeln(
+    "                      value: controller.${name}FileName.value.isEmpty ? null : controller.${name}FileName.value,",
+  );
   buffer.writeln("                      hint: 'Tap Browse to select file',");
-  buffer.writeln("                      errorText: controller.${name}Error.value,");
+  buffer.writeln(
+    "                      errorText: controller.fieldErrors['$fieldId']?.value,",
+  );
   buffer.writeln("                      onChanged: (_) async {");
   buffer.writeln("                        await controller.$pickMethod();");
   buffer.writeln("                      },");
-  buffer.writeln("                      validator: controller.validate$capitalLabel,");
   buffer.writeln("                    )),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
 }
 
-// ─── Keyboard type mapping ──────────────────────────────────────
+// ─── Keyboard mapping & name helpers (unchanged) ───────────────
 String _mapKeyboardType(String raw) {
   switch (raw) {
     case 'number':
@@ -1401,13 +1534,10 @@ String _mapKeyboardType(String raw) {
   }
 }
 
-// ─── Name helpers ────────────────────────────────────────────────
 String capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
 String normalizeLabel(String label) =>
     label.trim().replaceAll(RegExp(r'\s+'), '');
-
 String camelCaseName(String label) {
   final n = normalizeLabel(label);
   return n.isEmpty ? '' : n[0].toLowerCase() + n.substring(1);

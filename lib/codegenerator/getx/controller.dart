@@ -1,3 +1,4 @@
+// lib/codegenerator/getx/controller.dart
 // ignore_for_file: constant_identifier_names
 import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 
@@ -29,7 +30,7 @@ String resolveGetxModelFileBase(Map<String, dynamic> field) {
 }
 
 String getxModelImportPath(String modelFileBase) =>
-    '../model/${modelFileBase}.dart';
+    '../model/$modelFileBase.dart';
 
 String resolveGetxModelClassName(Map<String, dynamic> field) {
   final base = resolveGetxModelFileBase(field);
@@ -79,7 +80,7 @@ String _buildStaticRadioOptions(List<dynamic> options) {
 }
 
 // ============================================================================
-// Main generator function – FULLY IMPROVED
+// Controller generator – uses absolute /getx/ imports (fixed later)
 // ============================================================================
 
 String generatecontrollerClass(
@@ -87,17 +88,19 @@ String generatecontrollerClass(
   List<dynamic> configList,
   String fileName, {
   Map<String, dynamic>? stepJson,
+  bool extendBaseController = true,
 }) {
   final buffer = StringBuffer();
   final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
 
-  // -------------------------------------------------------------------------
-  // Flatten fields (including nested inside cards, etc.)
-  // -------------------------------------------------------------------------
+  // Flatten fields
+  List<Map<String, dynamic>> flatFields = [];
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) flattenFields(item, result);
+      for (final item in source) {
+        flattenFields(item, result);
+      }
       return;
     }
     if (source is! Map) return;
@@ -121,12 +124,8 @@ String generatecontrollerClass(
     }
   }
 
-  final flatFields = <Map<String, dynamic>>[];
   flattenFields(configList, flatFields);
 
-  // -------------------------------------------------------------------------
-  // Name helpers
-  // -------------------------------------------------------------------------
   String getFieldName(Map<String, dynamic> field) {
     final raw = (field['label'] ?? field['id'] ?? field['fieldId'] ?? 'field')
         .toString()
@@ -143,44 +142,43 @@ String generatecontrollerClass(
     return n.isEmpty ? 'Field' : n[0].toUpperCase() + n.substring(1);
   }
 
-  // -------------------------------------------------------------------------
-  // Determine which imports are actually needed
-  // -------------------------------------------------------------------------
   final hasRadio = flatFields.any(
     (f) => (f['type'] ?? '').toString().toLowerCase().startsWith('radio'),
   );
-  final hasDropdown = flatFields.any(
-    (f) =>
-        (f['type'] ?? '').toString().toLowerCase() == 'dropdown' ||
-        (f['type'] ?? '').toString().toLowerCase() == 'api_dropdown',
-  );
-  final hasFile = flatFields.any(
-    (f) =>
-        (f['type'] ?? '').toString().toLowerCase() == 'file' ||
-        (f['type'] ?? '').toString().toLowerCase() == 'image',
-  );
-  final hasGrid = flatFields.any(
-    (f) =>
-        (f['type'] ?? '').toString().toLowerCase().contains('grid') ||
-        (f['type'] ?? '').toString().toLowerCase().contains('table'),
-  );
+  final hasDropdown = flatFields.any((f) {
+    final t = (f['type'] ?? '').toString().toLowerCase();
+    return t == 'dropdown' || t == 'api_dropdown';
+  });
+  final hasFile = flatFields.any((f) {
+    final t = (f['type'] ?? '').toString().toLowerCase();
+    return t == 'file' ||
+        t == 'image' ||
+        t == 'fileupload' ||
+        t == 'file upload';
+  });
+  final hasGrid = flatFields.any((f) {
+    final t = (f['type'] ?? '').toString().toLowerCase();
+    return t.contains('grid') || t.contains('table');
+  });
 
+  // Imports – using absolute /getx/ paths (will be fixed later)
   buffer.writeln("import 'package:flutter/material.dart';");
-  buffer.writeln("import 'package:flutter/scheduler.dart';");
   buffer.writeln("import 'package:get/get.dart';");
-  buffer.writeln("import '/getx/validation_engine.dart';");
-  buffer.writeln("import '/getx/api_executor.dart';");
-  buffer.writeln("import '/getx/worker_manager.dart';");
-  buffer.writeln("import '/getx/message_service.dart';");
+  buffer.writeln("import '/getx/getx_exports.dart';");
+  if (extendBaseController) {
+    buffer.writeln("import '/getx/base_controller.dart';");
+  }
+  buffer.writeln("import '../../../../core/widgets/widgets.dart';");
+
   if (hasRadio) buffer.writeln("import '/widget/common_radiobutton.dart';");
-  if (hasDropdown) buffer.writeln("import '/widget/common_dropdown.dart';");
+  // if (hasDropdown)
+  // buffer.writeln("import '../../../../core/widgets/widgets.dart';");
   if (hasFile) buffer.writeln("import 'dart:io';");
   if (hasGrid) buffer.writeln("import '/widget/common_grid.dart';");
   buffer.writeln(
     "import '../repository/${fileName.toLowerCase().replaceAll(' ', '_')}_repository.dart';",
   );
 
-  // Model imports for API dropdowns
   final emittedModelFiles = <String>{};
   for (final field in flatFields) {
     if (!fieldNeedsGetxModel(field)) continue;
@@ -190,9 +188,6 @@ String generatecontrollerClass(
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Enums and controller class
-  // -------------------------------------------------------------------------
   buffer.writeln();
   buffer.writeln(
     "// -----------------------------------------------------------------",
@@ -204,35 +199,32 @@ String generatecontrollerClass(
   buffer.writeln("enum ApiTrigger { onNext, onSubmit, onLoad }");
   buffer.writeln();
 
-  buffer.writeln("class ${className}Controller extends GetxController {");
+  final superClass = extendBaseController ? 'BaseController' : 'GetxController';
+  buffer.writeln("class ${className}Controller extends $superClass {");
   buffer.writeln("  final ${className}Repository repository;");
   buffer.writeln(
-    "  ${className}Controller({${className}Repository? repository}) : repository = repository ?? Get.find<${className}Repository>();",
+    "  ${className}Controller({${className}Repository? repository})",
+  );
+  buffer.writeln(
+    "      : repository = repository ?? Get.find<${className}Repository>();",
   );
   buffer.writeln();
-  buffer.writeln("  final isLoading = false.obs;");
   buffer.writeln("  final isExecuting = false.obs;");
   buffer.writeln("  final isDirty = false.obs;");
   buffer.writeln("  final WorkerManager _workerManager = WorkerManager();");
-  buffer.writeln("  final fieldErrors = <String, Rx<String>>{};");
+  buffer.writeln("  final fieldErrors = <String, String>{}.obs;");
   buffer.writeln("  final fieldVisibility = <String, RxBool>{};");
   buffer.writeln("  Map<String, dynamic>? routeArgs;");
   buffer.writeln();
-  buffer.writeln("  // Message stream for UI (replaces Get.snackbar)");
-  buffer.writeln(
-    "  final _messageController = StreamController<MessageEvent>.broadcast();",
-  );
-  buffer.writeln(
-    "  Stream<MessageEvent> get messageStream => _messageController.stream;",
-  );
+
+  // Add formKey
+  buffer.writeln("  final formKey = GlobalKey<FormState>();");
   buffer.writeln();
 
   stepMeta.writeStepConstants(buffer);
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // Field ID constants – no more hardcoded strings
-  // -------------------------------------------------------------------------
+  // Field ID constants
   buffer.writeln("  // Field ID constants – use these instead of raw strings");
   for (final field in flatFields) {
     final id = field['id']?.toString();
@@ -246,9 +238,7 @@ String generatecontrollerClass(
   final dropdownInitCalls = <String>[];
   final extraMethods = <String>[];
 
-  // -------------------------------------------------------------------------
-  // Generate field declarations (only necessary types)
-  // -------------------------------------------------------------------------
+  // Field declarations
   for (final item in flatFields) {
     final name = getFieldName(item);
     final pascalName = getPascalName(item);
@@ -262,28 +252,31 @@ String generatecontrollerClass(
         !useStatic &&
         item['dropdownApiUrl'] != null;
 
-    // Text fields
-    if (type == 'text' ||
-        type == 'textfield' ||
-        type == 'phone' ||
-        type == 'textarea' ||
-        type == 'otp' ||
-        type == 'email' ||
-        type == 'password' ||
-        type == 'number' ||
-        type == 'integer' ||
-        type == 'int' ||
-        type == 'decimal' ||
-        type == 'double' ||
-        type == 'float' ||
-        type == 'date' ||
-        type == 'datetime' ||
-        type == 'date time' ||
-        type == 'time') {
+    if ([
+      'text',
+      'textfield',
+      'phone',
+      'textarea',
+      'otp',
+      'email',
+      'password',
+      'number',
+      'integer',
+      'int',
+      'decimal',
+      'double',
+      'float',
+    ].contains(type)) {
       buffer.writeln("  final ${name}Controller = TextEditingController();");
-    }
-    // Dropdowns
-    else if (type == 'dropdown' || type == 'api_dropdown') {
+    } else if (['date', 'datetime', 'date time'].contains(type)) {
+      buffer.writeln(
+        "  final Rxn<DateTime> ${name}Controller = Rxn<DateTime>();",
+      );
+    } else if (type == 'time') {
+      buffer.writeln(
+        "  final Rxn<TimeOfDay> ${name}Controller = Rxn<TimeOfDay>();",
+      );
+    } else if (type == 'dropdown' || type == 'api_dropdown') {
       if (!isApiDropdown && staticOpts != null && staticOpts.isNotEmpty) {
         final itemsLiteral = _buildStaticDropdownOptions(staticOpts);
         buffer.writeln("  var selected$pascalName = Rxn<DropdownItem>();");
@@ -293,14 +286,13 @@ String generatecontrollerClass(
         buffer.writeln("  var ${name}Options = <$modelClass>[].obs;");
         buffer.writeln("  var selected$pascalName = Rxn<$modelClass>();");
         buffer.writeln("  var isLoading$pascalName = false.obs;");
-        final repoMethod = 'get${pascalName}Options';
         dropdownInitCalls.add("    load${pascalName}Options(),");
         extraMethods.addAll([
           "  Future<void> load${pascalName}Options() async {",
           "    if (isLoading$pascalName.value) return;",
           "    isLoading$pascalName.value = true;",
           "    try {",
-          "      final data = await repository.$repoMethod();",
+          "      final data = await repository.get${pascalName}Options();",
           "      SchedulerBinding.instance.addPostFrameCallback((_) {",
           "        ${name}Options.value = data.map((json) => $modelClass.fromJson(json)).toList();",
           "      });",
@@ -316,9 +308,7 @@ String generatecontrollerClass(
         buffer.writeln("  var selected$pascalName = Rxn<DropdownItem>();");
         buffer.writeln("  final ${name}Options = <DropdownItem>[].obs;");
       }
-    }
-    // Radio
-    else if (type == 'radio' || type == 'radio buttons') {
+    } else if (type == 'radio' || type == 'radio buttons') {
       if (staticOpts != null && staticOpts.isNotEmpty) {
         final optionsLiteral = _buildStaticRadioOptions(staticOpts);
         buffer.writeln("  var selected$pascalName = ''.obs;");
@@ -327,35 +317,31 @@ String generatecontrollerClass(
         buffer.writeln("  var selected$pascalName = ''.obs;");
         buffer.writeln("  final ${name}Options = <RadioOption<String>>[];");
       }
-    }
-    // Switch
-    else if (type == 'switch') {
+    } else if (type == 'switch' || type == 'checkbox') {
       final defaultValue =
           (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
       buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // Checkbox
-    else if (type == 'checkbox') {
-      final defaultValue =
-          (item['defaultValue'] ?? 'false').toString().toLowerCase() == 'true';
-      buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // File / Image
-    else if (type == 'file' ||
+    } else if (type == 'file' ||
         type == 'fileupload' ||
-        type == 'file upload' ||
-        type == 'image') {
+        type == 'file upload') {
       buffer.writeln("  var ${name}FileName = ''.obs;");
       buffer.writeln("  var ${name}FilePath = ''.obs;");
       extraMethods.addAll([
-        "  Future<void> pick$pascalName() async {",
-        "    // TODO: integrate file_picker or image_picker",
+        "  Future<void> pick${pascalName}File() async {",
+        "    // TODO: integrate file_picker",
         "  }",
         "",
       ]);
-    }
-    // MultiSelect
-    else if (type == 'multiselect' ||
+    } else if (type == 'image') {
+      buffer.writeln("  var ${name}FileName = ''.obs;");
+      buffer.writeln("  var ${name}FilePath = ''.obs;");
+      extraMethods.addAll([
+        "  Future<void> pick${pascalName}Image() async {",
+        "    // TODO: integrate file_picker",
+        "  }",
+        "",
+      ]);
+    } else if (type == 'multiselect' ||
         type == 'multi select' ||
         type == 'multi_select') {
       buffer.writeln("  final ${name}Selected = <String>[].obs;");
@@ -372,23 +358,17 @@ String generatecontrollerClass(
       } else {
         buffer.writeln("  final ${name}Options = <String>[];");
       }
-    }
-    // Slider
-    else if (type == 'slider' || type == 'range slider') {
+    } else if (type == 'slider' || type == 'range slider') {
       final defaultValue =
           (item['defaultValue'] as num?)?.toDouble() ??
           (item['minValue'] as num?)?.toDouble() ??
           0.0;
       buffer.writeln("  var ${name}Value = $defaultValue.obs;");
-    }
-    // Star Rating
-    else if (type == 'starrating' ||
+    } else if (type == 'starrating' ||
         type == 'rating' ||
         type == 'star rating') {
       buffer.writeln("  var ${name}Value = 0.0.obs;");
-    }
-    // Grid / Table
-    else if (type == 'grid' ||
+    } else if (type == 'grid' ||
         type == 'table' ||
         type == 'table/grid' ||
         type == 'table grid' ||
@@ -408,9 +388,7 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // Repeater
-    else if (type == 'repeater') {
+    } else if (type == 'repeater') {
       buffer.writeln("  final ${name}Items = <dynamic>[].obs;");
       extraMethods.addAll([
         "  void add${pascalName}Item() { ${name}Items.add({}); }",
@@ -419,9 +397,7 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // Autocomplete
-    else if (type == 'autocomplete') {
+    } else if (type == 'autocomplete') {
       buffer.writeln("  var selected${pascalName}Text = ''.obs;");
       if (staticOpts != null && staticOpts.isNotEmpty) {
         final optLiterals = staticOpts
@@ -436,9 +412,7 @@ String generatecontrollerClass(
       } else {
         buffer.writeln("  final ${name}Options = <String>[];");
       }
-    }
-    // Signature
-    else if (type == 'signature') {
+    } else if (type == 'signature') {
       buffer.writeln("  var ${name}Signed = false.obs;");
       buffer.writeln("  var ${name}Data = ''.obs;");
       extraMethods.addAll([
@@ -447,13 +421,9 @@ String generatecontrollerClass(
         "  }",
         "",
       ]);
-    }
-    // Formula
-    else if (type == 'formula') {
+    } else if (type == 'formula') {
       buffer.writeln("  var $name = ''.obs;");
-    }
-    // Layout components (no state)
-    else if ([
+    } else if (![
       'label',
       'divider',
       'section',
@@ -463,17 +433,10 @@ String generatecontrollerClass(
       'hidden',
       'row',
     ].contains(type)) {
-      // Intentionally empty
-    }
-    // Fallback
-    else {
       buffer.writeln("  var $name = ''.obs;");
     }
   }
 
-  // -------------------------------------------------------------------------
-  // onInit and _loadAllDropdowns
-  // -------------------------------------------------------------------------
   buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  void onInit() {");
@@ -484,76 +447,107 @@ String generatecontrollerClass(
 
   if (dropdownInitCalls.isNotEmpty) {
     buffer.writeln("  Future<void> _loadAllDropdowns() async {");
-    buffer.writeln("    isLoading.value = true;");
+    buffer.writeln("    isExecuting.value = true;");
     buffer.writeln("    try {");
     buffer.writeln("      await Future.wait([");
-    for (final call in dropdownInitCalls) buffer.writeln("        $call");
+    for (final call in dropdownInitCalls) {
+      buffer.writeln("        $call");
+    }
     buffer.writeln("      ]);");
     buffer.writeln("    } catch (e) {");
     buffer.writeln("      _showError('Error loading dropdowns: \$e');");
     buffer.writeln("    } finally {");
-    buffer.writeln("      isLoading.value = false;");
+    buffer.writeln("      isExecuting.value = false;");
     buffer.writeln("    }");
     buffer.writeln("  }");
     buffer.writeln();
   }
 
-  for (final line in extraMethods) buffer.writeln("  $line");
+  for (final line in extraMethods) {
+    buffer.writeln("  $line");
+  }
 
-  // -------------------------------------------------------------------------
-  // Message helpers (no Get.snackbar in controller)
-  // -------------------------------------------------------------------------
   buffer.writeln("  void _showSuccess(String message) {");
-  buffer.writeln("    _messageController.add(MessageEvent.success(message));");
+  buffer.writeln("    showSuccess(message);");
   buffer.writeln("  }");
   buffer.writeln();
   buffer.writeln("  void _showError(String message) {");
-  buffer.writeln("    _messageController.add(MessageEvent.error(message));");
+  buffer.writeln("    showError(message);");
   buffer.writeln("  }");
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // onClose – dispose all resources
-  // -------------------------------------------------------------------------
   buffer.writeln("  @override");
   buffer.writeln("  void onClose() {");
   for (final item in flatFields) {
     final name = getFieldName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-    if (type == 'text' ||
-        type == 'textfield' ||
-        type == 'email' ||
-        type == 'password') {
+    if ([
+      'text',
+      'textfield',
+      'email',
+      'password',
+      'phone',
+      'textarea',
+      'otp',
+      'number',
+      'integer',
+      'int',
+      'decimal',
+      'double',
+      'float',
+    ].contains(type)) {
       buffer.writeln("    ${name}Controller.dispose();");
     }
   }
   buffer.writeln("    _workerManager.dispose();");
-  buffer.writeln("    _messageController.close();");
   buffer.writeln("    super.onClose();");
   buffer.writeln("  }");
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // clearForm – reset all fields
-  // -------------------------------------------------------------------------
   buffer.writeln("  void clearForm() {");
   for (final item in flatFields) {
     final name = getFieldName(item);
     final pascalName = getPascalName(item);
     final type = (item['type'] ?? '').toString().toLowerCase().trim();
-    if (type == 'text' || type == 'textfield') {
+    if ([
+      'text',
+      'textfield',
+      'email',
+      'password',
+      'phone',
+      'textarea',
+      'otp',
+      'number',
+      'integer',
+      'int',
+      'decimal',
+      'double',
+      'float',
+    ].contains(type)) {
       buffer.writeln("    ${name}Controller.clear();");
+    } else if (['date', 'datetime', 'date time', 'time'].contains(type)) {
+      buffer.writeln("    ${name}Controller.value = null;");
     } else if (type == 'dropdown' || type == 'api_dropdown') {
       buffer.writeln("    selected$pascalName.value = null;");
-    } else if (type == 'radio') {
+    } else if (type == 'radio' || type == 'radio buttons') {
       buffer.writeln("    selected$pascalName.value = '';");
     } else if (type == 'switch' || type == 'checkbox') {
       buffer.writeln("    ${name}Value.value = false;");
     } else if (type == 'slider' || type == 'range slider') {
       buffer.writeln("    ${name}Value.value = 0.0;");
-    } else if (type == 'multiselect' || type == 'multi select') {
+    } else if (type == 'starrating' ||
+        type == 'rating' ||
+        type == 'star rating') {
+      buffer.writeln("    ${name}Value.value = 0.0;");
+    } else if (type == 'multiselect' ||
+        type == 'multi select' ||
+        type == 'multi_select') {
       buffer.writeln("    ${name}Selected.clear();");
-    } else if (type == 'grid' || type == 'table') {
+    } else if (type == 'grid' ||
+        type == 'table' ||
+        type == 'table/grid' ||
+        type == 'table grid' ||
+        type == 'table_grid') {
       buffer.writeln("    ${name}Rows.clear();");
     } else if (type == 'repeater') {
       buffer.writeln("    ${name}Items.clear();");
@@ -562,14 +556,14 @@ String generatecontrollerClass(
     } else if (type == 'signature') {
       buffer.writeln("    ${name}Signed.value = false;");
       buffer.writeln("    ${name}Data.value = '';");
+    } else if (type == 'formula') {
+      buffer.writeln("    $name.value = '';");
     }
   }
+  buffer.writeln("    isDirty.value = false;");
   buffer.writeln("  }");
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // _formValue – retrieve current value by field ID
-  // -------------------------------------------------------------------------
   buffer.writeln('  dynamic _formValue(String fieldId) {');
   for (final item in flatFields) {
     final id = item['id']?.toString();
@@ -583,12 +577,31 @@ String generatecontrollerClass(
         !useStatic &&
         item['dropdownApiUrl'] != null;
 
-    if (type == 'text' ||
-        type == 'textfield' ||
-        type == 'email' ||
-        type == 'password') {
+    if ([
+      'text',
+      'textfield',
+      'email',
+      'password',
+      'phone',
+      'textarea',
+      'otp',
+      'number',
+      'integer',
+      'int',
+      'decimal',
+      'double',
+      'float',
+    ].contains(type)) {
       buffer.writeln(
         "    if (fieldId == '$id') return ${name}Controller.text;",
+      );
+    } else if (['date', 'datetime', 'date time'].contains(type)) {
+      buffer.writeln(
+        "    if (fieldId == '$id') return ${name}Controller.value;",
+      );
+    } else if (type == 'time') {
+      buffer.writeln(
+        "    if (fieldId == '$id') return ${name}Controller.value;",
       );
     } else if (type == 'dropdown' || type == 'api_dropdown') {
       if (isApiDropdown) {
@@ -600,7 +613,7 @@ String generatecontrollerClass(
           "    if (fieldId == '$id') return selected$pascalName.value?.key;",
         );
       }
-    } else if (type == 'radio') {
+    } else if (type == 'radio' || type == 'radio buttons') {
       buffer.writeln(
         "    if (fieldId == '$id') return selected$pascalName.value;",
       );
@@ -609,9 +622,12 @@ String generatecontrollerClass(
     } else if (type == 'slider' ||
         type == 'range slider' ||
         type == 'starrating' ||
-        type == 'rating') {
+        type == 'rating' ||
+        type == 'star rating') {
       buffer.writeln("    if (fieldId == '$id') return ${name}Value.value;");
-    } else if (type == 'multiselect' || type == 'multi select') {
+    } else if (type == 'multiselect' ||
+        type == 'multi select' ||
+        type == 'multi_select') {
       buffer.writeln("    if (fieldId == '$id') return ${name}Selected;");
     } else if (type == 'autocomplete') {
       buffer.writeln(
@@ -627,9 +643,6 @@ String generatecontrollerClass(
   buffer.writeln('  }');
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // DTO serialization (toJson)
-  // -------------------------------------------------------------------------
   buffer.writeln('  Map<String, dynamic> toJson() {');
   buffer.writeln('    return {');
   for (final item in flatFields) {
@@ -637,25 +650,61 @@ String generatecontrollerClass(
     if (id == null || id.isEmpty) continue;
     final name = getFieldName(item);
     final type = (item['type'] ?? '').toString().toLowerCase();
-    if (type == 'text' ||
-        type == 'textfield' ||
-        type == 'email' ||
-        type == 'password') {
+    final useStatic = item['useStaticOptions'] == true;
+    final isApiDropdown =
+        (type == 'dropdown' || type == 'api_dropdown') &&
+        !useStatic &&
+        item['dropdownApiUrl'] != null;
+
+    if ([
+      'text',
+      'textfield',
+      'email',
+      'password',
+      'phone',
+      'textarea',
+      'otp',
+      'number',
+      'integer',
+      'int',
+      'decimal',
+      'double',
+      'float',
+    ].contains(type)) {
       buffer.writeln("      '$id': ${name}Controller.text,");
+    } else if (['date', 'datetime', 'date time'].contains(type)) {
+      buffer.writeln(
+        "      '$id': ${name}Controller.value?.toIso8601String(),",
+      );
+    } else if (type == 'time') {
+      buffer.writeln(
+        "      '$id': ${name}Controller.value != null "
+        "? '${'\$'}{${name}Controller.value!.hour.toString().padLeft(2, '0')}:${'\$'}{${name}Controller.value!.minute.toString().padLeft(2, '0')}' "
+        ": null,",
+      );
     } else if (type == 'dropdown' || type == 'api_dropdown') {
-      final pascalName = getPascalName(item);
-      buffer.writeln("      '$id': selected$pascalName.value?.id,");
-    } else if (type == 'radio') {
-      final pascalName = getPascalName(item);
-      buffer.writeln("      '$id': selected$pascalName.value,");
+      if (isApiDropdown) {
+        buffer.writeln(
+          "      '$id': selected${getPascalName(item)}.value?.id,",
+        );
+      } else {
+        buffer.writeln(
+          "      '$id': selected${getPascalName(item)}.value?.key,",
+        );
+      }
+    } else if (type == 'radio' || type == 'radio buttons') {
+      buffer.writeln("      '$id': selected${getPascalName(item)}.value,");
     } else if (type == 'switch' || type == 'checkbox') {
       buffer.writeln("      '$id': ${name}Value.value,");
     } else if (type == 'slider' ||
         type == 'range slider' ||
         type == 'starrating' ||
-        type == 'rating') {
+        type == 'rating' ||
+        type == 'star rating') {
       buffer.writeln("      '$id': ${name}Value.value,");
-    } else if (type == 'multiselect' || type == 'multi select') {
+    } else if (type == 'multiselect' ||
+        type == 'multi select' ||
+        type == 'multi_select') {
       buffer.writeln("      '$id': ${name}Selected.toList(),");
     } else if (type == 'autocomplete') {
       buffer.writeln("      '$id': selected${getPascalName(item)}Text.value,");
@@ -669,39 +718,87 @@ String generatecontrollerClass(
   buffer.writeln('  }');
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // Validation using ValidationEngine (no manual code)
-  // -------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // FIXED validateStep() – no private access, uses stepMeta.validations directly
+  // ------------------------------------------------------------------------
   buffer.writeln('  bool validateStep() {');
   if (stepMeta.validations.isEmpty) {
     buffer.writeln('    return true;');
   } else {
-    buffer.writeln('    final engine = ValidationEngine();');
+    buffer.writeln('    bool isValid = true;');
+    buffer.writeln('    // Clear previous errors');
+    // buffer.writeln('    for (final key in fieldErrors.keys.toList()) {');
+    // buffer.writeln('      fieldErrors[key]?.value = "";');
+    // buffer.writeln('    }');
+    buffer.writeln('    fieldErrors.clear();');
+    buffer.writeln();
     for (final v in stepMeta.validations) {
-      final field = v['field']?.toString() ?? '';
+      final fieldId = v['field']?.toString() ?? '';
+      if (fieldId.isEmpty) continue;
       final type = v['type']?.toString() ?? 'required';
       final message =
-          v['message']?.toString().replaceAll("'", "\\'") ?? 'Required';
-      if (field.isNotEmpty && type == 'required') {
-        buffer.writeln("    engine.addRequiredRule('$field', '$message');");
+          v['message']?.toString().replaceAll("'", "\\'") ??
+          'This field is required';
+      if (type == 'required') {
+        buffer.writeln("    final ${fieldId}_value = _formValue('$fieldId');");
+        // buffer.writeln(
+        //   "    if (${fieldId}_value == null || ${fieldId}_value.toString().trim().isEmpty) {",
+        // );
+        buffer.writeln(
+          "    if (${fieldId}_value == null || "
+          "(${fieldId}_value is String && ${fieldId}_value.toString().trim().isEmpty)) {",
+        );
+        buffer.writeln("      fieldErrors['$fieldId'] = '$message';");
+        buffer.writeln("      isValid = false;");
+        buffer.writeln("    }");
+      } else if (type == 'email') {
+        buffer.writeln(
+          "    final ${fieldId}_value = _formValue('$fieldId')?.toString() ?? '';",
+        );
+        buffer.writeln(
+          "    if (${fieldId}_value.isNotEmpty && !RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}\$').hasMatch(${fieldId}_value)) {",
+        );
+        buffer.writeln("      fieldErrors['$fieldId'] = '$message';");
+        buffer.writeln("      isValid = false;");
+        buffer.writeln("    }");
+      } else if (type == 'minLength') {
+        final length = v['length'] ?? 3;
+        buffer.writeln(
+          "    final ${fieldId}_value = _formValue('$fieldId')?.toString() ?? '';",
+        );
+        buffer.writeln("    if (${fieldId}_value.length < $length) {");
+        buffer.writeln("      fieldErrors['$fieldId'] = '$message';");
+        buffer.writeln("      isValid = false;");
+        buffer.writeln("    }");
+      } else if (type == 'maxLength') {
+        final length = v['length'] ?? 100;
+        buffer.writeln(
+          "    final ${fieldId}_value = _formValue('$fieldId')?.toString() ?? '';",
+        );
+        buffer.writeln("    if (${fieldId}_value.length > $length) {");
+        buffer.writeln("      fieldErrors['$fieldId'] = '$message';");
+        buffer.writeln("      isValid = false;");
+        buffer.writeln("    }");
+      } else if (type == 'pattern') {
+        final pattern = v['pattern']?.toString() ?? '';
+        if (pattern.isNotEmpty) {
+          buffer.writeln(
+            "    final ${fieldId}_value = _formValue('$fieldId')?.toString() ?? '';",
+          );
+          buffer.writeln(
+            "    if (${fieldId}_value.isNotEmpty && !RegExp(r'$pattern').hasMatch(${fieldId}_value)) {",
+          );
+          buffer.writeln("      fieldErrors['$fieldId'] = '$message';");
+          buffer.writeln("      isValid = false;");
+          buffer.writeln("    }");
+        }
       }
-      // Add other validation types (email, minLength, etc.) as needed
     }
-    buffer.writeln('    final result = engine.validate(_formValue);');
-    buffer.writeln('    for (final entry in result.errors.entries) {');
-    buffer.writeln(
-      '      fieldErrors[entry.key] = fieldErrors[entry.key] ?? "".obs;',
-    );
-    buffer.writeln('      fieldErrors[entry.key]!.value = entry.value;');
-    buffer.writeln('    }');
-    buffer.writeln('    return result.isValid;');
+    buffer.writeln('    return isValid;');
   }
   buffer.writeln('  }');
   buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // API execution with enum trigger
-  // -------------------------------------------------------------------------
   buffer.writeln(
     '  Future<void> executeStepApis({ApiTrigger trigger = ApiTrigger.onNext}) async {',
   );
@@ -709,42 +806,25 @@ String generatecontrollerClass(
   buffer.writeln('    // For each API call, use _runHttpApi');
   buffer.writeln('  }');
   buffer.writeln();
-  buffer.writeln('  Future<dynamic> _runHttpApi({');
-  buffer.writeln('    required String method,');
-  buffer.writeln('    required String url,');
-  buffer.writeln('    Map<String, String>? headers,');
-  buffer.writeln('    dynamic body,');
-  buffer.writeln('  }) async {');
-  buffer.writeln('    return ApiExecutor.execute(');
-  buffer.writeln('      method: method,');
-  buffer.writeln('      url: url,');
-  buffer.writeln('      headers: headers,');
-  buffer.writeln('      body: body,');
-  buffer.writeln('    );');
-  buffer.writeln('  }');
-  buffer.writeln();
 
-  // -------------------------------------------------------------------------
-  // onPrimaryAction – no snackbar, uses message stream
-  // -------------------------------------------------------------------------
   buffer.writeln('  Future<void> onPrimaryAction() async {');
   buffer.writeln('    if (isExecuting.value) return;');
   buffer.writeln('    if (!validateStep()) return;');
-  buffer.writeln('    isExecuting.value = true;');
-  buffer.writeln('    try {');
+  buffer.writeln('    await runAsync(() async {');
+  buffer.writeln('      isExecuting.value = true;');
+  buffer.writeln('      try {');
   buffer.writeln(
-    "      await executeStepApis(trigger: ${stepMeta.hasNextStep ? 'ApiTrigger.onNext' : 'ApiTrigger.onSubmit'});",
+    "        await executeStepApis(trigger: ${stepMeta.hasNextStep ? 'ApiTrigger.onNext' : 'ApiTrigger.onSubmit'});",
   );
   if (stepMeta.nextStep != null && stepMeta.nextStep!.isNotEmpty) {
-    buffer.writeln("      Get.toNamed('/journey/${stepMeta.nextStep}');");
+    buffer.writeln("        Get.toNamed('/journey/${stepMeta.nextStep}');");
   } else {
-    buffer.writeln("      _showSuccess('Journey completed.');");
+    buffer.writeln("        _showSuccess('Journey completed.');");
   }
-  buffer.writeln('    } catch (e, st) {');
-  buffer.writeln("      _showError('Error: \$e');");
-  buffer.writeln('    } finally {');
-  buffer.writeln('      isExecuting.value = false;');
-  buffer.writeln('    }');
+  buffer.writeln('      } finally {');
+  buffer.writeln('        isExecuting.value = false;');
+  buffer.writeln('      }');
+  buffer.writeln('    });');
   buffer.writeln('  }');
   buffer.writeln("}");
 

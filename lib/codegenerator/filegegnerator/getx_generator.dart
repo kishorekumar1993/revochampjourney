@@ -29,11 +29,20 @@ List<Map<String, String>> generateGetxFiles({
   final effectiveFlatFields = flatFields ?? flattenFields(rawFields);
 
   // ── Generate GetX files ──────────────────────────────────────────────────
-  final binding    = generateBindingClass(
-    className, 
-    rawFields.isNotEmpty ? rawFields.first : <String, dynamic>{}, 
-    fileName,
-  );
+  // final binding    = generateBindingClass(
+  //   className,
+
+  //   rawFields.isNotEmpty ? rawFields.first : <String, dynamic>{}, 
+  //   fileName,
+  // );
+  final binding = generateBindingClass(
+  className: className,
+  fileName: fileName,
+  // set these as needed:
+  useFenix: true,
+  permanentController: false,
+  baseUrl: '',  // or your API base URL
+);
   final controller = generatecontrollerClass(
     className,
     rawFields,
@@ -54,6 +63,8 @@ List<Map<String, String>> generateGetxFiles({
     {'folderPath': '$base/repository',   'fileName': '${fileName}_repository.dart', 'textContent': repository},
     {'folderPath': '$base/presentation', 'fileName': '${fileName}_view.dart',       'textContent': view},
   ]);
+
+  
 
   // ── GetX Model files (per dropdown field with data) ───────────────────────
   for (final field in effectiveFlatFields) {
@@ -87,4 +98,5 @@ List<Map<String, String>> generateGetxFiles({
 
   return result;
 }
+
 

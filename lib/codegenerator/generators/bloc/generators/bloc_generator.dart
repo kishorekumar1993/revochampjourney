@@ -1,5 +1,7 @@
 // lib/blocnew/bloc_generator.dart
 
+// ignore_for_file: unused_element
+
 import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 
 // ─── Recursive flatten ─────────────────────────────────────────────

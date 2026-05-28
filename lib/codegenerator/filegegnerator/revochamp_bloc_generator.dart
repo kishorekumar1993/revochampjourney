@@ -19,9 +19,11 @@ import 'package:revojourneytryone/codegenerator/generators/bloc/engine/field_sch
 import 'package:revojourneytryone/codegenerator/filegegnerator/common_bloc_generator.dart';
 import 'package:revojourneytryone/codegenerator/filegegnerator/getx_generator.dart';
 import 'package:revojourneytryone/codegenerator/filegegnerator/riverpodgenerator.dart';
+import 'package:revojourneytryone/codegenerator/getx/getx_core_generator.dart';
 
 import '../../features/journey_builder/domain/entities/journey_models.dart';
 
+import '../getx/route_generator.dart';
 import 'bloc_files_generator.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,7 +59,8 @@ List<Map<String, String>> generateAllFilesData({
   final List<Map<String, String>> allFiles = [];
   bool coreFilesAdded = false;
   final blocFeaturesInfo = <FeatureInfo>[];
-  final journeyJson = (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
+  final journeyJson =
+      (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
 
   for (final step in journeyConfig.steps) {
     if (step.fields.isEmpty) {
@@ -126,7 +129,18 @@ List<Map<String, String>> generateAllFilesData({
         flatFields: flatFields,
         stepJson: stepJson,
       );
+      final coreFiles = generateGetxCoreFiles(
+        projectName: screenName,
+        baseUrl: 'https://dev-api.revochamp.com',
+        environmentName: "Environment.dev",
+        generateResultClass: true,
+        generateBaseController: true,
+      );
+final allStepsJson = journeyConfig.steps.map((e) => e.toJson()).toList();
+final routerFiles = generateGetXRouterFromSteps(allStepsJson, journeyNamespace);
+allFiles.addAll(routerFiles);
       allFiles.addAll(getxFiles);
+      allFiles.addAll(coreFiles);
     }
     // ── 3. Riverpod ───────────────────────────────────────────────────────
     if (architectures.contains(Architecture.riverpod)) {
@@ -208,16 +222,14 @@ Future<List<Map<String, String>>> generateAllFilesDataIsolate({
     );
   }
 
-  final journeyJson = (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
+  final journeyJson =
+      (journeyConfig as dynamic).toJson() as Map<String, dynamic>;
   final archNames = architectures.map((a) => a.name).toList(growable: false);
 
-  return compute(
-    _generateAllFilesDataEntry,
-    <String, dynamic>{
-      'journeyJson': journeyJson,
-      'architectures': archNames,
-    },
-  );
+  return compute(_generateAllFilesDataEntry, <String, dynamic>{
+    'journeyJson': journeyJson,
+    'architectures': archNames,
+  });
 }
 
 // Top-level entrypoint for `compute()`.
@@ -384,8 +396,12 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
   buf.writeln('  final String? guardKey;');
   buf.writeln('}');
   buf.writeln();
-  buf.writeln('typedef StepGuard = bool Function(String stepId, Map<String, String> query);');
-  buf.writeln('typedef StepValidator = bool Function(String stepId, Map<String, dynamic> payload);');
+  buf.writeln(
+    'typedef StepGuard = bool Function(String stepId, Map<String, String> query);',
+  );
+  buf.writeln(
+    'typedef StepValidator = bool Function(String stepId, Map<String, dynamic> payload);',
+  );
   buf.writeln();
   buf.writeln('class JourneyRoutes {');
   buf.writeln('  JourneyRoutes._();');
@@ -396,16 +412,22 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
     final title = (step.title ?? step.id).toString().replaceAll("'", "\\'");
     final desc = (step.description ?? '').toString().replaceAll("'", "\\'");
     buf.writeln("  static const String $id = '/journey/$id';");
-    buf.writeln("  static const JourneyRouteMeta ${id}Meta = JourneyRouteMeta(");
+    buf.writeln(
+      "  static const JourneyRouteMeta ${id}Meta = JourneyRouteMeta(",
+    );
     buf.writeln("    stepId: '$id',");
     buf.writeln("    path: $id,");
     buf.writeln("    title: '$title',");
     buf.writeln("    index: ${steps.indexOf(step)},");
-    buf.writeln(desc.isNotEmpty ? "    description: '$desc'," : "    description: null,");
+    buf.writeln(
+      desc.isNotEmpty ? "    description: '$desc'," : "    description: null,",
+    );
     buf.writeln("  );");
     buf.writeln();
   }
-  buf.writeln('  static const List<JourneyRouteMeta> orderedSteps = <JourneyRouteMeta>[');
+  buf.writeln(
+    '  static const List<JourneyRouteMeta> orderedSteps = <JourneyRouteMeta>[',
+  );
   for (final step in steps) {
     final id = step.id.replaceAll("'", "\\'");
     buf.writeln('    ${id}Meta,');
@@ -423,8 +445,12 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
   buf.writeln('    for (final meta in orderedSteps) meta.path: meta,');
   buf.writeln('  };');
   buf.writeln();
-  buf.writeln('  static String pathForStep(String stepId, {Map<String, String>? query}) {');
-  buf.writeln("    final base = byStepId[stepId]?.path ?? '\$journeyPrefix/\$stepId';");
+  buf.writeln(
+    '  static String pathForStep(String stepId, {Map<String, String>? query}) {',
+  );
+  buf.writeln(
+    "    final base = byStepId[stepId]?.path ?? '\$journeyPrefix/\$stepId';",
+  );
   buf.writeln('    if (query == null || query.isEmpty) return base;');
   buf.writeln('    final uri = Uri(path: base, queryParameters: query);');
   buf.writeln('    return uri.toString();');
@@ -433,7 +459,9 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
   buf.writeln('  static String? stepIdFromLocation(String location) {');
   buf.writeln("    final uri = Uri.tryParse(location) ?? Uri(path: location);");
   buf.writeln("    if (!uri.path.startsWith('\$journeyPrefix/')) return null;");
-  buf.writeln("    final segments = uri.path.split('/').where((e) => e.isNotEmpty).toList();");
+  buf.writeln(
+    "    final segments = uri.path.split('/').where((e) => e.isNotEmpty).toList();",
+  );
   buf.writeln('    if (segments.length < 2) return null;');
   buf.writeln('    return segments[1];');
   buf.writeln('  }');
@@ -443,11 +471,21 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
   buf.writeln('    return uri.queryParameters;');
   buf.writeln('  }');
   buf.writeln();
-  buf.writeln('  static bool existsStep(String stepId) => byStepId.containsKey(stepId);');
-  buf.writeln('  static bool existsPath(String path) => byPath.containsKey(path);');
-  buf.writeln('  static int indexOfStep(String stepId) => byStepId[stepId]?.index ?? -1;');
-  buf.writeln('  static JourneyRouteMeta? metaForStep(String stepId) => byStepId[stepId];');
-  buf.writeln('  static String titleForStep(String stepId) => byStepId[stepId]?.title ?? stepId;');
+  buf.writeln(
+    '  static bool existsStep(String stepId) => byStepId.containsKey(stepId);',
+  );
+  buf.writeln(
+    '  static bool existsPath(String path) => byPath.containsKey(path);',
+  );
+  buf.writeln(
+    '  static int indexOfStep(String stepId) => byStepId[stepId]?.index ?? -1;',
+  );
+  buf.writeln(
+    '  static JourneyRouteMeta? metaForStep(String stepId) => byStepId[stepId];',
+  );
+  buf.writeln(
+    '  static String titleForStep(String stepId) => byStepId[stepId]?.title ?? stepId;',
+  );
   buf.writeln();
   buf.writeln('  static String? nextStepId(String currentStepId) {');
   buf.writeln('    final i = indexOfStep(currentStepId);');
@@ -461,13 +499,17 @@ String _generateJourneyRoutes(dynamic journeyConfig) {
   buf.writeln('    return orderedSteps[i - 1].stepId;');
   buf.writeln('  }');
   buf.writeln();
-  buf.writeln('  static String? nextPath(String currentStepId, {Map<String, String>? query}) {');
+  buf.writeln(
+    '  static String? nextPath(String currentStepId, {Map<String, String>? query}) {',
+  );
   buf.writeln('    final next = nextStepId(currentStepId);');
   buf.writeln('    if (next == null) return null;');
   buf.writeln('    return pathForStep(next, query: query);');
   buf.writeln('  }');
   buf.writeln();
-  buf.writeln('  static String? previousPath(String currentStepId, {Map<String, String>? query}) {');
+  buf.writeln(
+    '  static String? previousPath(String currentStepId, {Map<String, String>? query}) {',
+  );
   buf.writeln('    final prev = previousStepId(currentStepId);');
   buf.writeln('    if (prev == null) return null;');
   buf.writeln('    return pathForStep(prev, query: query);');
