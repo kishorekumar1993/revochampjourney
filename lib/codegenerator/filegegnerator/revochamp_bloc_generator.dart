@@ -14,13 +14,13 @@ import 'dart:convert';
 import 'dart:js' as js;
 
 import 'package:flutter/foundation.dart';
-import 'package:revojourneytryone/generators/bloc/generators/di_generator.dart';
-import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart';
-import 'package:revojourneytryone/filegegnerator/common_bloc_generator.dart';
-import 'package:revojourneytryone/filegegnerator/getx_generator.dart';
-import 'package:revojourneytryone/filegegnerator/riverpodgenerator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/di_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/engine/field_schema.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/common_bloc_generator.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/getx_generator.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/riverpodgenerator.dart';
 
-import '../features/journey_builder/domain/entities/journey_models.dart';
+import '../../features/journey_builder/domain/entities/journey_models.dart';
 
 import 'bloc_files_generator.dart';
 
@@ -112,7 +112,7 @@ List<Map<String, String>> generateAllFilesData({
           'journeyName': journeyJson['journeyName'],
           'steps': [stepJson],
         },
-        statemanagement: "Bloc",
+        statemanagement: "bloc",
       );
       allFiles.addAll(commonFiles);
     }

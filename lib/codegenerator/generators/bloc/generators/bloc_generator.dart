@@ -1,6 +1,6 @@
 // lib/blocnew/bloc_generator.dart
 
-import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 
 // ─── Recursive flatten ─────────────────────────────────────────────
 List<Map<String, dynamic>> flattenBlocFields(dynamic source) {

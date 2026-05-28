@@ -1,13 +1,13 @@
 
 
 // GetX generators
-import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
-import 'package:revojourneytryone/getx/binding.dart';
-import 'package:revojourneytryone/getx/controller.dart';
-import 'package:revojourneytryone/getx/repository.dart';
-import 'package:revojourneytryone/getx/viewscreen.dart';
-import 'package:revojourneytryone/getx/getx_model.dart';
-import 'package:revojourneytryone/getx/getx_model_naming.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/revochamp_bloc_generator.dart';
+import 'package:revojourneytryone/codegenerator/getx/binding.dart';
+import 'package:revojourneytryone/codegenerator/getx/controller.dart';
+import 'package:revojourneytryone/codegenerator/getx/repository.dart';
+import 'package:revojourneytryone/codegenerator/getx/viewscreen.dart';
+import 'package:revojourneytryone/codegenerator/getx/getx_model.dart';
+import 'package:revojourneytryone/codegenerator/getx/getx_model_naming.dart' hide resolveGetxModelClassName, resolveGetxModelFileBase;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. GetX Generator

@@ -4,7 +4,7 @@
 // import one file instead of many:
 //   import 'features/user/user_feature.dart';  // exports everything
 
-import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/engine/field_schema.dart';
 
 
 class BarrelGenerator {

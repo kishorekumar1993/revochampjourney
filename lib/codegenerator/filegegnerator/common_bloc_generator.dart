@@ -1,34 +1,34 @@
 // Riverpod generators
-import 'package:revojourneytryone/filegegnerator/revochamp_bloc_generator.dart';
-import 'package:revojourneytryone/shared/common_datasource.dart';
-import 'package:revojourneytryone/shared/common_data_repositoryimpl.dart';
-import 'package:revojourneytryone/shared/common_domain_repository.dart';
-import 'package:revojourneytryone/shared/common_entity_class.dart';
-import 'package:revojourneytryone/shared/common_locator.dart';
-import 'package:revojourneytryone/shared/common_temp_model.dart';
-import 'package:revojourneytryone/shared/common_usecase_generator.dart';
-import 'package:revojourneytryone/shared/common_api_service.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_usecase_bloc_generator.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/revochamp_bloc_generator.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_datasource.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_data_repositoryimpl.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_domain_repository.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_entity_class.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_locator.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_temp_model.dart';
 
-import 'package:revojourneytryone/riverpod/riverpod_presentation.dart';
-import 'package:revojourneytryone/riverpod/riverpod_provider.dart';
+import 'package:revojourneytryone/codegenerator/shared/common_api_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Riverpod Generator
 // ─────────────────────────────────────────────────────────────────────────────
 
-List<Map<String, String>> generateRiverpodFiles({
+List<Map<String, String>> generateCommonCleanArchiFiles({
   required String screenName,
   required String journeyNamespace,
   required List<Map<String, dynamic>> rawFields,
-  List<Map<String, dynamic>>? flatFields,
   required Map<String, dynamic> journeyJson,
-  Map<String, dynamic>? stepJson,
+  required String statemanagement, // new parameter
+  List<Map<String, dynamic>>? flatFields, // reuse flattened fields from orchestrator
+
+
 }) {
   final result   = <Map<String, String>>[];
   final baseName = screenName.toLowerCase();
   final className = '${screenName}Form';
   final fileName  = '${baseName}_form';
-  final base      = 'lib/riverpod/features/$journeyNamespace/$baseName';
+  final base      = 'lib/$statemanagement/features/$journeyNamespace/$baseName';
 
   final effectiveFlatFields = flatFields ?? flattenFields(rawFields);
 
@@ -70,17 +70,10 @@ List<Map<String, String>> generateRiverpodFiles({
   final apiService    = generateApiServiceInterface();
   final locator       = generateLocatorInterface(className, rawFields, fileName);
   final dataSource    = generateDataSourceInterface(className, rawFields, fileName);
-  final provider      = generateProviderInterface(className, rawFields, fileName);
-  final view = generateriverpodviewClass(
-    className,
-    rawFields,
-    fileName,
-    stepJson: stepJson,
-  );
-// ── Use‑case generator ─────────────────────────────────────────────
+ // ── Use‑case generator ─────────────────────────────────────────────
 // ── Use‑case generator ─────────────────────────────────────────────
 final repositoryClassName = '${className}Repository';
-final useCaseGen = JourneyUseCaseGenerator(journeyJson, repositoryClassName: repositoryClassName);
+final useCaseGen = JourneyBlocUseCaseGenerator(journeyJson, repositoryClassName: repositoryClassName);
 final useCasesCode = useCaseGen.generate();
 
 result.add({
@@ -93,13 +86,9 @@ result.add({
   result.addAll([
     {'folderPath': '$base/domain/repository',        'fileName': '${fileName}_repository.dart',     'textContent': domainRepo},
     {'folderPath': '$base/data/repositoryimpl',      'fileName': '${fileName}_repositoryimpl.dart', 'textContent': repoImpl},
-    // {'folderPath': '$base/presentation/controller',  'fileName': '${fileName}_notifier.dart',       'textContent': notifier},
     {'folderPath': '$base/data/dataSource',          'fileName': '${fileName}_data_source.dart',    'textContent': dataSource},
     {'folderPath': '$base/domain/locator',           'fileName': '${fileName}_locator.dart',        'textContent': locator},
-    {'folderPath': '$base/presentation/provider',    'fileName': '${fileName}_provider.dart',       'textContent': provider},
-    {'folderPath': '$base/presentation/view',        'fileName': '${fileName}_view.dart',           'textContent': view},
-    // ── api_service.dart shared once at core level
-    {'folderPath': 'lib/core/service',               'fileName': 'api_service.dart',                'textContent': apiService},
+     {'folderPath': 'lib/core/service',               'fileName': 'api_service.dart',                'textContent': apiService},
   ]);
 
   return result;

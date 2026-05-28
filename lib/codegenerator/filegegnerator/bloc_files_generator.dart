@@ -2,13 +2,13 @@
 // 1. BLoC Generator
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:revojourneytryone/generators/bloc/generators/widget_generator.dart';
-import 'package:revojourneytryone/generators/bloc/generators/api_client_generator.dart';
-import 'package:revojourneytryone/generators/bloc/generators/bloc_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/widget_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/api_client_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/bloc_generator.dart';
 // import 'package:revojourneytryone/generators/bloc/generators/entity_generator.dart';
-import 'package:revojourneytryone/generators/bloc/runtime/observer_generator.dart';
-import 'package:revojourneytryone/generators/bloc/runtime/runtime_sources.dart';
-import 'package:revojourneytryone/generators/bloc/generators/screen_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/runtime/observer_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/runtime/runtime_sources.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/screen_generator.dart';
 
 List<Map<String, String>> generateBlocFiles({
   required String screenName,

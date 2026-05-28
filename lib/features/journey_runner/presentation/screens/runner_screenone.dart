@@ -251,10 +251,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     }
     if (result.status == JourneyExecutionStatus.notFound ||
         result.status == JourneyExecutionStatus.noDraft) {
-      if (result.message != null)
+      if (result.message != null) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(result.message!)));
+      }
       return;
     }
     if (result.savedDraft != null) {
@@ -712,21 +713,21 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   Widget _buildIllustration(String title) {
     final t = title.toLowerCase();
     IconData mainIcon;
-    if (t.contains('personal'))
+    if (t.contains('personal')) {
       mainIcon = Icons.assignment_ind_outlined;
-    else if (t.contains('vehicle'))
+    } else if (t.contains('vehicle')) {
       mainIcon = Icons.directions_car_outlined;
-    else if (t.contains('nominee'))
+    } else if (t.contains('nominee')) {
       mainIcon = Icons.people_alt_outlined;
-    else if (t.contains('document'))
+    } else if (t.contains('document')) {
       mainIcon = Icons.upload_file_outlined;
-    else if (t.contains('payment'))
+    } else if (t.contains('payment')) {
       mainIcon = Icons.payment_outlined;
-    else if (t.contains('review'))
+    } else if (t.contains('review')) {
       mainIcon = Icons.fact_check_outlined;
-    else
+    } else {
       mainIcon = Icons.shield_outlined;
-
+    }
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -773,8 +774,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     if (t.contains('vehicle')) return Icons.directions_car_outlined;
     if (t.contains('nominee')) return Icons.supervisor_account_outlined;
     if (t.contains('document')) return Icons.upload_file_outlined;
-    if (t.contains('review') || t.contains('confirm'))
+    if (t.contains('review') || t.contains('confirm')) {
       return Icons.fact_check_outlined;
+    }
     if (t.contains('payment')) return Icons.credit_card_outlined;
     if (t.contains('success')) return Icons.verified_outlined;
     return Icons.article_outlined;
@@ -1014,8 +1016,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
               .toList(),
           onChanged: (val) {
-            if (val != null)
+            if (val != null) {
               ref.read(formValuesProvider.notifier).updateValue(field.id, val);
+            }
           },
         );
 
@@ -1184,10 +1187,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                 builder: (ctx, child) =>
                     Theme(data: _pickerTheme(), child: child!),
               );
-              if (picked != null && context.mounted)
+              if (picked != null && context.mounted) {
                 ref
                     .read(formValuesProvider.notifier)
                     .updateValue(field.id, picked.format(context));
+              }
               return;
             }
             final picked = await showDatePicker(
@@ -1358,8 +1362,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                       ),
                     ),
                     onChanged: (val) {
-                      if (val.isNotEmpty && idx < 5)
+                      if (val.isNotEmpty && idx < 5) {
                         FocusScope.of(context).nextFocus();
+                      }
                       ref
                           .read(formValuesProvider.notifier)
                           .updateValue(field.id, "123456");
@@ -1957,8 +1962,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   ) {
     return _gridRows.putIfAbsent(field.id, () {
       final minRows = int.tryParse(config['minRows']?.toString() ?? '') ?? 0;
-      if ((config['dataSource']?.toString() ?? 'manual') == 'api')
+      if ((config['dataSource']?.toString() ?? 'manual') == 'api') {
         return <Map<String, dynamic>>[];
+      }
       return List.generate(
         minRows > 0 ? minRows : 1,
         (_) => _emptyGridRow(columns),
@@ -2002,8 +2008,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
       } else {
         response = await http.get(uri, headers: headers);
       }
-      if (response.statusCode < 200 || response.statusCode >= 300)
+      if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('Grid API failed with status ${response.statusCode}');
+      }
       final decoded = json.decode(response.body);
       final listKey = config['gridApiListKey']?.toString() ?? '';
       final rows = _normalizeGridApiRows(decoded, listKey, columns);
@@ -2076,8 +2083,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     return source.map<Map<String, dynamic>>((item) {
       if (item is Map) return Map<String, dynamic>.from(item);
       final row = _emptyGridRow(columns);
-      if (columns.isNotEmpty)
+      if (columns.isNotEmpty) {
         row[_columnFieldId(columns.first)] = item.toString();
+      }
       return row;
     }).toList();
   }
@@ -2113,7 +2121,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     final value = row[fieldId]?.toString() ?? '';
     final required = column['required'] == true;
     final hasError = validationEnabled && required && value.trim().isEmpty;
-    if (!inlineEdit)
+    if (!inlineEdit) {
       return Text(
         value.isEmpty ? '-' : value,
         style: GoogleFonts.poppins(
@@ -2121,6 +2129,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
           color: hasError ? _IT.error : _IT.textMid,
         ),
       );
+    }
     return SizedBox(
       width: 140,
       child: TextFormField(
@@ -2604,8 +2613,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
 
   Widget _buildNestedTabs(JourneyField field, Map<String, dynamic> values) {
     final tabs = field.nestedFields ?? const <JourneyField>[];
-    if (tabs.isEmpty)
+    if (tabs.isEmpty) {
       return _buildNestedContainer(field, values, Icons.tab_rounded);
+    }
     return DefaultTabController(
       length: tabs.length,
       child: Container(
@@ -2703,8 +2713,9 @@ class _ApiDropdownWidgetState extends ConsumerState<ApiDropdownWidget> {
   @override
   void didUpdateWidget(ApiDropdownWidget old) {
     super.didUpdateWidget(old);
-    if (old.field.dropdownApiUrl != widget.field.dropdownApiUrl)
+    if (old.field.dropdownApiUrl != widget.field.dropdownApiUrl) {
       _fetchOptions();
+    }
   }
 
   Future<void> _fetchOptions() async {
@@ -2799,8 +2810,9 @@ class _ApiDropdownWidgetState extends ConsumerState<ApiDropdownWidget> {
         } else {
           _error = "Invalid JSON response format";
         }
-        if (parsedOptions.isEmpty && _error == null)
+        if (parsedOptions.isEmpty && _error == null) {
           _error = "No options found in response";
+        }
         setState(() {
           _options = parsedOptions.isNotEmpty ? parsedOptions : ["Select"];
           _isLoading = false;

@@ -1,6 +1,6 @@
 // lib/bloc/generators/screen/screen_generator.dart
 
-import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 
 class ScreenGenerator {
   ScreenGenerator({

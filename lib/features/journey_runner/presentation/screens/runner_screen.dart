@@ -870,8 +870,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     if (t.contains('vehicle')) return Icons.directions_car_outlined;
     if (t.contains('nominee')) return Icons.supervisor_account_outlined;
     if (t.contains('document')) return Icons.upload_file_outlined;
-    if (t.contains('review') || t.contains('confirm'))
+    if (t.contains('review') || t.contains('confirm')) {
       return Icons.fact_check_outlined;
+    }
     if (t.contains('payment')) return Icons.credit_card_outlined;
     if (t.contains('success')) return Icons.verified_outlined;
     return Icons.article_outlined;
@@ -1155,8 +1156,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     Map<String, dynamic> values,
   ) {
     return fields.map((f) {
-      if (!EngineHelper.isFieldVisible(f, values))
+      if (!EngineHelper.isFieldVisible(f, values)) {
         return const SizedBox.shrink();
+      }
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: _buildField(f, values),
@@ -1207,8 +1209,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               .map((o) => DropdownMenuItem(value: o, child: Text(o)))
               .toList(),
           onChanged: (v) {
-            if (v != null)
+            if (v != null) {
               ref.read(formValuesProvider.notifier).updateValue(field.id, v);
+            }
           },
         );
 
@@ -1374,10 +1377,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                 initialTime: TimeOfDay.now(),
                 builder: (c, ch) => Theme(data: _pickerTheme(), child: ch!),
               );
-              if (p != null && context.mounted)
+              if (p != null && context.mounted) {
                 ref
                     .read(formValuesProvider.notifier)
                     .updateValue(field.id, p.format(context));
+              }
               return;
             }
             final p = await showDatePicker(
@@ -1387,13 +1391,14 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               lastDate: DateTime(2100),
               builder: (c, ch) => Theme(data: _pickerTheme(), child: ch!),
             );
-            if (p != null)
+            if (p != null) {
               ref
                   .read(formValuesProvider.notifier)
                   .updateValue(
                     field.id,
                     "${p.day.toString().padLeft(2, '0')}/${p.month.toString().padLeft(2, '0')}/${p.year}",
                   );
+            }
           },
         );
 
@@ -1539,8 +1544,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                       ),
                     ),
                     onChanged: (v) {
-                      if (v.isNotEmpty && idx < 5)
+                      if (v.isNotEmpty && idx < 5) {
                         FocusScope.of(context).nextFocus();
+                      }
                       ref
                           .read(formValuesProvider.notifier)
                           .updateValue(field.id, "123456");
@@ -2093,8 +2099,9 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   ) {
     return _gridRows.putIfAbsent(f.id, () {
       final min = int.tryParse(cfg['minRows']?.toString() ?? '') ?? 0;
-      if ((cfg['dataSource']?.toString() ?? 'manual') == 'api')
+      if ((cfg['dataSource']?.toString() ?? 'manual') == 'api') {
         return <Map<String, dynamic>>[];
+      }
       return List.generate(min > 0 ? min : 1, (_) => _emptyRow(cols));
     });
   }
@@ -2124,16 +2131,18 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
       final body = cfg['gridApiBody']?.toString().trim();
       final method = (cfg['gridApiMethod']?.toString() ?? 'GET').toUpperCase();
       http.Response res;
-      if (method == 'POST')
+      if (method == 'POST') {
         res = await http.post(
           uri,
           headers: hdrs,
           body: body?.isEmpty == true ? null : body,
         );
-      else
+      } else {
         res = await http.get(uri, headers: hdrs);
-      if (res.statusCode < 200 || res.statusCode >= 300)
+      }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
         throw Exception('API ${res.statusCode}');
+      }
       final dec = json.decode(res.body);
       final lk = cfg['gridApiListKey']?.toString() ?? '';
       final rows = _normApiRows(dec, lk, cols);
@@ -2195,10 +2204,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   dynamic _jsonPath(dynamic src, String path) {
     dynamic c = src;
     for (final p in path.split('.')) {
-      if (c is Map)
+      if (c is Map) {
         c = c[p];
-      else
+      } else {
         return null;
+      }
     }
     return c;
   }
@@ -2221,7 +2231,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     final val = row[fid]?.toString() ?? '';
     final req = col['required'] == true;
     final err = valid && req && val.trim().isEmpty;
-    if (!inline)
+    if (!inline) {
       return Text(
         val.isEmpty ? '-' : val,
         style: GoogleFonts.poppins(
@@ -2229,6 +2239,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
           color: err ? _IT.error : _IT.textMid,
         ),
       );
+    }
     return SizedBox(
       width: 130,
       child: TextFormField(

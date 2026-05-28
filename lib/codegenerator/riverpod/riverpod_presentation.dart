@@ -1,4 +1,4 @@
-import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 
 String generateriverpodviewClass(
   String className,

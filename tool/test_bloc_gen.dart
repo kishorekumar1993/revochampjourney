@@ -5,10 +5,8 @@
 library;
 
 import 'dart:convert';
-import '../lib/generators/bloc/generators/bloc_generator.dart';
-import '../lib/generators/bloc/generators/screen_generator.dart';
-import '../lib/filegegnerator/bloc_files_generator.dart';
-import '../lib/filegegnerator/journey_step_codegen.dart';
+import '../lib/codegenerator/generators/bloc/generators/bloc_generator.dart';
+import '../lib/codegenerator/generators/bloc/generators/screen_generator.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Motor Insurance Journey JSON (minimal — no dropdowndata / API dropdowns so

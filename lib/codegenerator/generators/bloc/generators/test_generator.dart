@@ -7,7 +7,7 @@
 //   - Submit (valid form → success, invalid form → validation errors)
 //   - Reset
 
-import 'package:revojourneytryone/generators/bloc/engine/field_schema.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/engine/field_schema.dart';
 
 
 class TestGenerator {

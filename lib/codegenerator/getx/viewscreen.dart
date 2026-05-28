@@ -1,5 +1,5 @@
-import 'package:revojourneytryone/filegegnerator/journey_step_codegen.dart';
-import 'package:revojourneytryone/getx/getx_model_naming.dart';
+import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
+import 'package:revojourneytryone/codegenerator/getx/getx_model_naming.dart';
 
 String generateviewClass(
   String className,
@@ -43,16 +43,20 @@ String generateviewClass(
   final flatFields = <Map<String, dynamic>>[];
   flattenFields(fields, flatFields);
 
-  // ─── Name helpers ──────────────────────────────────────────────
+  // ─── Check if any date field needs helpers (none now) ─────────
+  // Helpers moved to DateHelper, no need to emit them in the view.
 
+  // ─── Imports ──────────────────────────────────────────────────
   buffer.writeln("import 'package:flutter/material.dart';");
+  buffer.writeln("import 'package:flutter/services.dart';"); // for FilteringTextInputFormatter
   buffer.writeln("import 'package:get/get.dart';");
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase().replaceAll(' ', '_')}_controller.dart';",
   );
   buffer.writeln("import '/core/widgets.dart';");
+  buffer.writeln("import '/utils/date_helper.dart';"); // centralized date formatting
 
-  // ✅ Model imports derived from dropdowndata keys — not from label
+  // Model imports (unchanged)
   final emittedModelFiles = <String>{};
   for (final field in flatFields) {
     if (!fieldNeedsGetxModel(field)) continue;
@@ -63,77 +67,54 @@ String generateviewClass(
   }
 
   buffer.writeln();
-  buffer.writeln("DateTime? _parseDateInput(String input) {");
-  buffer.writeln("  if (input.trim().isEmpty) return null;");
-  buffer.writeln("  final parts = input.split('/');");
-  buffer.writeln("  if (parts.length == 3) {");
-  buffer.writeln("    final day = int.tryParse(parts[0]);");
-  buffer.writeln("    final month = int.tryParse(parts[1]);");
-  buffer.writeln("    final year = int.tryParse(parts[2]);");
-  buffer.writeln("    if (day != null && month != null && year != null) {");
-  buffer.writeln("      return DateTime(year, month, day);");
-  buffer.writeln("    }");
-  buffer.writeln("  }");
-  buffer.writeln("  return DateTime.tryParse(input);");
-  buffer.writeln("}");
-  buffer.writeln();
-  buffer.writeln("String _formatDateInput(DateTime date) {");
-  buffer.writeln("  final d = date.day.toString().padLeft(2, '0');");
-  buffer.writeln("  final m = date.month.toString().padLeft(2, '0');");
-  buffer.writeln("  final y = date.year.toString();");
-  buffer.writeln("  return '\$d/\$m/\$y';");
-  buffer.writeln("}");
-  buffer.writeln();
-  buffer.writeln("class ${className}View extends StatelessWidget {");
+
+  // ─── View class ──────────────────────────────────────────────
+  buffer.writeln("class ${className}View extends GetView<${className}Controller> {");
   buffer.writeln("  const ${className}View({super.key});");
   buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  Widget build(BuildContext context) {");
-  buffer.writeln("    final controller = Get.isRegistered<${className}Controller>() ? Get.find<${className}Controller>() : Get.put(${className}Controller());");
-
+  buffer.writeln("    final theme = Theme.of(context);");
   buffer.writeln();
   buffer.writeln("    return Scaffold(");
-  buffer.writeln("      backgroundColor: const Color(0xFFF8FAFC),");
+  buffer.writeln("      backgroundColor: theme.colorScheme.surface,");
   buffer.writeln("      appBar: AppBar(");
   buffer.writeln(
-    "        title: const Text('${stepMeta.escapedTitle}', style: TextStyle(fontWeight: FontWeight.w600)),",
+    "        title: Text('${stepMeta.escapedTitle}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),",
   );
   buffer.writeln("        backgroundColor: Colors.transparent,");
-  buffer.writeln("        foregroundColor: const Color(0xFF0F172A),");
+  buffer.writeln("        foregroundColor: theme.colorScheme.onSurface,");
   buffer.writeln("        elevation: 0,");
   buffer.writeln("        centerTitle: true,");
   buffer.writeln("      ),");
-  buffer.writeln("      body: SafeArea(");
-  buffer.writeln("        child: Center(");
-  buffer.writeln("          child: ConstrainedBox(");
-  buffer.writeln("            constraints: const BoxConstraints(maxWidth: 600),");
-  buffer.writeln("            child: SingleChildScrollView(");
+  buffer.writeln("      body: GestureDetector(");
+  buffer.writeln("        onTap: () => FocusScope.of(context).unfocus(),");
+  buffer.writeln("        child: SafeArea(");
+  buffer.writeln("          child: Stack(");
+  buffer.writeln("            children: [");
+  buffer.writeln("              Center(");
+  buffer.writeln("                child: ConstrainedBox(");
+  buffer.writeln("                  constraints: const BoxConstraints(maxWidth: 600),");
+  buffer.writeln("                  child: SingleChildScrollView(");
   buffer.writeln(
-    "              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),",
-  );
-  buffer.writeln("              child: Container(");
-  buffer.writeln("                padding: const EdgeInsets.all(24),");
-  buffer.writeln("                decoration: BoxDecoration(");
-  buffer.writeln("                  color: Colors.white,");
-  buffer.writeln(
-    "                  borderRadius: BorderRadius.circular(20),",
+    "                    padding: EdgeInsets.symmetric(horizontal: context.width < 600 ? 16 : 24, vertical: 16),",
   );
   buffer.writeln(
-    "                  border: Border.all(color: const Color(0xFFE2E8F0)),",
+    "                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,",
   );
-  buffer.writeln("                ),");
-  buffer.writeln("                child: Form(");
-  buffer.writeln("                  key: controller.formKey,");
-  buffer.writeln(
-    "                  autovalidateMode: AutovalidateMode.onUserInteraction,",
-  );
-  buffer.writeln("                  child: Column(");
-  buffer.writeln("                    crossAxisAlignment: CrossAxisAlignment.start,");
-  buffer.writeln("                    children: [");
+  buffer.writeln("                    child: AppFormContainer(");
+  buffer.writeln("                      child: Form(");
+  buffer.writeln("                        key: controller.formKey,");
+  buffer.writeln("                        autovalidateMode: AutovalidateMode.onUserInteraction,");
+  buffer.writeln("                        child: Column(");
+  buffer.writeln("                          crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("                          children: [");
   stepMeta.writeFlutterStepHeader(buffer);
 
+  // ─── Recursive widget builder (controller‑validated) ─────────
   void buildWidgets(List<dynamic> currentFields) {
-    for (final rawField in currentFields) {
+    for (int i = 0; i < currentFields.length; i++) {
+      final rawField = currentFields[i];
       if (rawField is! Map<String, dynamic>) continue;
       final field = rawField;
 
@@ -162,10 +143,7 @@ String generateviewClass(
           .toLowerCase();
       final minLength = int.tryParse(field['minLength']?.toString() ?? '') ?? 0;
       final maxLength = int.tryParse(field['maxLength']?.toString() ?? '') ?? 0;
-      final pattern = (field['validationPattern'] ?? '').toString().replaceAll(
-        r'\',
-        r'\\',
-      );
+      final pattern = (field['validationPattern'] ?? '').toString();
       final errorMessage = (field['errorMessage'] ?? 'Invalid format')
           .toString();
       final staticOpts =
@@ -177,49 +155,137 @@ String generateviewClass(
           !useStatic &&
           field['dropdownApiUrl'] != null;
 
+      // ---- Build widget using controller validation ----
       if (type == 'text' || type == 'textfield') {
         _writeTextFormField(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           hint: hint,
           isRequired: isRequired,
           isPassword: isPassword,
           isReadOnly: isReadOnly,
           keyboardType: keyboardType,
-          isNumber: isNumber,
           textInputAction: textInputAction,
           textCapitalization: textCapitalization,
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern,
-          errorMessage: errorMessage,
+          validatorReference: 'controller.validate$capitalLabel',
         );
       } else if (type == 'phone') {
         _writeTextFormField(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           hint: hint,
           isRequired: isRequired,
           isPassword: false,
           isReadOnly: isReadOnly,
           keyboardType: 'phone',
-          isNumber: true,
           textInputAction: textInputAction,
           textCapitalization: 'none',
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern.isNotEmpty ? pattern : r'^\+?[0-9]{7,15}$',
-          errorMessage: errorMessage.isNotEmpty
-              ? errorMessage
-              : 'Enter a valid phone number',
+          validatorReference: 'controller.validate$capitalLabel',
+          inputFormatters: 'FilteringTextInputFormatter.digitsOnly',
+        );
+      } else if (type == 'email') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'emailAddress',
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          validatorReference: 'controller.validate$capitalLabel', // uses GetUtils.isEmail
+        );
+      } else if (type == 'password') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: true,
+          isReadOnly: isReadOnly,
+          keyboardType: 'text',
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          validatorReference: 'controller.validate$capitalLabel',
+        );
+      } else if (type == 'textarea') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'multiline',
+          textInputAction: 'newline',
+          textCapitalization: 'sentences', // better UX for addresses
+          validatorReference: 'controller.validate$capitalLabel',
+          maxLines: 4,
+          minLines: 3,
+        );
+      } else if (type == 'number' || type == 'integer' || type == 'int') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'number',
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          validatorReference: 'controller.validate$capitalLabel',
+        );
+      } else if (type == 'decimal' || type == 'double' || type == 'float') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'decimalPad',
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          validatorReference: 'controller.validate$capitalLabel',
+        );
+      } else if (type == 'otp') {
+        _writeTextFormField(
+          buffer,
+          label: rawLabel,
+          name: name,
+          capitalLabel: capitalLabel,
+          hint: hint,
+          isRequired: isRequired,
+          isPassword: false,
+          isReadOnly: isReadOnly,
+          keyboardType: 'number',
+          textInputAction: textInputAction,
+          textCapitalization: 'none',
+          validatorReference: 'controller.validate$capitalLabel',
+          maxLength: maxLength > 0 ? maxLength : 6,
         );
       } else if (type == 'date') {
         _writeDatePickerField(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           hint: hint,
           isReadOnly: isReadOnly,
         );
@@ -228,41 +294,25 @@ String generateviewClass(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           hint: hint,
           isRequired: isRequired,
           isReadOnly: isReadOnly,
-          pattern: pattern,
-          errorMessage: errorMessage,
         );
-      } else if (type == 'textarea') {
-        _writeTextFormField(
+      } else if (type == 'time') {
+        _writeTimePickerField(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           hint: hint,
           isRequired: isRequired,
-          isPassword: false,
           isReadOnly: isReadOnly,
-          keyboardType: 'multiline',
-          isNumber: false,
-          textInputAction: 'newline',
-          textCapitalization: textCapitalization,
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern,
-          errorMessage: errorMessage,
-          maxLines: 4,
-          minLines: 3,
         );
-
-        // ══════════════════════════════════════════════
-        // dropdown ✅ FIXED: model from dropdowndata key
-        // ══════════════════════════════════════════════
       } else if (type == 'dropdown' || type == 'api_dropdown') {
         if (isApiDropdown) {
           final dropdownmodel = resolveGetxModelClassName(field);
-          final dropdownKey = (field['dropdownValue'] ?? 'title')
-              .toString();
+          final dropdownKey = (field['dropdownValue'] ?? 'title').toString();
           buffer.writeln(
             "                Obx(() => AppDropdownField<$dropdownmodel>(",
           );
@@ -278,7 +328,8 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
+          buffer.writeln("                  errorText: controller.${name}Error.value,");
+          buffer.writeln("                  validator: controller.validate$capitalLabel,");
           buffer.writeln("                )),");
         } else if (staticOpts != null && staticOpts.isNotEmpty) {
           final optionsList = staticOpts.map((o) {
@@ -301,7 +352,8 @@ String generateviewClass(
           buffer.writeln(
             "                  onChanged: (val) => controller.selected$capitalLabel.value = val,",
           );
-          buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
+          buffer.writeln("                  errorText: controller.${name}Error.value,");
+          buffer.writeln("                  validator: controller.validate$capitalLabel,");
           buffer.writeln("                )),");
         }
       } else if (type == 'radio' || type == 'radio buttons') {
@@ -316,7 +368,7 @@ String generateviewClass(
 
         buffer.writeln("                Obx(() => AppRadioGroupField(");
         buffer.writeln("                  label: '$rawLabel',");
-        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
+        buffer.writeln("                  errorText: controller.${name}Error.value,");
         buffer.writeln(
           "                  value: controller.selected$capitalLabel.value?.toString(),",
         );
@@ -330,18 +382,14 @@ String generateviewClass(
             "                  options: controller.${name}Options.map((e) => e.toString()).toList(),",
           );
         }
+        buffer.writeln("                  validator: controller.validate$capitalLabel,");
         buffer.writeln("                )),");
       } else if (type == 'switch') {
         buffer.writeln("                Obx(() => FormField<bool>(");
         buffer.writeln("                  initialValue: false,");
-        buffer.writeln("                  validator: (value) {");
-        if (isRequired) {
-          buffer.writeln(
-            "                    if (value != true) return '$rawLabel';",
-          );
-        }
-        buffer.writeln("                    return null;");
-        buffer.writeln("                  },");
+        buffer.writeln(
+          "                  validator: controller.validate$capitalLabel,",
+        );
         buffer.writeln("                  builder: (formState) => Column(");
         buffer.writeln(
           "                    crossAxisAlignment: CrossAxisAlignment.start,",
@@ -349,7 +397,7 @@ String generateviewClass(
         buffer.writeln("                    children: [");
         buffer.writeln("                      SwitchListTile(");
         buffer.writeln(
-          "                        title: const Text('$rawLabel'),",
+          "                        title: Text('$rawLabel'),",
         );
         buffer.writeln(
           "                        value: controller.${name}Value.value,",
@@ -371,9 +419,7 @@ String generateviewClass(
             "                          padding: const EdgeInsets.only(left: 4, bottom: 4),",
           );
           buffer.writeln("                          child: Text(");
-          buffer.writeln(
-            "                            formState.errorText ?? '',",
-          );
+          buffer.writeln("                            formState.errorText ?? '',");
           buffer.writeln(
             "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
           );
@@ -388,47 +434,9 @@ String generateviewClass(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           pickMethod: "pick${capitalLabel}File",
         );
-      } else if (type == 'otp') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'number',
-          isNumber: true,
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          minLength: minLength > 0 ? minLength : 6,
-          maxLength: maxLength > 0 ? maxLength : 6,
-          pattern: pattern,
-          errorMessage: errorMessage,
-        );
-      } else if (type == 'divider') {
-        buffer.writeln("                Padding(");
-        buffer.writeln(
-          "                  padding: const EdgeInsets.symmetric(vertical: 12.0),",
-        );
-        buffer.writeln("                  child: Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Text(");
-        buffer.writeln("                        '$rawLabel',");
-        buffer.writeln(
-          "                        style: Theme.of(context).textTheme.bodyMedium,",
-        );
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      const Divider(),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-        buffer.writeln("                ),");
       } else if (type == 'checkbox') {
         buffer.writeln("                Obx(() => AppCheckboxField(");
         buffer.writeln("                  label: '$rawLabel',");
@@ -436,91 +444,9 @@ String generateviewClass(
         buffer.writeln(
           "                  onChanged: (val) => controller.${name}Value.value = val ?? false,",
         );
-        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
+        buffer.writeln("                  errorText: controller.${name}Error.value,");
+        buffer.writeln("                  validator: controller.validate$capitalLabel,");
         buffer.writeln("                )),");
-      } else if (type == 'number' || type == 'integer' || type == 'int') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'number',
-          isNumber: true,
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern,
-          errorMessage: errorMessage,
-        );
-      } else if (type == 'decimal' || type == 'double' || type == 'float') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'decimalPad',
-          isNumber: true,
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern,
-          errorMessage: errorMessage,
-        );
-      } else if (type == 'email') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'emailAddress',
-          isNumber: false,
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern.isNotEmpty ? pattern : r'^[\w\.-]+@[\w\.-]+\.\w+$',
-          errorMessage: errorMessage.isNotEmpty
-              ? errorMessage
-              : 'Enter a valid email',
-        );
-      } else if (type == 'password') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: true,
-          isReadOnly: isReadOnly,
-          keyboardType: 'text',
-          isNumber: false,
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          minLength: minLength,
-          maxLength: maxLength,
-          pattern: pattern,
-          errorMessage: errorMessage,
-        );
-      } else if (type == 'time') {
-        _writeTimePickerField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          hint: hint,
-          isRequired: isRequired,
-          isReadOnly: isReadOnly,
-        );
       } else if (type == 'multiselect' ||
           type == 'multi select' ||
           type == 'multi_select') {
@@ -545,10 +471,11 @@ String generateviewClass(
         buffer.writeln(
           "                  selectedValues: controller.${name}Selected.toList(),",
         );
-        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
+        buffer.writeln("                  errorText: controller.${name}Error.value,");
         buffer.writeln("                  onChanged: (values) {");
         buffer.writeln("                    controller.${name}Selected.assignAll(values);");
         buffer.writeln("                  },");
+        buffer.writeln("                  validator: controller.validate$capitalLabel,");
         buffer.writeln("                )),");
       } else if (type == 'slider' || type == 'range slider') {
         final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
@@ -568,13 +495,13 @@ String generateviewClass(
           "                        Text('$rawLabel${isRequired ? ' *' : ''}',",
         );
         buffer.writeln(
-          "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),",
+          "                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
         );
         buffer.writeln(
           "                        Text('\${controller.${name}Value.value.toStringAsFixed(0)}',",
         );
         buffer.writeln(
-          "                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),",
+          "                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),",
         );
         buffer.writeln("                      ],");
         buffer.writeln("                    ),");
@@ -598,7 +525,7 @@ String generateviewClass(
         buffer.writeln("                  child: Text(");
         buffer.writeln("                    '$rawLabel',");
         buffer.writeln(
-          "                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),",
+          "                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),",
         );
         buffer.writeln("                  ),");
         buffer.writeln("                ),");
@@ -609,6 +536,7 @@ String generateviewClass(
           buffer,
           label: rawLabel,
           name: name,
+          capitalLabel: capitalLabel,
           pickMethod: "pick${capitalLabel}Image",
         );
       } else if (type == 'starrating' ||
@@ -624,7 +552,7 @@ String generateviewClass(
           "                    Text('$rawLabel${isRequired ? ' *' : ''}',",
         );
         buffer.writeln(
-          "                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),",
+          "                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
         );
         buffer.writeln("                    const SizedBox(height: 8),");
         buffer.writeln("                    Row(");
@@ -661,11 +589,11 @@ String generateviewClass(
         buffer.writeln("                      Text(");
         buffer.writeln("                        '$rawLabel',");
         buffer.writeln(
-          "                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),",
+          "                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),",
         );
         buffer.writeln("                      ),");
         buffer.writeln("                      const SizedBox(height: 4),");
-        buffer.writeln("                      const Divider(thickness: 1.5),");
+        buffer.writeln("                      Divider(thickness: 1.5, color: theme.colorScheme.outline),");
         buffer.writeln("                      const SizedBox(height: 8),");
         final nested = field['nestedFields'] as List<dynamic>? ?? [];
         if (nested.isNotEmpty) buildWidgets(nested);
@@ -690,7 +618,7 @@ String generateviewClass(
         buffer.writeln("                        Text(");
         buffer.writeln("                          '$rawLabel',");
         buffer.writeln(
-          "                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),",
+          "                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),",
         );
         buffer.writeln("                        ),");
         buffer.writeln("                        const SizedBox(height: 12),");
@@ -726,7 +654,7 @@ String generateviewClass(
         buffer.writeln("                    children: [");
         if (rawLabel.isNotEmpty) {
           buffer.writeln(
-            "                      Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),",
+            "                      Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
           );
           buffer.writeln("                      const SizedBox(height: 8),");
         }
@@ -767,11 +695,11 @@ String generateviewClass(
       } else if (type == 'accordion') {
         buffer.writeln("                ExpansionTile(");
         buffer.writeln(
-          "                  title: Text('$rawLabel', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),",
+          "                  title: Text('$rawLabel', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),",
         );
         buffer.writeln("                  shape: RoundedRectangleBorder(");
         buffer.writeln(
-          "                    side: BorderSide(color: Colors.grey.shade300),",
+          "                    side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),",
         );
         buffer.writeln(
           "                    borderRadius: BorderRadius.circular(8),",
@@ -781,7 +709,7 @@ String generateviewClass(
           "                  collapsedShape: RoundedRectangleBorder(",
         );
         buffer.writeln(
-          "                    side: BorderSide(color: Colors.grey.shade300),",
+          "                    side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),",
         );
         buffer.writeln(
           "                    borderRadius: BorderRadius.circular(8),",
@@ -824,7 +752,7 @@ String generateviewClass(
         );
         buffer.writeln("                      children: [");
         buffer.writeln(
-          "                        Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),",
+          "                        Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
         );
         buffer.writeln("                        ElevatedButton.icon(");
         buffer.writeln(
@@ -929,7 +857,7 @@ String generateviewClass(
         );
         buffer.writeln("                      children: [");
         buffer.writeln(
-          "                        Text('$rawLabel${isRequired ? ' *' : ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),",
+          "                        Text('$rawLabel${isRequired ? ' *' : ''}', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
         );
         buffer.writeln("                        ElevatedButton.icon(");
         buffer.writeln(
@@ -962,9 +890,8 @@ String generateviewClass(
         buffer.writeln(
           "                            onPressed: () => controller.remove${capitalLabel}Item(i),",
         );
-        buffer.writeln("                          ),");
         buffer.writeln(
-          "                          // TODO: Add repeater item fields",
+          "                          ), // TODO: Add repeater item fields",
         );
         buffer.writeln("                        ),");
         buffer.writeln("                      );");
@@ -978,7 +905,7 @@ String generateviewClass(
         );
         buffer.writeln("                  children: [");
         buffer.writeln(
-          "                    Text('$rawLabel', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),",
+          "                    Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
         );
         buffer.writeln("                    const SizedBox(height: 8),");
         buffer.writeln(
@@ -1002,14 +929,14 @@ String generateviewClass(
           "                                  width: 24, height: 24,",
         );
         buffer.writeln(
-          "                                  decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle),",
+          "                                  decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),",
         );
         buffer.writeln(
           "                                  child: Center(child: Text('\${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 12))),",
         );
         buffer.writeln("                                ),");
         buffer.writeln(
-          "                                if (!isLast) Expanded(child: Container(width: 2, color: Colors.grey.shade300)),",
+          "                                if (!isLast) Expanded(child: Container(width: 2, color: theme.colorScheme.outline.withOpacity(0.3))),",
         );
         buffer.writeln("                              ],");
         buffer.writeln("                            ),");
@@ -1022,7 +949,7 @@ String generateviewClass(
           "                                padding: const EdgeInsets.only(bottom: 16.0),",
         );
         buffer.writeln(
-          "                                child: Text(step.toString(), style: const TextStyle(fontSize: 14)),",
+          "                                child: Text(step.toString(), style: theme.textTheme.bodyMedium),",
         );
         buffer.writeln("                              ),");
         buffer.writeln("                            ),");
@@ -1053,36 +980,22 @@ String generateviewClass(
         buffer.writeln(
           "                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {",
         );
-        buffer.writeln("                    return Obx(() => AppTextField(");
+        buffer.writeln("                    return AppTextField(");
         buffer.writeln("                      label: '$rawLabel',");
         buffer.writeln("                      hint: '$hint',");
         buffer.writeln("                      controller: textController,");
         buffer.writeln("                      focusNode: focusNode,");
-        buffer.writeln("                      errorText: controller.fieldErrors['$rawLabel']?.value,");
-        buffer.writeln("                      validator: (value) {");
-        buffer.writeln("                        controller.fieldErrors['$rawLabel'] = controller.fieldErrors['$rawLabel'] ?? ''.obs;");
-        buffer.writeln("                        controller.fieldErrors['$rawLabel']!.value = '';");
-        if (isRequired) {
-          buffer.writeln(
-            "                        if (value == null || value.isEmpty) { controller.fieldErrors['$rawLabel']!.value = '$rawLabel is required'; return controller.fieldErrors['$rawLabel']!.value; }",
-          );
-        }
-        buffer.writeln("                        return null;");
-        buffer.writeln("                      },");
-        buffer.writeln("                    ));");
+        buffer.writeln("                      errorText: controller.${name}Error.value,");
+        buffer.writeln("                      validator: controller.validate$capitalLabel,");
+        buffer.writeln("                    );");
         buffer.writeln("                  },");
         buffer.writeln("                ),");
       } else if (type == 'signature') {
         buffer.writeln("                Obx(() => FormField<bool>(");
         buffer.writeln("                  initialValue: false,");
-        buffer.writeln("                  validator: (value) {");
-        if (isRequired) {
-          buffer.writeln(
-            "                    if (value != true) return '$rawLabel is required';",
-          );
-        }
-        buffer.writeln("                    return null;");
-        buffer.writeln("                  },");
+        buffer.writeln(
+          "                  validator: controller.validate$capitalLabel,",
+        );
         buffer.writeln("                  builder: (formState) => Column(");
         buffer.writeln(
           "                    crossAxisAlignment: CrossAxisAlignment.start,",
@@ -1092,7 +1005,7 @@ String generateviewClass(
           "                      Text('$rawLabel${isRequired ? ' *' : ''}',",
         );
         buffer.writeln(
-          "                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),",
+          "                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
         );
         buffer.writeln("                      const SizedBox(height: 8),");
         buffer.writeln("                      GestureDetector(");
@@ -1110,7 +1023,7 @@ String generateviewClass(
         buffer.writeln("                          decoration: BoxDecoration(");
         buffer.writeln("                            border: Border.all(");
         buffer.writeln(
-          "                              color: formState.hasError ? Colors.red : Colors.grey.shade400,",
+          "                              color: formState.hasError ? Colors.red : theme.colorScheme.outline,",
         );
         buffer.writeln("                            ),");
         buffer.writeln(
@@ -1145,9 +1058,7 @@ String generateviewClass(
             "                          padding: const EdgeInsets.only(top: 6, left: 4),",
           );
           buffer.writeln("                          child: Text(");
-          buffer.writeln(
-            "                            formState.errorText ?? '',",
-          );
+          buffer.writeln("                            formState.errorText ?? '',");
           buffer.writeln(
             "                            style: const TextStyle(color: Colors.red, fontSize: 12),",
           );
@@ -1189,83 +1100,115 @@ String generateviewClass(
         buffer.writeln("                  ],");
         buffer.writeln("                ),");
       } else if (type == 'formula') {
-        buffer.writeln("                Obx(() => AppTextField(");
+        buffer.writeln("                AppTextField(");
         buffer.writeln("                  label: '$rawLabel',");
         buffer.writeln("                  hint: '$hint',");
         buffer.writeln(
           "                  controller: TextEditingController(text: controller.$name.value),",
         );
         buffer.writeln("                  readOnly: true,");
-        buffer.writeln("                  errorText: controller.fieldErrors['$rawLabel']?.value,");
-        buffer.writeln("                  validator: (value) => null,");
-        buffer.writeln("                )),");
+        buffer.writeln("                  errorText: controller.${name}Error.value,");
+        buffer.writeln("                  validator: controller.validate$capitalLabel,");
+        buffer.writeln("                ),");
       } else {
         buffer.writeln(
           "                // TODO: unsupported field type '$type' for '$rawLabel'",
         );
       }
 
-      buffer.writeln("                const SizedBox(height: 16),");
+      // ---- spacing between fields (except after the last one) ----
+      if (i < currentFields.length - 1) {
+        buffer.writeln("                const SizedBox(height: 16),");
+      }
     }
   }
 
   buildWidgets(fields);
 
-  stepMeta.writeFlutterActionButtons(
-    buffer,
-    onPressedHandler: '() => controller.onPrimaryAction()',
-  );
-  buffer.writeln("                    ],");
+  // ─── Primary action button ────────────────────────────────────
+  final primaryLabel = stepMeta.primaryButtonLabel;
+  buffer.writeln("                const SizedBox(height: 24),");
+  buffer.writeln("                SizedBox(");
+  buffer.writeln("                  width: double.infinity,");
+  buffer.writeln("                  child: ElevatedButton(");
+  buffer.writeln("                    style: ElevatedButton.styleFrom(");
+  buffer.writeln("                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),");
+  buffer.writeln("                      shape: RoundedRectangleBorder(");
+  buffer.writeln("                        borderRadius: BorderRadius.circular(12),");
+  buffer.writeln("                      ),");
+  buffer.writeln("                      backgroundColor: theme.colorScheme.primary,");
+  buffer.writeln("                      foregroundColor: theme.colorScheme.onPrimary,");
+  buffer.writeln("                    ),");
+  buffer.writeln("                    onPressed: () => controller.onPrimaryAction(),");
+  buffer.writeln("                    child: Obx(() => controller.isExecuting.value");
+  buffer.writeln("                        ? const SizedBox(");
+  buffer.writeln("                            height: 20, width: 20,");
+  buffer.writeln("                            child: CircularProgressIndicator(color: Colors.white))");
+  buffer.writeln("                        : Text('$primaryLabel')),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
-  buffer.writeln("              ),");
-  buffer.writeln("            ),");
-  buffer.writeln("          ),");
-  buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
+
+  buffer.writeln("                        ],"); // Column children
+  buffer.writeln("                      ),"); // Form
+  buffer.writeln("                    ),"); // AppFormContainer
+  buffer.writeln("                  ),"); // SingleChildScrollView
+  buffer.writeln("                ),"); // ConstrainedBox
+  buffer.writeln("              ),"); // Center
+
+  // ─── Loading overlay (FIXED reactivity) ───────────────────────
+  buffer.writeln("              Obx(() {");
+  buffer.writeln("                if (!controller.isExecuting.value) return const SizedBox.shrink();");
+  buffer.writeln("                return AbsorbPointer(");
+  buffer.writeln("                  absorbing: true,");
+  buffer.writeln("                  child: Container(");
+  buffer.writeln("                    color: Colors.black.withOpacity(0.15),");
+  buffer.writeln("                    child: const Center(");
+  buffer.writeln("                      child: CircularProgressIndicator(),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                );");
+  buffer.writeln("              }),");
+
+  buffer.writeln("            ],"); // Stack children
+  buffer.writeln("          ),"); // Stack
+  buffer.writeln("        ),"); // SafeArea
+  buffer.writeln("      ),"); // GestureDetector
+  buffer.writeln("    );"); // Scaffold
   buffer.writeln("  }");
   buffer.writeln("}");
 
   return buffer.toString();
 }
 
-// ─── Shared helpers ───────────────────────────────────────────────
+// ─── Helper: text field with controller validation ──────────────
 void _writeTextFormField(
   StringBuffer buffer, {
   required String label,
   required String name,
+  required String capitalLabel,
   required String hint,
   required bool isRequired,
   required bool isPassword,
   required bool isReadOnly,
   required String keyboardType,
-  required bool isNumber,
   required String textInputAction,
   required String textCapitalization,
-  required int minLength,
-  required int maxLength,
-  required String pattern,
-  required String errorMessage,
+  String? validatorReference,
+  String? inputFormatters,
+  int? maxLength,
   int? maxLines,
   int? minLines,
 }) {
-  buffer.writeln("                Obx(() => AppTextField(");
+  buffer.writeln("                AppTextField(");
   buffer.writeln("                  label: '$label',");
   buffer.writeln("                  hint: '$hint',");
   buffer.writeln("                  controller: controller.${name}Controller,");
-  buffer.writeln(
-    "                  keyboardType: TextInputType.$keyboardType,",
-  );
+  buffer.writeln("                  keyboardType: TextInputType.$keyboardType,");
   buffer.writeln("                  obscureText: $isPassword,");
   buffer.writeln("                  readOnly: $isReadOnly,");
-  buffer.writeln(
-    "                  textInputAction: TextInputAction.$textInputAction,",
-  );
-  buffer.writeln(
-    "                  textCapitalization: TextCapitalization.$textCapitalization,",
-  );
-  if (maxLength > 0) {
+  buffer.writeln("                  textInputAction: TextInputAction.$textInputAction,");
+  buffer.writeln("                  textCapitalization: TextCapitalization.$textCapitalization,");
+  if (maxLength != null && maxLength > 0) {
     buffer.writeln("                  maxLength: $maxLength,");
   }
   if (maxLines != null) {
@@ -1274,44 +1217,22 @@ void _writeTextFormField(
   if (minLines != null) {
     buffer.writeln("                  minLines: $minLines,");
   }
-  buffer.writeln("                  errorText: controller.fieldErrors['$label']?.value,");
-  buffer.writeln("                  validator: (value) {");
-  buffer.writeln("                    try {");
-  buffer.writeln("                      controller.fieldErrors['$label'] = controller.fieldErrors['$label'] ?? ''.obs;");
-  buffer.writeln("                      controller.fieldErrors['$label']!.value = '';");
-  if (isRequired) {
-    buffer.writeln(
-      "                      if (value == null || value.isEmpty) { controller.fieldErrors['$label']!.value = '$label is required'; return controller.fieldErrors['$label']!.value; }",
-    );
+  if (inputFormatters != null) {
+    buffer.writeln("                  inputFormatters: [$inputFormatters],");
   }
-  if (minLength > 0) {
-    buffer.writeln(
-      "                      if (value != null && value.length < $minLength) { controller.fieldErrors['$label']!.value = 'Minimum $minLength characters'; return controller.fieldErrors['$label']!.value; }",
-    );
+  buffer.writeln("                  errorText: controller.${name}Error.value,");
+  if (validatorReference != null) {
+    buffer.writeln("                  validator: $validatorReference,");
   }
-  if (maxLength > 0) {
-    buffer.writeln(
-      "                      if (value != null && value.length > $maxLength) { controller.fieldErrors['$label']!.value = 'Maximum $maxLength characters'; return controller.fieldErrors['$label']!.value; }",
-    );
-  }
-  if (pattern.isNotEmpty) {
-    buffer.writeln(
-      "                      if (!RegExp(r'$pattern').hasMatch(value ?? '')) { controller.fieldErrors['$label']!.value = '$errorMessage'; return controller.fieldErrors['$label']!.value; }",
-    );
-  }
-  buffer.writeln("                      return null;");
-  buffer.writeln("                    } catch (e) {");
-  buffer.writeln("                      controller.fieldErrors['$label']!.value = 'Invalid input';");
-  buffer.writeln("                      return controller.fieldErrors['$label']!.value;");
-  buffer.writeln("                    }");
-  buffer.writeln("                  },");
-  buffer.writeln("                )),");
+  buffer.writeln("                ),");
 }
 
+// ─── Date picker (uses controller Rx<DateTime?>) ─────────────────
 void _writeDatePickerField(
   StringBuffer buffer, {
   required String label,
   required String name,
+  required String capitalLabel,
   required String hint,
   required bool isReadOnly,
 }) {
@@ -1319,24 +1240,26 @@ void _writeDatePickerField(
   buffer.writeln("                  label: '$label',");
   buffer.writeln("                  hint: '${hint.isNotEmpty ? hint : 'Select date'}',");
   buffer.writeln(
-    "                  value: _parseDateInput(controller.${name}Controller.text),",
+    "                  value: controller.selected$capitalLabel.value,",
   );
-  buffer.writeln("                  errorText: controller.fieldErrors['$label']?.value,");
+  buffer.writeln("                  errorText: controller.${name}Error.value,");
   buffer.writeln("                  enabled: ${!isReadOnly},");
   buffer.writeln("                  onChanged: (picked) {");
   buffer.writeln("                    if (picked != null) {");
   buffer.writeln(
-    "                      controller.${name}Controller.text = _formatDateInput(picked);",
+    "                      controller.selected$capitalLabel.value = picked;",
   );
   buffer.writeln("                    }");
   buffer.writeln("                  },");
   buffer.writeln("                )),");
 }
 
+// ─── Time picker ─────────────────────────────────────────────────
 void _writeTimePickerField(
   StringBuffer buffer, {
   required String label,
   required String name,
+  required String capitalLabel,
   required String hint,
   required bool isRequired,
   required bool isReadOnly,
@@ -1348,7 +1271,7 @@ void _writeTimePickerField(
       "                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());",
     );
     buffer.writeln(
-      "                    if (picked != null) controller.${name}Controller.text = picked.format(context);",
+      "                    if (picked != null) controller.selected$capitalLabel.value = picked;",
     );
     buffer.writeln("                  },");
   }
@@ -1356,34 +1279,29 @@ void _writeTimePickerField(
   buffer.writeln("                    child: AppTextField(");
   buffer.writeln("                      label: '$label',");
   buffer.writeln("                      hint: '${hint.isNotEmpty ? hint : 'Select time'}',");
-  buffer.writeln("                      controller: controller.${name}Controller,");
+  buffer.writeln(
+    "                      controller: TextEditingController(text: controller.selected$capitalLabel.value?.format(context) ?? ''),",
+  );
   buffer.writeln("                      readOnly: true,");
-  buffer.writeln("                      errorText: null,");
+  buffer.writeln("                      errorText: controller.${name}Error.value,");
   buffer.writeln(
     "                      suffixIcon: const Icon(Icons.access_time_rounded),",
   );
-  buffer.writeln("                      validator: (value) {");
-  if (isRequired) {
-    buffer.writeln(
-      "                        if (value == null || value.isEmpty) return '$label is required';",
-    );
-  }
-  buffer.writeln("                        return null;");
-  buffer.writeln("                      },");
+  buffer.writeln("                      validator: controller.validate$capitalLabel,");
   buffer.writeln("                    ),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
 }
 
+// ─── DateTime picker ─────────────────────────────────────────────
 void _writeDateTimePickerField(
   StringBuffer buffer, {
   required String label,
   required String name,
+  required String capitalLabel,
   required String hint,
   required bool isRequired,
   required bool isReadOnly,
-  required String pattern,
-  required String errorMessage,
 }) {
   buffer.writeln("                GestureDetector(");
   buffer.writeln("                  onTap: ${isReadOnly ? 'null' : '() async {'}");
@@ -1397,10 +1315,7 @@ void _writeDateTimePickerField(
     );
     buffer.writeln("                    if (time == null) return;");
     buffer.writeln(
-      "                    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);",
-    );
-    buffer.writeln(
-      "                    controller.${name}Controller.text = '\${_formatDateInput(dt)} \${time.format(context)}';",
+      "                    controller.selected$capitalLabel.value = DateTime(date.year, date.month, date.day, time.hour, time.minute);",
     );
     buffer.writeln("                  },");
   }
@@ -1410,49 +1325,56 @@ void _writeDateTimePickerField(
   buffer.writeln(
     "                      hint: '${hint.isNotEmpty ? hint : 'Select date and time'}',",
   );
-  buffer.writeln("                      controller: controller.${name}Controller,");
+  buffer.writeln(
+    "                      controller: TextEditingController(text: controller.selected$capitalLabel.value != null ? DateHelper.formatDateTime(controller.selected$capitalLabel.value!) : ''),",
+  );
   buffer.writeln("                      readOnly: true,");
-  buffer.writeln("                      errorText: null,");
+  buffer.writeln("                      errorText: controller.${name}Error.value,");
   buffer.writeln(
     "                      suffixIcon: const Icon(Icons.calendar_month_rounded),",
   );
-  buffer.writeln("                      validator: (value) {");
-  if (isRequired) {
-    buffer.writeln(
-      "                        if (value == null || value.isEmpty) return '$label is required';",
-    );
-  }
-  if (pattern.isNotEmpty) {
-    buffer.writeln(
-      "                        if (!RegExp(r'$pattern').hasMatch(value ?? '')) return '$errorMessage';",
-    );
-  }
-  buffer.writeln("                        return null;");
-  buffer.writeln("                      },");
+  buffer.writeln("                      validator: controller.validate$capitalLabel,");
   buffer.writeln("                    ),");
   buffer.writeln("                  ),");
   buffer.writeln("                ),");
 }
 
+// ─── File picker (unchanged except error binding) ────────────────
 void _writeFilePickerField(
   StringBuffer buffer, {
   required String label,
   required String name,
+  required String capitalLabel,
   required String pickMethod,
 }) {
-  buffer.writeln("                Obx(() => AppFileUploadField(");
-  buffer.writeln("                  label: '$label',");
-  buffer.writeln(
-    "                  value: controller.${name}FileName.value.isEmpty ? null : controller.${name}FileName.value,",
-  );
-  buffer.writeln("                  hint: 'Tap Browse to select file',");
-  buffer.writeln("                  errorText: null,");
-  buffer.writeln("                  onChanged: (_) async {");
-  buffer.writeln("                    await controller.$pickMethod();");
-  buffer.writeln("                  },");
-  buffer.writeln("                )),");
+  buffer.writeln("                Container(");
+  buffer.writeln("                  padding: const EdgeInsets.all(16),");
+  buffer.writeln("                  decoration: BoxDecoration(");
+  buffer.writeln("                    borderRadius: BorderRadius.circular(16),");
+  buffer.writeln("                    color: Colors.grey.shade50,");
+  buffer.writeln("                    border: Border.all(");
+  buffer.writeln("                      color: Colors.grey.shade200,");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                  child: Tooltip(");
+  buffer.writeln("                    message: 'Upload $label',");
+  buffer.writeln("                    child: Obx(() => AppFileUploadField(");
+  buffer.writeln("                      label: '$label',");
+  buffer.writeln("                      value: controller.${name}FileName.value.isEmpty");
+  buffer.writeln("                          ? null");
+  buffer.writeln("                          : controller.${name}FileName.value,");
+  buffer.writeln("                      hint: 'Tap Browse to select file',");
+  buffer.writeln("                      errorText: controller.${name}Error.value,");
+  buffer.writeln("                      onChanged: (_) async {");
+  buffer.writeln("                        await controller.$pickMethod();");
+  buffer.writeln("                      },");
+  buffer.writeln("                      validator: controller.validate$capitalLabel,");
+  buffer.writeln("                    )),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
 }
 
+// ─── Keyboard type mapping ──────────────────────────────────────
 String _mapKeyboardType(String raw) {
   switch (raw) {
     case 'number':
@@ -1479,18 +1401,9 @@ String _mapKeyboardType(String raw) {
   }
 }
 
+// ─── Name helpers ────────────────────────────────────────────────
 String capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-
-String singularize(String text) {
-  if (text.endsWith('ies')) {
-    return '${text.substring(0, text.length - 3)}y';
-  }
-  if (text.endsWith('s') && text.length > 1) {
-    return text.substring(0, text.length - 1);
-  }
-  return text;
-}
 
 String normalizeLabel(String label) =>
     label.trim().replaceAll(RegExp(r'\s+'), '');
