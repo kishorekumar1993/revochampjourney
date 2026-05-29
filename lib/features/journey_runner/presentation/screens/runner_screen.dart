@@ -12,6 +12,17 @@ import '../../application/journey_draft_store.dart';
 import '../../application/journey_execution_engine.dart';
 import '../../domain/journey_execution_models.dart';
 import 'advanced_formula_field_widget.dart';
+import 'views/split_view.dart';
+import 'views/focus_view.dart';
+import 'views/timeline_view.dart';
+import 'views/tabbed_view.dart';
+
+enum RunnerLayoutStyle {
+  split,
+  focus,
+  timeline,
+  tabbed,
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -109,6 +120,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   bool _isExecuting = false;
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> _errors = {};
+  RunnerLayoutStyle _layoutStyle = RunnerLayoutStyle.split;
   final Map<String, List<Map<String, dynamic>>> _gridRows = {};
   final Map<String, Set<int>> _gridSelections = {};
   final Map<String, List<Map<String, dynamic>>> _repeaterRows = {};
@@ -396,7 +408,6 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   // ── BUILD ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // ref.watch(themeModeProvider);
     final cfg = ref.watch(journeyConfigProvider);
     if (cfg.steps.isEmpty) {
       return Scaffold(
@@ -424,11 +435,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────
+            // Header
             _buildHeader(context, cfg),
 
-            // ── Timeline: hidden on mobile ───────────────────────────────
-            if (!isMobile)
+            // Top Stepper Timeline (Only shown in Split View on desktop)
+            if (_layoutStyle == RunnerLayoutStyle.split && !isMobile)
               JourneyTimeline(
                 steps: cfg.steps,
                 activeIndex: activeIdx,
@@ -439,31 +450,98 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
                 },
               ),
 
-            // ── Content area ────────────────────────────────────────────
+            // Main Dynamic Layout View Shell
             Expanded(
-              child: isMobile
-                  ? _buildMobileLayout(
-                      cfg,
-                      activeStep,
-                      activeIdx,
-                      formValues,
-                      showSubmit,
-                    )
-                  : _buildDesktopLayout(
-                      cfg,
-                      activeStep,
-                      activeIdx,
-                      formValues,
-                      showSubmit,
-                    ),
+              child: _buildLayoutShell(cfg, activeStep, activeIdx, formValues, showSubmit, isMobile),
             ),
-
-            // ── Bottom save bar ──────────────────────────────────────────
-            _buildBottomBar(cfg, activeStep),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildLayoutShell(
+    JourneyConfig cfg,
+    JourneyStep activeStep,
+    int activeIdx,
+    Map<String, dynamic> formValues,
+    bool showSubmit,
+    bool isMobile,
+  ) {
+    switch (_layoutStyle) {
+      case RunnerLayoutStyle.split:
+        return SplitRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+        );
+      case RunnerLayoutStyle.focus:
+        return FocusRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+        );
+      case RunnerLayoutStyle.timeline:
+        return TimelineRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formValues: formValues,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.tabbed:
+        return TabbedRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formValues: formValues,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+    }
   }
 
   // ── HEADER ────────────────────────────────────────────────────────────────
@@ -487,12 +565,66 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          _buildStyleSwitcher(),
+          const SizedBox(width: 12),
           _iconBtn(
             Icons.close_rounded,
             () => context.pop(),
             color: _IT.textMid,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStyleSwitcher() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: _IT.bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _styleIconBtn(RunnerLayoutStyle.split, Icons.splitscreen_rounded, 'Split View'),
+          _styleIconBtn(RunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),
+          _styleIconBtn(RunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),
+          _styleIconBtn(RunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),
+        ],
+      ),
+    );
+  }
+
+  Widget _styleIconBtn(RunnerLayoutStyle style, IconData icon, String tooltip) {
+    final active = _layoutStyle == style;
+    return Tooltip(
+      message: tooltip,
+      textStyle: GoogleFonts.poppins(fontSize: 11, color: Colors.white),
+      decoration: BoxDecoration(
+        color: _IT.textDark,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _layoutStyle = style;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: active ? _IT.brand : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: active ? Colors.white : _IT.textMid,
+          ),
+        ),
       ),
     );
   }

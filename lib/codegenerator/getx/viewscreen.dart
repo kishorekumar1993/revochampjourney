@@ -62,56 +62,97 @@ String generateviewClass(
   }
   buffer.writeln();
 
+  // ─── Generated View Layout Enum ──────────────────────────────
+  buffer.writeln("enum GeneratedRunnerLayoutStyle { split, focus, timeline, tabbed }");
+  buffer.writeln();
+
   // ─── View class ──────────────────────────────────────────────
   buffer.writeln(
     "class ${className}View extends GetView<${className}Controller> {",
   );
   buffer.writeln("  const ${className}View({super.key});");
   buffer.writeln();
+  buffer.writeln("  static final layoutStyle = GeneratedRunnerLayoutStyle.split.obs;");
+  buffer.writeln();
   buffer.writeln("  @override");
   buffer.writeln("  Widget build(BuildContext context) {");
   buffer.writeln("    final theme = Theme.of(context);");
   buffer.writeln();
   buffer.writeln("    return Scaffold(");
-  buffer.writeln("      backgroundColor: theme.colorScheme.surface,");
+  buffer.writeln("      backgroundColor: const Color(0xFFF0F0FF),");
   buffer.writeln("      appBar: AppBar(");
   buffer.writeln(
     "        title: Text('${stepMeta.escapedTitle}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),",
   );
-  buffer.writeln("        backgroundColor: Colors.transparent,");
-  buffer.writeln("        foregroundColor: theme.colorScheme.onSurface,");
+  buffer.writeln("        backgroundColor: Colors.white,");
+  buffer.writeln("        foregroundColor: const Color(0xFF1A1A2E),");
   buffer.writeln("        elevation: 0,");
   buffer.writeln("        centerTitle: true,");
+  buffer.writeln("        actions: [");
+  buffer.writeln("          Obx(() => Container(");
+  buffer.writeln("            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),");
+  buffer.writeln("            padding: const EdgeInsets.symmetric(horizontal: 4),");
+  buffer.writeln("            decoration: BoxDecoration(");
+  buffer.writeln("              color: const Color(0xFFF0F0FF),");
+  buffer.writeln("              borderRadius: BorderRadius.circular(10),");
+  buffer.writeln("            ),");
+  buffer.writeln("            child: Row(");
+  buffer.writeln("              mainAxisSize: MainAxisSize.min,");
+  buffer.writeln("              children: [");
+  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.split, Icons.splitscreen_rounded, 'Split View'),");
+  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),");
+  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),");
+  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),");
+  buffer.writeln("              ],");
+  buffer.writeln("            ),");
+  buffer.writeln("          )),");
+  buffer.writeln("        ],");
   buffer.writeln("      ),");
   buffer.writeln("      body: GestureDetector(");
   buffer.writeln("        onTap: () => FocusScope.of(context).unfocus(),");
   buffer.writeln("        child: SafeArea(");
   buffer.writeln("          child: Stack(");
   buffer.writeln("            children: [");
-  buffer.writeln("              Center(");
-  buffer.writeln("                child: ConstrainedBox(");
-  buffer.writeln(
-    "                  constraints: const BoxConstraints(maxWidth: 600),",
-  );
-  buffer.writeln("                  child: SingleChildScrollView(");
-  buffer.writeln(
-    "                    padding: EdgeInsets.symmetric(horizontal: context.width < 600 ? 16 : 24, vertical: 16),",
-  );
-  buffer.writeln(
-    "                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,",
-  );
-  buffer.writeln("                    child: Container(");
-  buffer.writeln("                      padding: const EdgeInsets.all(16),");
-  buffer.writeln("                      child: Form(");
-  buffer.writeln("                        key: controller.formKey,");
-  buffer.writeln(
-    "                        autovalidateMode: AutovalidateMode.onUserInteraction,",
-  );
-  buffer.writeln("                        child: Column(");
-  buffer.writeln(
-    "                          crossAxisAlignment: CrossAxisAlignment.start,",
-  );
-  buffer.writeln("                          children: [");
+  buffer.writeln("              Obx(() {");
+  buffer.writeln("                switch (layoutStyle.value) {");
+  buffer.writeln("                  case GeneratedRunnerLayoutStyle.split:");
+  buffer.writeln("                    return _buildSplitLayout(context);");
+  buffer.writeln("                  case GeneratedRunnerLayoutStyle.focus:");
+  buffer.writeln("                    return _buildFocusLayout(context);");
+  buffer.writeln("                  case GeneratedRunnerLayoutStyle.timeline:");
+  buffer.writeln("                    return _buildTimelineLayout(context);");
+  buffer.writeln("                  case GeneratedRunnerLayoutStyle.tabbed:");
+  buffer.writeln("                    return _buildTabbedLayout(context);");
+  buffer.writeln("                }");
+  buffer.writeln("              }),");
+  buffer.writeln("              // Loading overlay");
+  buffer.writeln("              Obx(() {");
+  buffer.writeln("                if (!controller.isExecuting.value) return const SizedBox.shrink();");
+  buffer.writeln("                return AbsorbPointer(");
+  buffer.writeln("                  absorbing: true,");
+  buffer.writeln("                  child: Container(");
+  buffer.writeln("                    color: Colors.black.withValues(alpha: 0.15),");
+  buffer.writeln("                    child: const Center(");
+  buffer.writeln("                      child: CircularProgressIndicator(),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                );");
+  buffer.writeln("              }),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+  buffer.writeln("  Widget _buildFormContent(BuildContext context, {bool isMobile = false}) {");
+  buffer.writeln("    final theme = Theme.of(context);");
+  buffer.writeln("    return Form(");
+  buffer.writeln("      key: controller.formKey,");
+  buffer.writeln("      autovalidateMode: AutovalidateMode.onUserInteraction,");
+  buffer.writeln("      child: Column(");
+  buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("        children: [");
   stepMeta.writeFlutterStepHeader(buffer);
 
   // ─── Recursive widget builder ────────────────────────────────
@@ -373,7 +414,7 @@ String generateviewClass(
             "                    itemLabelBuilder: (item) => item.value,",
           );
           buffer.writeln(
-            "                    items: controller.${name}Options.value,",
+            "                    items: controller.${name}Options,",
           );
           buffer.writeln(
             "                    value: controller.selected$capitalLabel.value,",
@@ -396,7 +437,7 @@ String generateviewClass(
         );
         if (staticOpts != null && staticOpts.isNotEmpty) {
           buffer.writeln(
-            "                    options: controller.${name}Options,",
+            "                    options: controller.${name}Options.value.map((e) => e.toString()).toList(),",
           );
         } else {
           buffer.writeln(
@@ -414,7 +455,7 @@ String generateviewClass(
           "                    onChanged: (val) => controller.${name}Value.value = val,",
         );
         buffer.writeln("                    contentPadding: EdgeInsets.zero,");
-        buffer.writeln("                  ),");
+        buffer.writeln("                  );");
       } else if (type == 'file') {
         _writeFilePickerField(
           buffer,
@@ -911,7 +952,7 @@ String generateviewClass(
                 buffer.writeln("                                  items: controller.${childName}Options.value,");
                 buffer.writeln("                                  onChanged: (val) => controller.update${capitalLabel}ItemField(i, '$childId', val?.key),");
                 buffer.writeln("                                  errorText: controller.fieldErrors['$childId'],");
-                buffer.writeln("                                ),");
+                buffer.writeln("                                );");
               }
             }
           }
@@ -1197,37 +1238,336 @@ String generateviewClass(
   buffer.writeln("                  ),");
   buffer.writeln("                )),");
 
-  buffer.writeln("                        ],"); // Column children
-  buffer.writeln("                      ),"); // Form
-  buffer.writeln("                    ),"); // Container
-  buffer.writeln("                  ),"); // SingleChildScrollView
-  buffer.writeln("                ),"); // ConstrainedBox
-  buffer.writeln("              ),"); // Center
-  buffer.writeln("              ),"); // Center
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
 
-  // Loading overlay
-  buffer.writeln("              Obx(() {");
-  buffer.writeln(
-    "                if (!controller.isExecuting.value) return const SizedBox.shrink();",
-  );
-  buffer.writeln("                return AbsorbPointer(");
-  buffer.writeln("                  absorbing: true,");
-  buffer.writeln("                  child: Container(");
-  buffer.writeln(
-    "                    color: Colors.black.withValues(alpha: 0.15),",
-  );
+  // ─── Split Screen Layout ──────────────────────────────────────
+  buffer.writeln("  Widget _buildSplitLayout(BuildContext context) {");
+  buffer.writeln("    final theme = Theme.of(context);");
+  buffer.writeln("    final isMobile = context.width < 640;");
+  buffer.writeln();
+  buffer.writeln("    if (isMobile) {");
+  buffer.writeln("      return SingleChildScrollView(");
+  buffer.writeln("        padding: const EdgeInsets.all(16),");
+  buffer.writeln("        child: _buildFormContent(context, isMobile: true),");
+  buffer.writeln("      );");
+  buffer.writeln("    }");
+  buffer.writeln();
+  buffer.writeln("    return Center(");
+  buffer.writeln("      child: ConstrainedBox(");
+  buffer.writeln("        constraints: const BoxConstraints(maxWidth: 1060),");
+  buffer.writeln("        child: Container(");
+  buffer.writeln("          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),");
+  buffer.writeln("          decoration: BoxDecoration(");
+  buffer.writeln("            color: Colors.white,");
+  buffer.writeln("            borderRadius: BorderRadius.circular(24),");
+  buffer.writeln("            boxShadow: const [");
+  buffer.writeln("              BoxShadow(");
+  buffer.writeln("                color: Color(0x125B4FCF),");
+  buffer.writeln("                blurRadius: 40,");
+  buffer.writeln("                offset: Offset(0, 8),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("          child: Row(");
+  buffer.writeln("            crossAxisAlignment: CrossAxisAlignment.stretch,");
+  buffer.writeln("            children: [");
+  buffer.writeln("              // Left info panel");
+  buffer.writeln("              Container(");
+  buffer.writeln("                width: 270,");
+  buffer.writeln("                decoration: const BoxDecoration(");
+  buffer.writeln("                  color: Color(0xFFF7F5FF),");
+  buffer.writeln("                  borderRadius: BorderRadius.only(");
+  buffer.writeln("                    topLeft: Radius.circular(24),");
+  buffer.writeln("                    bottomLeft: Radius.circular(24),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("                padding: const EdgeInsets.all(26),");
+  buffer.writeln("                child: Column(");
+  buffer.writeln("                  crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("                  children: [");
+  buffer.writeln("                    Container(");
+  buffer.writeln("                      width: 48,");
+  buffer.writeln("                      height: 48,");
+  buffer.writeln("                      decoration: const BoxDecoration(");
+  buffer.writeln("                        color: Color(0xFF5B4FCF),");
+  buffer.writeln("                        shape: BoxShape.circle,");
+  buffer.writeln("                      ),");
+  buffer.writeln("                      child: const Icon(Icons.shield_outlined, color: Colors.white, size: 22),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                    const SizedBox(height: 18),");
+  buffer.writeln("                    Text(");
+  buffer.writeln("                      'Secure Processing',");
+  buffer.writeln("                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1A1A2E)),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                    const SizedBox(height: 6),");
+  buffer.writeln("                    Text(");
+  buffer.writeln("                      'Please fill out all the details to successfully complete this step of your journey.',");
+  buffer.writeln("                      style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280), height: 1.5),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                    const Spacer(),");
+  buffer.writeln("                    Container(");
+  buffer.writeln("                      padding: const EdgeInsets.all(12),");
+  buffer.writeln("                      decoration: BoxDecoration(");
+  buffer.writeln("                        color: Colors.white,");
+  buffer.writeln("                        borderRadius: BorderRadius.circular(12),");
+  buffer.writeln("                        border: Border.all(color: const Color(0xFFE4E6F0)),");
+  buffer.writeln("                      ),");
+  buffer.writeln("                      child: Row(");
+  buffer.writeln("                        children: [");
+  buffer.writeln("                          const Icon(Icons.lock_outline_rounded, color: Color(0xFF5B4FCF), size: 16),");
+  buffer.writeln("                          const SizedBox(width: 8),");
+  buffer.writeln("                          Expanded(");
+  buffer.writeln("                            child: Text(");
+  buffer.writeln("                              'End-to-end encrypted details',");
+  buffer.writeln("                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),");
+  buffer.writeln("                            ),");
+  buffer.writeln("                          ),");
+  buffer.writeln("                        ],");
+  buffer.writeln("                      ),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ],");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("              Container(width: 1, color: const Color(0xFFE4E6F0)),");
+  buffer.writeln("              // Right form panel");
+  buffer.writeln("              Expanded(");
+  buffer.writeln("                child: SingleChildScrollView(");
+  buffer.writeln("                  padding: const EdgeInsets.all(32),");
+  buffer.writeln("                  child: _buildFormContent(context),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // ─── Conversational Focus Layout ──────────────────────────────
+  buffer.writeln("  Widget _buildFocusLayout(BuildContext context) {");
+  buffer.writeln("    return SingleChildScrollView(");
+  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),");
+  buffer.writeln("      child: Center(");
+  buffer.writeln("        child: ConstrainedBox(");
+  buffer.writeln("          constraints: const BoxConstraints(maxWidth: 600),");
+  buffer.writeln("          child: Container(");
+  buffer.writeln("            padding: const EdgeInsets.all(32),");
+  buffer.writeln("            decoration: BoxDecoration(");
+  buffer.writeln("              color: Colors.white,");
+  buffer.writeln("              borderRadius: BorderRadius.circular(28),");
+  buffer.writeln("              boxShadow: const [");
+  buffer.writeln("                BoxShadow(");
+  buffer.writeln("                  color: Color(0x155B4FCF),");
+  buffer.writeln("                  blurRadius: 45,");
+  buffer.writeln("                  offset: Offset(0, 12),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ],");
+  buffer.writeln("            ),");
+  buffer.writeln("            child: Column(");
+  buffer.writeln("              mainAxisSize: MainAxisSize.min,");
+  buffer.writeln("              children: [");
+  buffer.writeln("                Container(");
+  buffer.writeln("                  width: 60,");
+  buffer.writeln("                  height: 60,");
+  buffer.writeln("                  decoration: const BoxDecoration(");
+  buffer.writeln("                    color: Color(0xFFEEECFD),");
+  buffer.writeln("                    shape: BoxShape.circle,");
+  buffer.writeln("                  ),");
+  buffer.writeln("                  child: const Center(");
+  buffer.writeln("                    child: Icon(Icons.center_focus_strong_rounded, color: Color(0xFF5B4FCF), size: 28),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("                const SizedBox(height: 24),");
+  buffer.writeln("                _buildFormContent(context),");
+  buffer.writeln("              ],");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // ─── Continuous Vertical Timeline Layout ──────────────────────
+  buffer.writeln("  Widget _buildTimelineLayout(BuildContext context) {");
+  buffer.writeln("    return SingleChildScrollView(");
+  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),");
+  buffer.writeln("      child: Center(");
+  buffer.writeln("        child: ConstrainedBox(");
+  buffer.writeln("          constraints: const BoxConstraints(maxWidth: 700),");
+  buffer.writeln("          child: Row(");
+  buffer.writeln("            crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("            children: [");
+  buffer.writeln("              Column(");
+  buffer.writeln("                children: [");
+  buffer.writeln("                  Container(");
+  buffer.writeln("                    width: 32,");
+  buffer.writeln("                    height: 32,");
+  buffer.writeln("                    decoration: const BoxDecoration(");
+  buffer.writeln("                      color: Color(0xFF5B4FCF),");
+  buffer.writeln("                      shape: BoxShape.circle,");
+  buffer.writeln("                    ),");
   buffer.writeln("                    child: const Center(");
-  buffer.writeln("                      child: CircularProgressIndicator(),");
+  buffer.writeln("                      child: Icon(Icons.circle, color: Colors.white, size: 12),");
   buffer.writeln("                    ),");
   buffer.writeln("                  ),");
-  buffer.writeln("                );");
-  buffer.writeln("              }),");
+  buffer.writeln("                  Container(");
+  buffer.writeln("                    width: 2,");
+  buffer.writeln("                    height: 300,");
+  buffer.writeln("                    color: const Color(0xFF5B4FCF),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ],");
+  buffer.writeln("              ),");
+  buffer.writeln("              const SizedBox(width: 16),");
+  buffer.writeln("              Expanded(");
+  buffer.writeln("                child: Container(");
+  buffer.writeln("                  padding: const EdgeInsets.all(24),");
+  buffer.writeln("                  decoration: BoxDecoration(");
+  buffer.writeln("                    color: Colors.white,");
+  buffer.writeln("                    borderRadius: BorderRadius.circular(20),");
+  buffer.writeln("                    border: Border.all(color: const Color(0xFF5B4FCF), width: 1.5),");
+  buffer.writeln("                    boxShadow: const [");
+  buffer.writeln("                      BoxShadow(");
+  buffer.writeln("                        color: Color(0x105B4FCF),");
+  buffer.writeln("                        blurRadius: 30,");
+  buffer.writeln("                        offset: Offset(0, 6),");
+  buffer.writeln("                      ),");
+  buffer.writeln("                    ],");
+  buffer.writeln("                  ),");
+  buffer.writeln("                  child: _buildFormContent(context),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
 
-  buffer.writeln("            ],"); // Stack children
-  buffer.writeln("          ),"); // Stack
-  buffer.writeln("        ),"); // SafeArea
-  buffer.writeln("      ),"); // GestureDetector
-  buffer.writeln("    );"); // Scaffold
+  // ─── Tabbed Sidebar Navigation Layout ─────────────────────────
+  buffer.writeln("  Widget _buildTabbedLayout(BuildContext context) {");
+  buffer.writeln("    final theme = Theme.of(context);");
+  buffer.writeln("    final isMobile = context.width < 800;");
+  buffer.writeln();
+  buffer.writeln("    if (isMobile) {");
+  buffer.writeln("      return SingleChildScrollView(");
+  buffer.writeln("        padding: const EdgeInsets.all(16),");
+  buffer.writeln("        child: _buildFormContent(context, isMobile: true),");
+  buffer.writeln("      );");
+  buffer.writeln("    }");
+  buffer.writeln();
+  buffer.writeln("    return Padding(");
+  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),");
+  buffer.writeln("      child: Row(");
+  buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.stretch,");
+  buffer.writeln("        children: [");
+  buffer.writeln("          // Left Step Tab");
+  buffer.writeln("          Container(");
+  buffer.writeln("            width: 200,");
+  buffer.writeln("            decoration: BoxDecoration(");
+  buffer.writeln("              color: const Color(0xFFF7F5FF),");
+  buffer.writeln("              borderRadius: BorderRadius.circular(20),");
+  buffer.writeln("              border: Border.all(color: const Color(0xFFE4E6F0)),");
+  buffer.writeln("            ),");
+  buffer.writeln("            padding: const EdgeInsets.all(16),");
+  buffer.writeln("            child: Column(");
+  buffer.writeln("              crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("              children: [");
+  buffer.writeln("                Text(");
+  buffer.writeln("                  'CURRENT STEP',");
+  buffer.writeln("                  style: theme.textTheme.labelSmall?.copyWith(");
+  buffer.writeln("                    fontWeight: FontWeight.bold,");
+  buffer.writeln("                    color: const Color(0xFF6B7280),");
+  buffer.writeln("                    letterSpacing: 1.2,");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("                const SizedBox(height: 12),");
+  buffer.writeln("                Container(");
+  buffer.writeln("                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),");
+  buffer.writeln("                  decoration: BoxDecoration(");
+  buffer.writeln("                    color: const Color(0xFF5B4FCF),");
+  buffer.writeln("                    borderRadius: BorderRadius.circular(10),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                  child: Row(");
+  buffer.writeln("                    children: [");
+  buffer.writeln("                      const Icon(Icons.circle, size: 8, color: Colors.white),");
+  buffer.writeln("                      const SizedBox(width: 8),");
+  buffer.writeln("                      Expanded(");
+  buffer.writeln("                        child: Text(");
+  buffer.writeln("                          'Primary Step',");
+  buffer.writeln("                          style: theme.textTheme.bodySmall?.copyWith(");
+  buffer.writeln("                            fontWeight: FontWeight.bold,");
+  buffer.writeln("                            color: Colors.white,");
+  buffer.writeln("                          ),");
+  buffer.writeln("                        ),");
+  buffer.writeln("                      ),");
+  buffer.writeln("                    ],");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ],");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("          const SizedBox(width: 16),");
+  buffer.writeln("          // Center Form Panel");
+  buffer.writeln("          Expanded(");
+  buffer.writeln("            child: Container(");
+  buffer.writeln("              decoration: BoxDecoration(");
+  buffer.writeln("                color: Colors.white,");
+  buffer.writeln("                borderRadius: BorderRadius.circular(20),");
+  buffer.writeln("                border: Border.all(color: const Color(0xFFE4E6F0)),");
+  buffer.writeln("                boxShadow: const [");
+  buffer.writeln("                  BoxShadow(");
+  buffer.writeln("                    color: Color(0x085B4FCF),");
+  buffer.writeln("                    blurRadius: 20,");
+  buffer.writeln("                    offset: Offset(0, 4),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ],");
+  buffer.writeln("              ),");
+  buffer.writeln("              child: ClipRRect(");
+  buffer.writeln("                borderRadius: BorderRadius.circular(20),");
+  buffer.writeln("                child: SingleChildScrollView(");
+  buffer.writeln("                  padding: const EdgeInsets.all(28),");
+  buffer.writeln("                  child: _buildFormContent(context),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // ─── Header segmented switcher icon button helper ─────────────
+  buffer.writeln("  Widget _buildStyleIcon(GeneratedRunnerLayoutStyle style, IconData icon, String tooltip) {");
+  buffer.writeln("    final active = layoutStyle.value == style;");
+  buffer.writeln("    return Tooltip(");
+  buffer.writeln("      message: tooltip,");
+  buffer.writeln("      child: GestureDetector(");
+  buffer.writeln("        onTap: () => layoutStyle.value = style,");
+  buffer.writeln("        child: AnimatedContainer(");
+  buffer.writeln("          duration: const Duration(milliseconds: 200),");
+  buffer.writeln("          width: 32,");
+  buffer.writeln("          height: 32,");
+  buffer.writeln("          margin: const EdgeInsets.symmetric(horizontal: 2),");
+  buffer.writeln("          decoration: BoxDecoration(");
+  buffer.writeln("            color: active ? const Color(0xFF5B4FCF) : Colors.transparent,");
+  buffer.writeln("            borderRadius: BorderRadius.circular(8),");
+  buffer.writeln("          ),");
+  buffer.writeln("          child: Icon(");
+  buffer.writeln("            icon,");
+  buffer.writeln("            size: 16,");
+  buffer.writeln("            color: active ? Colors.white : const Color(0xFF6B7280),");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
   buffer.writeln("  }");
   buffer.writeln("}");
 
