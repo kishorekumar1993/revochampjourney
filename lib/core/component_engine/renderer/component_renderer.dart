@@ -15,8 +15,8 @@ class ComponentRenderer {
     void Function(ComponentNode?)? onHover,
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
-    void Function(ComponentNode, ComponentNode, int)? onMoveChild, // (parent, child, index)
-    void Function(ComponentNode, String)? onAddChild, // (parent, type)
+    void Function(ComponentNode, ComponentNode, int)? onMoveChild,
+    void Function(ComponentNode, String)? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
   }) {
@@ -25,9 +25,7 @@ class ComponentRenderer {
       if (node.children.isEmpty) {
         childWidget = isDesignMode
             ? GestureDetector(
-                onTap: () {
-                  if (onSelect != null) onSelect(node);
-                },
+                onTap: () { if (onSelect != null) onSelect(node); },
                 child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
               )
             : const SizedBox.shrink();
@@ -57,9 +55,7 @@ class ComponentRenderer {
       if (node.children.isEmpty) {
         childWidget = isDesignMode
             ? GestureDetector(
-                onTap: () {
-                  if (onSelect != null) onSelect(node);
-                },
+                onTap: () { if (onSelect != null) onSelect(node); },
                 child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
               )
             : const SizedBox.shrink();
@@ -111,7 +107,87 @@ class ComponentRenderer {
       final isSelected = selectedNode?.id == node.id;
       final isHovered = hoveredNode?.id == node.id;
 
-      // Handle drop targeting for container types
+      // ── Types that MUST NOT be wrapped in Draggable or DragTarget ──────────
+      // These widgets depend on clean BuildContext ancestry (Scaffold uses
+      // Navigator/MediaQuery InheritedWidgets; Scrollables use ScrollController;
+      // form fields use Form). Wrapping in Draggable duplicates the subtree and
+      // breaks the ancestor check at framework.dart:6417.
+      const nonDraggableTypes = {
+        'Scaffold',
+        'SingleChildScrollView',
+        'ListView',
+        'GridView',
+        'Carousel',
+        'TextField',
+        'Dropdown',
+        'DatePicker',
+        'Search',
+        'FilePicker',
+        'Checkbox',
+        'RadioGroup',
+        'Switch',
+        'Slider',
+        'Tabs',
+      };
+
+      if (nonDraggableTypes.contains(node.type)) {
+        // Lightweight overlay: just a thin selection/hover border + tap-to-select.
+        // No Draggable, no DragTarget, no MouseRegion — keeps BuildContext ancestry clean.
+        final decorated = Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF5B4FCF)
+                  : isHovered
+                      ? const Color(0xFF9E95F5)
+                      : Colors.transparent,
+              width: isSelected ? 2.0 : 1.0,
+            ),
+          ),
+          child: coreWidget,
+        );
+        return _applyMargin(
+          GestureDetector(
+            onTap: () { if (onSelect != null) onSelect(node); },
+            behavior: HitTestBehavior.translucent,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                decorated,
+                if (isSelected)
+                  Positioned(
+                    top: -24, left: 0,
+                    child: Container(
+                      height: 24,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF5B4FCF),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(node.type, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () { if (onDelete != null) onDelete(node); },
+                            child: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          node,
+        );
+      }
+
+      // ── Full draggable overlay for regular widgets ─────────────────────────
       final canAcceptChildren = _canAcceptChildren(node.type);
 
       Widget interactiveWrapper = MouseRegion(
@@ -120,14 +196,12 @@ class ComponentRenderer {
         },
         onExit: (_) {
           if (onHover != null && hoveredNode?.id == node.id) {
-            onHover(null as dynamic); // clear hover
+            onHover(null);
           }
         },
         child: GestureDetector(
           onTap: () {
-            if (onSelect != null) {
-              onSelect(node);
-            }
+            if (onSelect != null) onSelect(node);
           },
           behavior: HitTestBehavior.opaque,
           child: Stack(
@@ -146,7 +220,6 @@ class ComponentRenderer {
                 ),
                 child: coreWidget,
               ),
-              // Render labels and actions on top of selected node
               if (isSelected)
                 Positioned(
                   top: -24,
@@ -174,16 +247,12 @@ class ComponentRenderer {
                         ),
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () {
-                            if (onDuplicate != null) onDuplicate(node);
-                          },
+                          onTap: () { if (onDuplicate != null) onDuplicate(node); },
                           child: const Icon(Icons.copy_rounded, color: Colors.white, size: 12),
                         ),
                         const SizedBox(width: 6),
                         GestureDetector(
-                          onTap: () {
-                            if (onDelete != null) onDelete(node);
-                          },
+                          onTap: () { if (onDelete != null) onDelete(node); },
                           child: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 12),
                         ),
                       ],
@@ -203,7 +272,7 @@ class ComponentRenderer {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF5B4FCF).withValues(alpha:0.8),
+              color: const Color(0xFF5B4FCF).withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -223,17 +292,12 @@ class ComponentRenderer {
       if (canAcceptChildren) {
         return _applyMargin(
           DragTarget<Object>(
-            onWillAcceptWithDetails: (details) {
-              // details.data can be a String (from palette) or a ComponentNode (moving inside canvas)
-              return true;
-            },
+            onWillAcceptWithDetails: (details) => true,
             onAcceptWithDetails: (details) {
               final data = details.data;
               if (data is String) {
-                // dropped from palette
                 if (onAddChild != null) onAddChild(node, data);
               } else if (data is ComponentNode) {
-                // moved inside canvas
                 if (onMoveChild != null && data.id != node.id) {
                   onMoveChild(node, data, node.children.length);
                 }
@@ -273,7 +337,7 @@ class ComponentRenderer {
     void Function(String, dynamic)? onFormValueChanged,
   }) {
     final properties = node.properties;
-    final styles = node.styles;
+    // Note: node.styles is accessed via getStyle() helper below.
 
     dynamic getStyle(String key) {
       if (node.styles.containsKey(key)) return node.styles[key];
@@ -352,6 +416,7 @@ class ComponentRenderer {
           height: height,
           padding: pad,
           margin: marg,
+          alignment: PropertyParser.parseAlignment(getStyle('alignment')),
           decoration: BoxDecoration(
             color: gradient == null ? bg : null,
             gradient: gradient,
@@ -360,42 +425,153 @@ class ComponentRenderer {
             borderRadius: BorderRadius.circular(radius),
           ),
           child: node.children.isEmpty
-              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
-              : render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                ),
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : null)
+              : node.children.length == 1
+                  ? render(
+                      node.children.first,
+                      isDesignMode: isDesignMode,
+                      parentNode: node,
+                      selectedNode: selectedNode,
+                      hoveredNode: hoveredNode,
+                      onSelect: onSelect,
+                      onHover: onHover,
+                      onDelete: onDelete,
+                      onDuplicate: onDuplicate,
+                      onMoveChild: onMoveChild,
+                      onAddChild: onAddChild,
+                      formValues: formValues,
+                      onFormValueChanged: onFormValueChanged,
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: renderChildren(),
+                    ),
         );
 
       case 'Row':
         final mainAlign = PropertyParser.parseMainAxisAlignment(properties['mainAxisAlignment']);
-        var crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
-        if (crossAlign == CrossAxisAlignment.stretch) {
-          crossAlign = CrossAxisAlignment.start; // Safety fallback to avoid infinite height crashes inside scroll view
-        }
-        if (node.children.isEmpty && isDesignMode) {
+        final crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
+
+        Widget buildRow(CrossAxisAlignment effectiveCrossAlign) {
+          if (node.children.isEmpty && isDesignMode) {
+            return Row(
+              mainAxisAlignment: mainAlign,
+              crossAxisAlignment: effectiveCrossAlign,
+              children: [
+                _buildEmptyPlaceholder(node, onAddChild: onAddChild),
+              ],
+            );
+          }
           return Row(
             mainAxisAlignment: mainAlign,
-            crossAxisAlignment: crossAlign,
-            children: [
-              _buildEmptyPlaceholder(node, onAddChild: onAddChild),
-            ],
+            crossAxisAlignment: effectiveCrossAlign,
+            children: node.children.map((childNode) {
+              final childWidget = render(
+                childNode,
+                isDesignMode: isDesignMode,
+                parentNode: node,
+                selectedNode: selectedNode,
+                hoveredNode: hoveredNode,
+                onSelect: onSelect,
+                onHover: onHover,
+                onDelete: onDelete,
+                onDuplicate: onDuplicate,
+                onMoveChild: onMoveChild,
+                onAddChild: onAddChild,
+                formValues: formValues,
+                onFormValueChanged: onFormValueChanged,
+              );
+              final flexVal = int.tryParse(
+                childNode.styles['flex']?.toString() ?? childNode.properties['flex']?.toString() ?? '',
+              );
+              if (flexVal != null) {
+                return Expanded(flex: flexVal, child: childWidget);
+              }
+              return childWidget;
+            }).toList(),
           );
         }
-        return Row(
-          mainAxisAlignment: mainAlign,
-          crossAxisAlignment: crossAlign,
+
+        if (crossAlign == CrossAxisAlignment.stretch) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return buildRow(constraints.hasBoundedHeight ? crossAlign : CrossAxisAlignment.start);
+            },
+          );
+        }
+        return buildRow(crossAlign);
+
+      case 'Column':
+        final mainAlign = PropertyParser.parseMainAxisAlignment(properties['mainAxisAlignment']);
+        final crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
+        final mainSize = PropertyParser.parseMainAxisSize(getStyle('mainAxisSize') ?? properties['mainAxisSize']);
+
+        Widget buildColumn(CrossAxisAlignment effectiveCrossAlign) {
+          if (node.children.isEmpty && isDesignMode) {
+            return Column(
+              mainAxisAlignment: mainAlign,
+              crossAxisAlignment: effectiveCrossAlign,
+              mainAxisSize: mainSize,
+              children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
+            );
+          }
+          return Column(
+            mainAxisAlignment: mainAlign,
+            crossAxisAlignment: effectiveCrossAlign,
+            mainAxisSize: mainSize,
+            children: node.children.map((childNode) {
+              final childWidget = render(
+                childNode,
+                isDesignMode: isDesignMode,
+                parentNode: node,
+                selectedNode: selectedNode,
+                hoveredNode: hoveredNode,
+                onSelect: onSelect,
+                onHover: onHover,
+                onDelete: onDelete,
+                onDuplicate: onDuplicate,
+                onMoveChild: onMoveChild,
+                onAddChild: onAddChild,
+                formValues: formValues,
+                onFormValueChanged: onFormValueChanged,
+              );
+              // Support flex on direct Column children (same as Row)
+              final flexVal = int.tryParse(
+                childNode.styles['flex']?.toString() ?? childNode.properties['flex']?.toString() ?? '',
+              );
+              if (flexVal != null && flexVal > 0) {
+                return Expanded(flex: flexVal, child: childWidget);
+              }
+              return childWidget;
+            }).toList(),
+          );
+        }
+
+        if (crossAlign == CrossAxisAlignment.stretch) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return buildColumn(constraints.hasBoundedWidth ? crossAlign : CrossAxisAlignment.start);
+            },
+          );
+        }
+        return buildColumn(crossAlign);
+
+      case 'Stack':
+        final stackFit = () {
+          final fitStr = (getStyle('fit') ?? properties['fit'])?.toString().toLowerCase();
+          if (fitStr == 'expand') return StackFit.expand;
+          if (fitStr == 'passthrough') return StackFit.passthrough;
+          return StackFit.loose;
+        }();
+        // Check if any child has positioning properties — render them as Positioned.
+        if (node.children.isEmpty && isDesignMode) {
+          return Stack(
+            fit: stackFit,
+            children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
+          );
+        }
+        return Stack(
+          fit: stackFit,
           children: node.children.map((childNode) {
             final childWidget = render(
               childNode,
@@ -412,30 +588,21 @@ class ComponentRenderer {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
             );
-            final flexVal = int.tryParse(
-              childNode.styles['flex']?.toString() ?? childNode.properties['flex']?.toString() ?? '',
-            );
-            if (flexVal != null) {
-              return Expanded(flex: flexVal, child: childWidget);
+            final top = double.tryParse(childNode.styles['top']?.toString() ?? childNode.properties['top']?.toString() ?? '');
+            final left = double.tryParse(childNode.styles['left']?.toString() ?? childNode.properties['left']?.toString() ?? '');
+            final right = double.tryParse(childNode.styles['right']?.toString() ?? childNode.properties['right']?.toString() ?? '');
+            final bottom = double.tryParse(childNode.styles['bottom']?.toString() ?? childNode.properties['bottom']?.toString() ?? '');
+            if (top != null || left != null || right != null || bottom != null) {
+              return Positioned(
+                top: top,
+                left: left,
+                right: right,
+                bottom: bottom,
+                child: childWidget,
+              );
             }
             return childWidget;
           }).toList(),
-        );
-
-      case 'Column':
-        final mainAlign = PropertyParser.parseMainAxisAlignment(properties['mainAxisAlignment']);
-        final crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
-        return Column(
-          mainAxisAlignment: mainAlign,
-          crossAxisAlignment: crossAlign,
-          mainAxisSize: MainAxisSize.min,
-          children: renderChildren(),
-        );
-
-      case 'Stack':
-        return Stack(
-          alignment: Alignment.topLeft,
-          children: renderChildren(),
         );
 
       case 'Wrap':
@@ -739,21 +906,43 @@ class ComponentRenderer {
       case 'Button':
         final text = properties['label'] ?? 'Click Me';
         final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? const Color(0xFF5B4FCF);
-        final fg = PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
-        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 8.0;
+        final fg = PropertyParser.parseColor(getStyle('textColor') ?? getStyle('color')) ?? Colors.white;
+        final radius = PropertyParser.parseDouble(getStyle('borderRadius'), 8.0);
+        final btnWidth = double.tryParse(getStyle('width')?.toString() ?? '');
+        final btnHeight = double.tryParse(getStyle('height')?.toString() ?? '');
+        final btnFontSize = PropertyParser.parseDouble(getStyle('fontSize'), 14.0);
+        final iconStr = properties['icon']?.toString();
 
-        return ElevatedButton(
+        Widget btnChild = iconStr != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(_getIconByName(iconStr), size: 16, color: fg),
+                  const SizedBox(width: 8),
+                  Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: btnFontSize)),
+                ],
+              )
+            : Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: btnFontSize));
+
+        Widget btn = ElevatedButton(
           onPressed: isDesignMode ? () {} : () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: bg,
             foregroundColor: fg,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            fixedSize: (btnWidth != null && btnHeight != null)
+                ? Size(btnWidth, btnHeight)
+                : btnWidth != null
+                    ? Size.fromWidth(btnWidth)
+                    : btnHeight != null
+                        ? Size.fromHeight(btnHeight)
+                        : null,
           ),
-          child: Center(
-            child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          ),
+          child: btnChild,
         );
+        return btn;
 
       case 'IconButton':
         final iconStr = properties['icon'] ?? 'star';
@@ -778,17 +967,33 @@ class ComponentRenderer {
 
       // ================== DISPLAY ==================
       case 'Text':
-        final text = properties['label'] ?? 'Sample Text';
-        final size = double.tryParse(getStyle('fontSize')?.toString() ?? '') ?? 14.0;
+        final text = properties['label'] ?? properties['text'] ?? 'Sample Text';
+        final size = PropertyParser.parseDouble(getStyle('fontSize'), 14.0);
         final weight = PropertyParser.parseFontWeight(getStyle('fontWeight'));
+        final fontStyle = PropertyParser.parseFontStyle(getStyle('fontStyle'));
         final col = PropertyParser.parseColor(getStyle('color')) ?? const Color(0xFF1A1A2E);
+        final textAlign = PropertyParser.parseTextAlign(getStyle('textAlign'));
+        final maxLines = int.tryParse(getStyle('maxLines')?.toString() ?? '');
+        final overflow = maxLines != null
+            ? PropertyParser.parseTextOverflow(getStyle('overflow') ?? 'ellipsis')
+            : null;
+        final letterSpacing = double.tryParse(getStyle('letterSpacing')?.toString() ?? '');
+        final lineHeight = double.tryParse(getStyle('lineHeight')?.toString() ?? '');
+        final decoration = PropertyParser.parseTextDecoration(getStyle('textDecoration'));
 
         return Text(
           text,
+          textAlign: textAlign,
+          maxLines: maxLines,
+          overflow: overflow,
           style: TextStyle(
             fontSize: size,
             fontWeight: weight,
+            fontStyle: fontStyle,
             color: col,
+            letterSpacing: letterSpacing,
+            height: lineHeight,
+            decoration: decoration,
           ),
         );
 
@@ -1070,7 +1275,6 @@ class ComponentRenderer {
         );
 
       case 'Search':
-        final fieldName = properties['fieldName'] ?? 'search';
         final label = properties['label'] ?? 'Search';
         final hint = properties['hint'] ?? 'Type keywords...';
         return TextField(
@@ -1257,28 +1461,46 @@ class ComponentRenderer {
           ),
         );
 
+
       case 'SingleChildScrollView':
+        // Use physics based on 'physics' property
+
+        ScrollPhysics? scrollPhysics;
+        final physicsStr = properties['physics']?.toString().toLowerCase();
+        if (physicsStr == 'never') {
+          scrollPhysics = const NeverScrollableScrollPhysics();
+        } else if (physicsStr == 'bouncing') {
+          scrollPhysics = const BouncingScrollPhysics();
+        } else {
+          scrollPhysics = const ClampingScrollPhysics();
+        }
+
         final direction = properties['scrollDirection'] == 'horizontal'
             ? Axis.horizontal
             : Axis.vertical;
         return SingleChildScrollView(
           scrollDirection: direction,
+          physics: scrollPhysics,
           child: node.children.isEmpty
               ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
-              : render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
+              : Column(
+                  mainAxisSize: direction == Axis.vertical ? MainAxisSize.min : MainAxisSize.max,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: node.children.map((childNode) => render(
+                    childNode,
+                    isDesignMode: isDesignMode,
+                    parentNode: node,
+                    selectedNode: selectedNode,
+                    hoveredNode: hoveredNode,
+                    onSelect: onSelect,
+                    onHover: onHover,
+                    onDelete: onDelete,
+                    onDuplicate: onDuplicate,
+                    onMoveChild: onMoveChild,
+                    onAddChild: onAddChild,
+                    formValues: formValues,
+                    onFormValueChanged: onFormValueChanged,
+                  )).toList(),
                 ),
         );
 
@@ -1417,73 +1639,126 @@ class ComponentRenderer {
 
   static IconData _getIconByName(String name) {
     switch (name.toLowerCase()) {
-      case 'add':
-        return Icons.add;
-      case 'star':
-        return Icons.star;
-      case 'info':
-        return Icons.info_outline;
-      case 'home':
-        return Icons.home_outlined;
-      case 'settings':
-        return Icons.settings;
-      case 'person':
-        return Icons.person_outline;
-      case 'email':
-        return Icons.mail_outline;
-      case 'phone':
-        return Icons.phone_android;
-      case 'lock':
-        return Icons.lock_outline;
-      case 'check':
-        return Icons.check;
-      case 'close':
-        return Icons.close;
-      case 'arrow_forward':
-        return Icons.arrow_forward;
-      case 'arrow_back':
-        return Icons.arrow_back;
-      case 'shopping_cart':
-        return Icons.shopping_cart;
-      case 'laptop':
-        return Icons.laptop;
-      case 'checkroom':
-        return Icons.checkroom;
-      case 'smartphone':
-        return Icons.smartphone;
-      case 'kitchen':
-        return Icons.kitchen;
-      case 'microwave':
-        return Icons.microwave;
-      case 'bolt':
-        return Icons.bolt;
-      case 'search':
-        return Icons.search;
-      case 'menu':
-        return Icons.menu;
-      case 'favorite':
-        return Icons.favorite;
-      case 'notifications':
-        return Icons.notifications;
-      default:
-        return Icons.category_outlined;
+      case 'spa': return Icons.spa;
+      case 'child_care': return Icons.child_care;
+      case 'children': return Icons.child_care;
+      case 'accessibility_new': return Icons.accessibility_new;
+      case 'accessibility': return Icons.accessibility;
+      case 'sentiment_satisfied': return Icons.sentiment_satisfied;
+      case 'medical_services': return Icons.medical_services;
+      case 'psychology': return Icons.psychology;
+      case 'local_hospital': return Icons.local_hospital;
+      case 'healing': return Icons.healing;
+      case 'medication': return Icons.medication;
+      case 'health_and_safety': return Icons.health_and_safety;
+      case 'monitor_heart': return Icons.monitor_heart;
+      case 'biotech': return Icons.biotech;
+      case 'science': return Icons.science;
+      case 'add': return Icons.add;
+      case 'add_circle': return Icons.add_circle_outline;
+      case 'star': return Icons.star;
+      case 'star_outline': return Icons.star_outline;
+      case 'info': return Icons.info_outline;
+      case 'home': return Icons.home_outlined;
+      case 'home_filled': return Icons.home;
+      case 'settings': return Icons.settings;
+      case 'settings_outline': return Icons.settings_outlined;
+      case 'person': return Icons.person_outline;
+      case 'person_filled': return Icons.person;
+      case 'email': return Icons.mail_outline;
+      case 'phone': return Icons.phone_android;
+      case 'lock': return Icons.lock_outline;
+      case 'lock_open': return Icons.lock_open_outlined;
+      case 'check': return Icons.check;
+      case 'check_circle': return Icons.check_circle_outline;
+      case 'close': return Icons.close;
+      case 'arrow_forward': return Icons.arrow_forward;
+      case 'arrow_back': return Icons.arrow_back;
+      case 'arrow_drop_down': return Icons.arrow_drop_down;
+      case 'arrow_drop_up': return Icons.arrow_drop_up;
+      case 'shopping_cart': return Icons.shopping_cart;
+      case 'shopping_bag': return Icons.shopping_bag_outlined;
+      case 'laptop': return Icons.laptop;
+      case 'checkroom': return Icons.checkroom;
+      case 'smartphone': return Icons.smartphone;
+      case 'kitchen': return Icons.kitchen;
+      case 'microwave': return Icons.microwave;
+      case 'bolt': return Icons.bolt;
+      case 'search': return Icons.search;
+      case 'menu': return Icons.menu;
+      case 'favorite': return Icons.favorite;
+      case 'favorite_outline': return Icons.favorite_border;
+      case 'notifications': return Icons.notifications;
+      case 'notifications_outline': return Icons.notifications_none;
+      case 'edit': return Icons.edit_outlined;
+      case 'delete': return Icons.delete_outline;
+      case 'share': return Icons.share_outlined;
+      case 'camera': return Icons.camera_alt_outlined;
+      case 'image': return Icons.image_outlined;
+      case 'filter': return Icons.filter_list;
+      case 'sort': return Icons.sort;
+      case 'dashboard': return Icons.dashboard_outlined;
+      case 'chart': return Icons.bar_chart;
+      case 'pie_chart': return Icons.pie_chart_outline;
+      case 'logout': return Icons.logout;
+      case 'login': return Icons.login;
+      case 'account': return Icons.account_circle_outlined;
+      case 'calendar': return Icons.calendar_today;
+      case 'location': return Icons.location_on_outlined;
+      case 'payment': return Icons.payment;
+      case 'credit_card': return Icons.credit_card;
+      case 'download': return Icons.download_outlined;
+      case 'upload': return Icons.upload_outlined;
+      case 'refresh': return Icons.refresh;
+      case 'more_horiz': return Icons.more_horiz;
+      case 'more_vert': return Icons.more_vert;
+      case 'visibility': return Icons.visibility_outlined;
+      case 'visibility_off': return Icons.visibility_off_outlined;
+      case 'send': return Icons.send;
+      case 'attach': return Icons.attach_file;
+      case 'copy': return Icons.copy_outlined;
+      case 'paste': return Icons.paste_outlined;
+      case 'done': return Icons.done;
+      case 'done_all': return Icons.done_all;
+      case 'help': return Icons.help_outline;
+      case 'warning': return Icons.warning_amber_outlined;
+      case 'error': return Icons.error_outline;
+      case 'wifi': return Icons.wifi;
+      case 'bluetooth': return Icons.bluetooth;
+      case 'battery': return Icons.battery_full;
+      case 'speed': return Icons.speed;
+      case 'trending_up': return Icons.trending_up;
+      case 'trending_down': return Icons.trending_down;
+      default: return Icons.category_outlined;
     }
   }
 
   static Widget _applyPaddingAndSizing(Widget widget, ComponentNode node) {
-    if (node.type == 'Container' || node.type == 'Card' || node.type == 'Scaffold' || node.type == 'SizedBox') {
-      return widget;
-    }
+    // Types that handle their own sizing and padding internally — skip the wrapper.
+    const selfSizedTypes = {
+      'Container', 'Card', 'Scaffold', 'SizedBox',
+      // Form fields with InputDecorator require unconstrained width from parent
+      // (or a finite constraint from an ancestor). Adding a SizedBox(width: null)
+      // here does NOT help and can cause the "infinite width" assertion.
+      'TextField', 'Dropdown', 'DatePicker', 'Search', 'FilePicker',
+      // Flex wrappers own their sizing.
+      'Expanded', 'Flexible', 'Spacer',
+    };
+    if (selfSizedTypes.contains(node.type)) return widget;
 
     Widget result = widget;
 
     final width = double.tryParse(node.styles['width']?.toString() ?? node.properties['width']?.toString() ?? '');
     final height = double.tryParse(node.styles['height']?.toString() ?? node.properties['height']?.toString() ?? '');
 
-    if (width != null || height != null) {
+    // Guard: don't emit SizedBox(width: infinity) — that propagates unbounded constraints.
+    final safeWidth = (width != null && width.isFinite && width > 0) ? width : null;
+    final safeHeight = (height != null && height.isFinite && height > 0) ? height : null;
+
+    if (safeWidth != null || safeHeight != null) {
       result = SizedBox(
-        width: width,
-        height: height,
+        width: safeWidth,
+        height: safeHeight,
         child: result,
       );
     }

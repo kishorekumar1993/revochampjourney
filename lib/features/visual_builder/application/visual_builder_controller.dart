@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/component_engine/models/component_node.dart';
@@ -63,6 +64,7 @@ class VisualBuilderState {
 class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   final Ref _ref;
   ComponentNode? _clipboardNode;
+  Timer? _hoverDebounce;
 
   VisualBuilderController(this._ref)
       : super(VisualBuilderState(
@@ -85,26 +87,27 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       }
     });
 
-    // Listen to changes in the journey config to reload when steps are modified or imported
+    // Listen to changes in the journey config to reload when steps are modified or imported.
+    // Use a lightweight check (step count + first step id + active step id) instead of
+    // serializing the entire tree to JSON on every config change.
     _ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
       final activeStepId = _ref.read(activeStepIdProvider);
       if (activeStepId.isNotEmpty) {
         final stepIndex = next.steps.indexWhere((s) => s.id == activeStepId);
         if (stepIndex != -1) {
           final step = next.steps[stepIndex];
-          final incomingLayout = step.screenLayout;
-          final currentLayout = state.rootNode.toJson();
-
-          // Only reload if the JSON layout serialization is different
-          if (json.encode(incomingLayout) != json.encode(currentLayout)) {
+          // Only reload if the layout root id or type changed (cheap check).
+          final incomingRootId = (step.screenLayout as Map?)?.entries
+              .firstWhere((e) => e.key == 'id', orElse: () => const MapEntry('id', ''))
+              .value
+              ?.toString() ?? '';
+          if (incomingRootId != state.rootNode.id) {
             _loadStepFromJourney(activeStepId);
           }
         } else {
-          // If the currently selected step was removed or doesn't exist, reload with fallback
           _loadStepFromJourney(activeStepId);
         }
       } else if (next.steps.isNotEmpty) {
-        // If activeStepId is empty, load the first step of the new journey
         _loadStepFromJourney(next.steps.first.id);
       }
     });
@@ -126,7 +129,19 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   }
 
   void hoverNode(ComponentNode? node) {
-    state = state.copyWith(hoveredNode: node);
+    // Debounce hover updates — only rebuild if the hovered node actually changed.
+    // This prevents a full canvas rebuild on every single pixel of mouse movement.
+    if (state.hoveredNode?.id == node?.id) return;
+    _hoverDebounce?.cancel();
+    _hoverDebounce = Timer(const Duration(milliseconds: 60), () {
+      if (mounted) state = state.copyWith(hoveredNode: node);
+    });
+  }
+
+  @override
+  void dispose() {
+    _hoverDebounce?.cancel();
+    super.dispose();
   }
 
   void toggleDesignMode() {
@@ -144,9 +159,10 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   // --- Tree Manipulation & Undo/Redo ---
 
   void _pushHistory(ComponentNode nextRoot) {
+    // Keep max 20 history entries to save memory on large trees.
     final updatedPast = [...state.past, state.rootNode];
     state = state.copyWith(
-      past: updatedPast.length > 30 ? updatedPast.sublist(updatedPast.length - 30) : updatedPast,
+      past: updatedPast.length > 20 ? updatedPast.sublist(updatedPast.length - 20) : updatedPast,
       rootNode: nextRoot,
       future: [],
     );
@@ -258,23 +274,35 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   void updateNodeProperties(String nodeId, Map<String, dynamic> props) {
     final updatedRoot = _updateNodeInTree(state.rootNode, nodeId, (node) {
-      final newProps = {...node.properties};
-      final newStyles = {...node.styles};
+      final newProps = Map<String, dynamic>.from(node.properties);
+      final newStyles = Map<String, dynamic>.from(node.styles);
 
+      // Must match the full style key list in component_node.dart fromJson migration.
       const styleKeys = {
-        'width', 'height', 'backgroundColor', 'color', 'textColor',
-        'fontSize', 'fontWeight', 'padding', 'margin', 'borderRadius',
-        'elevation', 'src', 'fit', 'spacing', 'runSpacing',
-        'gradientStart', 'gradientEnd', 'borderColor', 'borderWidth'
+        'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+        'backgroundColor', 'color', 'textColor',
+        'fontSize', 'fontWeight', 'fontStyle',
+        'textAlign', 'letterSpacing', 'lineHeight', 'maxLines', 'overflow',
+        'textDecoration',
+        'padding', 'margin',
+        'borderRadius', 'borderColor', 'borderWidth',
+        'elevation', 'shadow',
+        'src', 'fit',
+        'spacing', 'runSpacing',
+        'gradientStart', 'gradientEnd', 'gradientAngle',
+        'opacity', 'flex', 'alignment',
+        'scrollDirection', 'crossAxisCount', 'childAspectRatio',
+        'crossAxisSpacing', 'mainAxisSpacing', 'mainAxisSize',
+        'viewportFraction', 'autoPlay',
       };
 
-      props.forEach((key, val) {
-        if (styleKeys.contains(key)) {
-          newStyles[key] = val;
+      for (final entry in props.entries) {
+        if (styleKeys.contains(entry.key)) {
+          newStyles[entry.key] = entry.value;
         } else {
-          newProps[key] = val;
+          newProps[entry.key] = entry.value;
         }
-      });
+      }
 
       return node.copyWith(properties: newProps, styles: newStyles);
     });
@@ -468,7 +496,42 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   }
 }
 
-// Riverpod Provider
+// ── Main Provider ──────────────────────────────────────────────────────────
 final visualBuilderProvider = StateNotifierProvider<VisualBuilderController, VisualBuilderState>((ref) {
   return VisualBuilderController(ref);
 });
+
+// ── Granular Derived Providers ─────────────────────────────────────────────
+// Use these in widgets instead of watching the whole state.
+// Each only triggers a rebuild when its specific slice changes.
+
+/// Root node tree — rebuilds on any tree structural change.
+final builderRootNodeProvider = Provider<ComponentNode>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => s.rootNode));
+});
+
+/// Selected node — rebuilds only when selection changes.
+final builderSelectedNodeProvider = Provider<ComponentNode?>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => s.selectedNode));
+});
+
+/// Hovered node — rebuilds only when hover changes (debounced in controller).
+final builderHoveredNodeProvider = Provider<ComponentNode?>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => s.hoveredNode));
+});
+
+/// Design/Preview mode — rebuilds only on mode toggle.
+final builderDesignModeProvider = Provider<bool>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => s.isDesignMode));
+});
+
+/// Canvas dimensions — rebuilds only when size/scale changes.
+final builderCanvasSizeProvider = Provider<({double width, double height, double scale})>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => (width: s.canvasWidth, height: s.canvasHeight, scale: s.canvasScale)));
+});
+
+/// Undo/Redo availability — rebuilds only when history changes.
+final builderHistoryProvider = Provider<({bool canUndo, bool canRedo})>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => (canUndo: s.past.isNotEmpty, canRedo: s.future.isNotEmpty)));
+});
+

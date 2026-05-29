@@ -50,6 +50,11 @@ class ComponentPropertyKeys {
 }
 
 class PropertyParser {
+  static double parseDouble(dynamic val, [double defaultValue = 0.0]) {
+    if (val == null) return defaultValue;
+    return double.tryParse(val.toString()) ?? defaultValue;
+  }
+
   static EdgeInsetsGeometry parsePadding(dynamic val) {
     if (val == null) return EdgeInsets.zero;
     if (val is num) {
@@ -174,6 +179,78 @@ class PropertyParser {
         return BoxFit.scaleDown;
       default:
         return BoxFit.cover;
+    }
+  }
+
+  static TextAlign parseTextAlign(dynamic val) {
+    switch (val?.toString().toLowerCase()) {
+      case 'left': return TextAlign.left;
+      case 'right': return TextAlign.right;
+      case 'center': return TextAlign.center;
+      case 'justify': return TextAlign.justify;
+      default: return TextAlign.start;
+    }
+  }
+
+  static TextOverflow parseTextOverflow(dynamic val) {
+    switch (val?.toString().toLowerCase()) {
+      case 'clip': return TextOverflow.clip;
+      case 'fade': return TextOverflow.fade;
+      case 'ellipsis': return TextOverflow.ellipsis;
+      case 'visible': return TextOverflow.visible;
+      default: return TextOverflow.clip;
+    }
+  }
+
+  static FontStyle parseFontStyle(dynamic val) {
+    return val?.toString().toLowerCase() == 'italic' ? FontStyle.italic : FontStyle.normal;
+  }
+
+  static AlignmentGeometry parseAlignment(dynamic val) {
+    switch (val?.toString().toLowerCase()) {
+      case 'center': return Alignment.center;
+      case 'topleft': return Alignment.topLeft;
+      case 'topcenter': return Alignment.topCenter;
+      case 'topright': return Alignment.topRight;
+      case 'bottomleft': return Alignment.bottomLeft;
+      case 'bottomcenter': return Alignment.bottomCenter;
+      case 'bottomright': return Alignment.bottomRight;
+      default: return Alignment.center;
+    }
+  }
+
+  static BoxShadow parseBoxShadow(dynamic val) {
+    if (val is! Map) return const BoxShadow();
+    return BoxShadow(
+      color: parseColor(val['color']) ?? Colors.black.withValues(alpha: 0.1),
+      offset: Offset(parseDouble(val['dx']), parseDouble(val['dy'])),
+      blurRadius: parseDouble(val['blur']),
+    );
+  }
+
+  static BoxBorder parseBorder(dynamic val) {
+    if (val is! Map) return Border.all(width: 0, color: Colors.transparent);
+    return Border.all(
+      color: parseColor(val['color']) ?? Colors.black,
+      width: parseDouble(val['width'], 1.0),
+    );
+  }
+
+  static MainAxisSize parseMainAxisSize(dynamic val) {
+    if (val == null) return MainAxisSize.max;
+    final str = val.toString().toLowerCase();
+    if (str == 'min') return MainAxisSize.min;
+    return MainAxisSize.max;
+  }
+
+  static TextDecoration parseTextDecoration(dynamic val) {
+    if (val == null) return TextDecoration.none;
+    final str = val.toString().toLowerCase().replaceAll('_', '').replaceAll(' ', '');
+    switch (str) {
+      case 'underline': return TextDecoration.underline;
+      case 'overline': return TextDecoration.overline;
+      case 'linethrough': return TextDecoration.lineThrough;
+      default: return TextDecoration.none;
     }
   }
 }

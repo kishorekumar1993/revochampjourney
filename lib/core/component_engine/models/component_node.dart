@@ -49,29 +49,29 @@ class ComponentNode {
         ? Map<String, dynamic>.from(json['styles'])
         : {};
 
-    // Legacy style migration: if styles is empty, pull styling keys from properties
-    if (rawStyles.isEmpty) {
-      final styleKeys = [
-        'width',
-        'height',
-        'backgroundColor',
-        'color',
-        'textColor',
-        'fontSize',
-        'fontWeight',
-        'padding',
-        'margin',
-        'borderRadius',
-        'elevation',
-        'src',
-        'fit',
-        'spacing',
-        'runSpacing',
-      ];
-      for (final key in styleKeys) {
-        if (rawProps.containsKey(key)) {
-          rawStyles[key] = rawProps[key];
-        }
+    // Legacy style migration: if styles is empty, pull styling keys from properties.
+    // Also always migrate style keys even if rawStyles is not empty, so properties bag
+    // can act as a fallback for older JSON schemas.
+    const styleKeys = [
+      'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+      'backgroundColor', 'color', 'textColor',
+      'fontSize', 'fontWeight', 'fontStyle',
+      'textAlign', 'letterSpacing', 'lineHeight', 'maxLines', 'overflow',
+      'textDecoration',
+      'padding', 'margin',
+      'borderRadius', 'borderColor', 'borderWidth',
+      'elevation', 'shadow',
+      'src', 'fit',
+      'spacing', 'runSpacing',
+      'gradientStart', 'gradientEnd', 'gradientAngle',
+      'opacity', 'flex', 'alignment',
+      'scrollDirection', 'crossAxisCount', 'childAspectRatio',
+      'crossAxisSpacing', 'mainAxisSpacing', 'mainAxisSize',
+      'viewportFraction', 'autoPlay',
+    ];
+    for (final key in styleKeys) {
+      if (rawProps.containsKey(key) && !rawStyles.containsKey(key)) {
+        rawStyles[key] = rawProps[key];
       }
     }
 

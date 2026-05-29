@@ -1,0 +1,2936 @@
+{
+  "id": "healthcare_appointment_app",
+  "type": "Scaffold",
+  "isLocked": false,
+  "isVisible": true,
+  "isReusable": false,
+  "properties": {
+    "backgroundColor": "#F4F9FF"
+  },
+  "styles": {
+    "backgroundColor": "#F4F9FF"
+  },
+  "responsive": {
+    "breakpoints": {
+      "mobile": 0,
+      "tablet": 600,
+      "desktop": 1024
+    }
+  },
+  "bindings": {
+    "userName": {
+      "type": "state",
+      "defaultValue": "Sarah Wilson",
+      "source": "global.user.name"
+    },
+    "upcomingAppointmentCount": {
+      "type": "state",
+      "defaultValue": 1,
+      "source": "global.appointments.upcoming.length"
+    }
+  },
+  "animations": {},
+  "children": [
+    {
+      "id": "app_bar",
+      "type": "Container",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": true,
+      "properties": {},
+      "styles": {
+        "backgroundColor": "#FFFFFF",
+        "padding": {
+          "left": 16,
+          "right": 16,
+          "top": 12,
+          "bottom": 8
+        },
+        "width": "100%",
+        "elevation": 1
+      },
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "app_bar_row",
+          "type": "Row",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "mainAxisAlignment": "space_between",
+            "crossAxisAlignment": "center"
+          },
+          "styles": {
+            "width": "100%"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "user_info",
+              "type": "Column",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "mainAxisAlignment": "start",
+                "crossAxisAlignment": "start"
+              },
+              "styles": {},
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "greeting",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "Hello,"
+                  },
+                  "styles": {
+                    "fontSize": 12,
+                    "color": "#007BFF",
+                    "fontWeight": "500"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                },
+                {
+                  "id": "user_name",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {},
+                  "styles": {
+                    "fontSize": 16,
+                    "fontWeight": "bold",
+                    "color": "#1A1A2E"
+                  },
+                  "responsive": {},
+                  "bindings": {
+                    "label": "userName"
+                  },
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "notification_badge",
+              "type": "Stack",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {},
+              "styles": {
+                "width": 40,
+                "height": 40
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "notification_icon",
+                  "type": "Icon",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "icon": "notifications"
+                  },
+                  "styles": {
+                    "fontSize": 28,
+                    "color": "#007BFF"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": [
+                    {
+                      "event": "onTap",
+                      "steps": [
+                        {
+                          "id": "open_notifications",
+                          "type": "navigate",
+                          "enabled": true,
+                          "conditions": [],
+                          "successSteps": [],
+                          "failureSteps": [],
+                          "nestedSteps": [],
+                          "pageId": "notifications_page"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "notification_count_badge",
+                  "type": "Container",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {},
+                  "styles": {
+                    "position": "topRight",
+                    "backgroundColor": "#FF4D4F",
+                    "borderRadius": 12,
+                    "padding": {
+                      "left": 4,
+                      "right": 4,
+                      "top": 2,
+                      "bottom": 2
+                    },
+                    "margin": {
+                      "top": -4,
+                      "right": -4
+                    },
+                    "minWidth": 18,
+                    "height": 18
+                  },
+                  "responsive": {},
+                  "bindings": {
+                    "visible": "upcomingAppointmentCount > 0"
+                  },
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "notification_count_text",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "fontSize": 10,
+                        "fontWeight": "bold",
+                        "color": "#FFFFFF",
+                        "textAlign": "center"
+                      },
+                      "responsive": {},
+                      "bindings": {
+                        "label": "upcomingAppointmentCount"
+                      },
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "actions": []
+        }
+      ],
+      "actions": []
+    },
+    {
+      "id": "main_scroll",
+      "type": "SingleChildScrollView",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": false,
+      "properties": {
+        "scrollDirection": "vertical",
+        "physics": "always"
+      },
+      "styles": {
+        "width": "100%"
+      },
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "content_column",
+          "type": "Column",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch"
+          },
+          "styles": {
+            "padding": {
+              "left": 16,
+              "right": 16,
+              "top": 16,
+              "bottom": 80
+            },
+            "width": "100%"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "search_bar",
+              "type": "TextField",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "fieldName": "search_doctor",
+                "hint": "Search doctors, specialties, clinics...",
+                "required": false
+              },
+              "styles": {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 30,
+                "padding": 14,
+                "fontSize": 14,
+                "elevation": 2,
+                "width": "100%",
+                "height": 50,
+                "margin": {
+                  "bottom": 20
+                }
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [],
+              "actions": []
+            },
+            {
+              "id": "specialties_section",
+              "type": "Column",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "crossAxisAlignment": "stretch"
+              },
+              "styles": {
+                "margin": {
+                  "bottom": 24
+                },
+                "width": "100%"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "section_header",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "space_between",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {
+                    "margin": {
+                      "bottom": 12
+                    },
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "specialties_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Specialties"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#1A1A2E"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "see_all_specialties",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "See All"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "color": "#007BFF"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "nav_all_specialties",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "specialties_page"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "specialties_horizontal",
+                  "type": "SingleChildScrollView",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "scrollDirection": "horizontal"
+                  },
+                  "styles": {
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "specialties_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {},
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "spec_cardiology",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "cardiology_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#FFE8E0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "cardiology_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "favorite" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#FF7A45"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "cardiology_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Cardiology" },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_cardiology",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_cardiology"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "spec_dermatology",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "dermatology_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E8F0FE"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "dermatology_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "spa" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#3B82F6"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "dermatology_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Dermatology" },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_dermatology",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_dermatology"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "spec_pediatric",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "pediatric_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E6F7EC"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "pediatric_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "child_care" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "pediatric_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Pediatrics" },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_pediatrics",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_pediatrics"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "spec_orthopedic",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "orthopedic_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#FEF3C7"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "orthopedic_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "accessibility_new" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#F59E0B"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "orthopedic_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Orthopedics" },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_orthopedics",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_orthopedics"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "spec_dentist",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "dentist_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E0E7FF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "dentist_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "sentiment_satisfied" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#4F46E5"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "dentist_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Dentist" },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_dentist",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_dentist"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "spec_ophthalmology",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": { "right": 16 },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "ophthalmology_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#D1FAE5"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "ophthalmology_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": { "icon": "visibility" },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#059669"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "ophthalmology_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": { "label": "Ophthalmology" },
+                              "styles": {
+                                "fontSize": 11,
+                                "margin": { "top": 6 },
+                                "color": "#1A1A2E"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": [
+                            {
+                              "event": "onTap",
+                              "steps": [
+                                {
+                                  "id": "nav_ophthalmology",
+                                  "type": "navigate",
+                                  "enabled": true,
+                                  "conditions": [],
+                                  "successSteps": [],
+                                  "failureSteps": [],
+                                  "nestedSteps": [],
+                                  "pageId": "specialty_ophthalmology"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "nearby_doctors_section",
+              "type": "Column",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "crossAxisAlignment": "stretch"
+              },
+              "styles": {
+                "margin": {
+                  "bottom": 24
+                },
+                "width": "100%"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "doctors_header",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "space_between",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {
+                    "margin": {
+                      "bottom": 12
+                    },
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "doctors_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Nearby Doctors"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#1A1A2E"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "see_all_doctors",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "See All"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "color": "#007BFF"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "nav_all_doctors",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "doctors_page"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "doctor_list",
+                  "type": "Column",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "crossAxisAlignment": "stretch"
+                  },
+                  "styles": {
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "doctor_card_1",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "doctor_row_1",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "doctor1_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://randomuser.me/api/portraits/women/44.jpg",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor1_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor1_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Dr. Emily Chen"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#1A1A2E",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor1_specialty",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Cardiologist"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor1_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "doctor1_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "doctor1_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.9 (120+ reviews)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor1_availability",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor1_next_slot",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Next: 9:30 AM"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_doctor1",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "doctor_detail_1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "doctor_card_2",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "doctor_row_2",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "doctor2_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://randomuser.me/api/portraits/men/32.jpg",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor2_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor2_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Dr. Michael Brown"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#1A1A2E",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor2_specialty",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Dermatologist"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor2_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "doctor2_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "doctor2_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.7 (85+ reviews)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor2_availability",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor2_next_slot",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Next: 10:15 AM"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_doctor2",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "doctor_detail_2"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "doctor_card_3",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "doctor_row_3",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "doctor3_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://randomuser.me/api/portraits/women/68.jpg",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor3_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor3_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Dr. Lisa Park"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#1A1A2E",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor3_specialty",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Pediatrician"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "doctor3_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "doctor3_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "doctor3_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.8 (200+ reviews)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "doctor3_availability",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "doctor3_next_slot",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Next: 11:00 AM"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_doctor3",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "doctor_detail_3"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "appointment_calendar_section",
+              "type": "Column",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "crossAxisAlignment": "stretch"
+              },
+              "styles": {
+                "margin": {
+                  "bottom": 24
+                },
+                "width": "100%"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "calendar_header",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "space_between",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {
+                    "margin": {
+                      "bottom": 12
+                    },
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "calendar_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Select Date"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#1A1A2E"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "date_picker",
+                  "type": "SingleChildScrollView",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "scrollDirection": "horizontal"
+                  },
+                  "styles": {
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "date_chips_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "padding": {
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "date_today",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "backgroundColor": "#007BFF",
+                            "borderRadius": 16,
+                            "padding": {
+                              "left": 12,
+                              "right": 12,
+                              "top": 10,
+                              "bottom": 10
+                            },
+                            "margin": {
+                              "right": 10
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "date_today_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Today\nMay 29"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "fontWeight": "bold",
+                                "color": "#FFFFFF",
+                                "textAlign": "center"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "date_tomorrow",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "backgroundColor": "#F0F4FF",
+                            "borderRadius": 16,
+                            "padding": {
+                              "left": 12,
+                              "right": 12,
+                              "top": 10,
+                              "bottom": 10
+                            },
+                            "margin": {
+                              "right": 10
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "date_tomorrow_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Fri\nMay 30"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#1A1A2E",
+                                "textAlign": "center"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "date_sat",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "backgroundColor": "#F0F4FF",
+                            "borderRadius": 16,
+                            "padding": {
+                              "left": 12,
+                              "right": 12,
+                              "top": 10,
+                              "bottom": 10
+                            },
+                            "margin": {
+                              "right": 10
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "date_sat_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Sat\nMay 31"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#1A1A2E",
+                                "textAlign": "center"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "date_sun",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "backgroundColor": "#F0F4FF",
+                            "borderRadius": 16,
+                            "padding": {
+                              "left": 12,
+                              "right": 12,
+                              "top": 10,
+                              "bottom": 10
+                            },
+                            "margin": {
+                              "right": 10
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "date_sun_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Sun\nJun 1"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#1A1A2E",
+                                "textAlign": "center"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "date_mon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "backgroundColor": "#F0F4FF",
+                            "borderRadius": 16,
+                            "padding": {
+                              "left": 12,
+                              "right": 12,
+                              "top": 10,
+                              "bottom": 10
+                            },
+                            "margin": {
+                              "right": 10
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "date_mon_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Mon\nJun 2"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#1A1A2E",
+                                "textAlign": "center"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "time_slots_header",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "Available Time Slots"
+                  },
+                  "styles": {
+                    "fontSize": 16,
+                    "fontWeight": "bold",
+                    "color": "#1A1A2E",
+                    "margin": {
+                      "top": 16,
+                      "bottom": 12
+                    }
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                },
+                {
+                  "id": "time_slots_grid",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "start",
+                    "crossAxisAlignment": "center",
+                    "wrap": true
+                  },
+                  "styles": {
+                    "width": "100%",
+                    "flexWrap": "wrap",
+                    "gap": 8
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "slot_1",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#F0F4FF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_1_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "09:00 AM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#007BFF",
+                            "fontWeight": "500"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "select_slot_1",
+                              "type": "state",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "target": "selectedTimeSlot",
+                              "value": "09:00 AM"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "slot_2",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#F0F4FF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_2_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "10:30 AM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#007BFF",
+                            "fontWeight": "500"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "select_slot_2",
+                              "type": "state",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "target": "selectedTimeSlot",
+                              "value": "10:30 AM"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "slot_3",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#007BFF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_3_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "11:30 AM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#FFFFFF",
+                            "fontWeight": "bold"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "slot_4",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#F0F4FF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_4_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "02:00 PM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#007BFF",
+                            "fontWeight": "500"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "slot_5",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#F0F4FF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_5_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "03:30 PM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#007BFF",
+                            "fontWeight": "500"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "slot_6",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#F0F4FF",
+                        "borderRadius": 20,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "margin": {
+                          "right": 8,
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "slot_6_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "05:00 PM"
+                          },
+                          "styles": {
+                            "fontSize": 14,
+                            "color": "#007BFF",
+                            "fontWeight": "500"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "book_now_button",
+                  "type": "Button",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "Book Appointment"
+                  },
+                  "styles": {
+                    "backgroundColor": "#007BFF",
+                    "textColor": "#FFFFFF",
+                    "borderRadius": 30,
+                    "padding": {
+                      "left": 24,
+                      "right": 24,
+                      "top": 14,
+                      "bottom": 14
+                    },
+                    "fontSize": 16,
+                    "fontWeight": "bold",
+                    "margin": {
+                      "top": 16
+                    },
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": [
+                    {
+                      "event": "onTap",
+                      "steps": [
+                        {
+                          "id": "navigate_booking",
+                          "type": "navigate",
+                          "enabled": true,
+                          "conditions": [],
+                          "successSteps": [],
+                          "failureSteps": [],
+                          "nestedSteps": [],
+                          "pageId": "booking_confirmation"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "promo_banner",
+              "type": "Container",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {},
+              "styles": {
+                "backgroundColor": "#10B981",
+                "borderRadius": 16,
+                "padding": 16,
+                "margin": {
+                  "top": 8,
+                  "bottom": 16
+                },
+                "width": "100%"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "promo_row",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "space_between",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {},
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "promo_text_col",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "start"
+                      },
+                      "styles": {
+                        "flex": 1
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "promo_title",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Need Urgent Care?"
+                          },
+                          "styles": {
+                            "fontSize": 18,
+                            "fontWeight": "bold",
+                            "color": "#FFFFFF",
+                            "margin": {
+                              "bottom": 4
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        },
+                        {
+                          "id": "promo_desc",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Connect with a doctor in minutes"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "color": "#FFFFFF",
+                            "opacity": 0.9
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "promo_button",
+                      "type": "Button",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Call Now"
+                      },
+                      "styles": {
+                        "backgroundColor": "#FFFFFF",
+                        "textColor": "#10B981",
+                        "borderRadius": 30,
+                        "padding": {
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
+                        },
+                        "fontSize": 12,
+                        "fontWeight": "bold"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "navigate_urgent",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "urgent_care_page"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "actions": []
+        }
+      ],
+      "actions": []
+    },
+    {
+      "id": "bottom_nav",
+      "type": "BottomNavigationBar",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": false,
+      "properties": {
+        "currentIndex": 0,
+        "type": "fixed",
+        "showSelectedLabels": true
+      },
+      "styles": {
+        "backgroundColor": "#FFFFFF",
+        "elevation": 8,
+        "height": 56,
+        "width": "100%"
+      },
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "nav_home",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Home",
+            "icon": "home",
+            "activeIcon": "home_filled"
+          },
+          "styles": {
+            "activeColor": "#007BFF",
+            "inactiveColor": "#ADB5BD"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "set_home",
+                  "type": "state",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": [],
+                  "target": "currentIndex",
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_appointments",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Appointments",
+            "icon": "event",
+            "activeIcon": "event_filled"
+          },
+          "styles": {
+            "activeColor": "#007BFF",
+            "inactiveColor": "#ADB5BD"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_appointments",
+                  "type": "navigate",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": [],
+                  "pageId": "appointments_page"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_messages",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Chat",
+            "icon": "chat",
+            "activeIcon": "chat_filled"
+          },
+          "styles": {
+            "activeColor": "#007BFF",
+            "inactiveColor": "#ADB5BD"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_messages",
+                  "type": "navigate",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": [],
+                  "pageId": "messages_page"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_profile",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Profile",
+            "icon": "person",
+            "activeIcon": "person_filled"
+          },
+          "styles": {
+            "activeColor": "#007BFF",
+            "inactiveColor": "#ADB5BD"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_profile",
+                  "type": "navigate",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": [],
+                  "pageId": "profile_page"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": []
+    }
+  ],
+  "actions": []
+}
