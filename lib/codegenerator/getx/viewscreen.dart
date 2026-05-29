@@ -1,14 +1,34 @@
 import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
 import 'package:revojourneytryone/codegenerator/getx/getx_model_naming.dart';
+import 'layouts/split_layout.dart';
+import 'layouts/focus_layout.dart';
+import 'layouts/timeline_layout.dart';
+import 'layouts/tabbed_layout.dart';
+import 'layouts/carousel_layout.dart';
+import 'layouts/accordion_layout.dart';
+import 'layouts/masterdetail_layout.dart';
+import 'layouts/default_layout.dart';
+import 'layouts/wizard_layout.dart';
+import 'layouts/review_layout.dart';
+import 'layouts/dashboard_layout.dart';
+import 'layouts/chat_layout.dart';
+import 'layouts/kanban_layout.dart';
+import 'layouts/stepper_layout.dart';
+import 'plugins/field_generator_plugins.dart';
 
 String generateviewClass(
   String className,
   List<dynamic> fields,
   String fileName, {
   Map<String, dynamic>? stepJson,
+  List<dynamic>? allSteps,
+  String layoutStyle = 'split',
 }) {
   final buffer = StringBuffer();
   final stepMeta = JourneyStepCodegen.fromJson(stepJson ?? {});
+  final stepsList = allSteps ?? [];
+  final activeIdx = stepsList.indexWhere((s) => s['id'] == stepMeta.id);
+  final activeIdxClamp = activeIdx != -1 ? activeIdx : 0;
 
   // ─── Recursive flatten ────────────────────────────────────────
   void flattenFields(dynamic source, List<Map<String, dynamic>> result) {
@@ -47,6 +67,7 @@ String generateviewClass(
   buffer.writeln("import 'package:flutter/material.dart';");
   buffer.writeln("import 'package:flutter/services.dart';");
   buffer.writeln("import 'package:get/get.dart';");
+  buffer.writeln("import 'package:google_fonts/google_fonts.dart';");
   buffer.writeln(
     "import '../controllers/${fileName.toLowerCase().replaceAll(' ', '_')}_controller.dart';",
   );
@@ -62,89 +83,55 @@ String generateviewClass(
   }
   buffer.writeln();
 
-  // ─── Generated View Layout Enum ──────────────────────────────
-  buffer.writeln("enum GeneratedRunnerLayoutStyle { split, focus, timeline, tabbed }");
-  buffer.writeln();
-
   // ─── View class ──────────────────────────────────────────────
   buffer.writeln(
     "class ${className}View extends GetView<${className}Controller> {",
   );
   buffer.writeln("  const ${className}View({super.key});");
   buffer.writeln();
-  buffer.writeln("  static final layoutStyle = GeneratedRunnerLayoutStyle.split.obs;");
-  buffer.writeln();
+
+  // Generate build method based on layoutStyle
   buffer.writeln("  @override");
   buffer.writeln("  Widget build(BuildContext context) {");
   buffer.writeln("    final theme = Theme.of(context);");
   buffer.writeln();
-  buffer.writeln("    return Scaffold(");
-  buffer.writeln("      backgroundColor: const Color(0xFFF0F0FF),");
-  buffer.writeln("      appBar: AppBar(");
-  buffer.writeln(
-    "        title: Text('${stepMeta.escapedTitle}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),",
-  );
-  buffer.writeln("        backgroundColor: Colors.white,");
-  buffer.writeln("        foregroundColor: const Color(0xFF1A1A2E),");
-  buffer.writeln("        elevation: 0,");
-  buffer.writeln("        centerTitle: true,");
-  buffer.writeln("        actions: [");
-  buffer.writeln("          Obx(() => Container(");
-  buffer.writeln("            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),");
-  buffer.writeln("            padding: const EdgeInsets.symmetric(horizontal: 4),");
-  buffer.writeln("            decoration: BoxDecoration(");
-  buffer.writeln("              color: const Color(0xFFF0F0FF),");
-  buffer.writeln("              borderRadius: BorderRadius.circular(10),");
-  buffer.writeln("            ),");
-  buffer.writeln("            child: Row(");
-  buffer.writeln("              mainAxisSize: MainAxisSize.min,");
-  buffer.writeln("              children: [");
-  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.split, Icons.splitscreen_rounded, 'Split View'),");
-  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),");
-  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),");
-  buffer.writeln("                _buildStyleIcon(GeneratedRunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),");
-  buffer.writeln("              ],");
-  buffer.writeln("            ),");
-  buffer.writeln("          )),");
-  buffer.writeln("        ],");
-  buffer.writeln("      ),");
-  buffer.writeln("      body: GestureDetector(");
-  buffer.writeln("        onTap: () => FocusScope.of(context).unfocus(),");
-  buffer.writeln("        child: SafeArea(");
-  buffer.writeln("          child: Stack(");
-  buffer.writeln("            children: [");
-  buffer.writeln("              Obx(() {");
-  buffer.writeln("                switch (layoutStyle.value) {");
-  buffer.writeln("                  case GeneratedRunnerLayoutStyle.split:");
-  buffer.writeln("                    return _buildSplitLayout(context);");
-  buffer.writeln("                  case GeneratedRunnerLayoutStyle.focus:");
-  buffer.writeln("                    return _buildFocusLayout(context);");
-  buffer.writeln("                  case GeneratedRunnerLayoutStyle.timeline:");
-  buffer.writeln("                    return _buildTimelineLayout(context);");
-  buffer.writeln("                  case GeneratedRunnerLayoutStyle.tabbed:");
-  buffer.writeln("                    return _buildTabbedLayout(context);");
-  buffer.writeln("                }");
-  buffer.writeln("              }),");
-  buffer.writeln("              // Loading overlay");
-  buffer.writeln("              Obx(() {");
-  buffer.writeln("                if (!controller.isExecuting.value) return const SizedBox.shrink();");
-  buffer.writeln("                return AbsorbPointer(");
-  buffer.writeln("                  absorbing: true,");
-  buffer.writeln("                  child: Container(");
-  buffer.writeln("                    color: Colors.black.withValues(alpha: 0.15),");
-  buffer.writeln("                    child: const Center(");
-  buffer.writeln("                      child: CircularProgressIndicator(),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                );");
-  buffer.writeln("              }),");
-  buffer.writeln("            ],");
-  buffer.writeln("          ),");
-  buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
+
+  final normStyle = layoutStyle.toLowerCase().trim();
+
+  if (normStyle == 'split') {
+    generateSplitLayout(buffer, stepMeta, className);
+  } else if (normStyle == 'focus') {
+    generateFocusLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'timeline') {
+    generateTimelineLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'tabbed') {
+    generateTabbedLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'carousel' || normStyle == 'curasole') {
+    generateCarouselLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'accordion') {
+    generateAccordionLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'masterdetail') {
+    generateMasterDetailLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'wizard') {
+    generateWizardLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'review') {
+    generateReviewLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'dashboard') {
+    generateDashboardLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'chat' || normStyle == 'chatform') {
+    generateChatLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'kanban') {
+    generateKanbanLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else if (normStyle == 'stepper') {
+    generateStepperLayout(buffer, stepMeta, className, stepsList, activeIdxClamp);
+  } else {
+    generateDefaultLayout(buffer, stepMeta, className);
+  }
+
   buffer.writeln("  }");
   buffer.writeln();
+
+  // Generate _buildFormContent method
   buffer.writeln("  Widget _buildFormContent(BuildContext context, {bool isMobile = false}) {");
   buffer.writeln("    final theme = Theme.of(context);");
   buffer.writeln("    return Form(");
@@ -153,6 +140,7 @@ String generateviewClass(
   buffer.writeln("      child: Column(");
   buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.start,");
   buffer.writeln("        children: [");
+  
   stepMeta.writeFlutterStepHeader(buffer);
 
   // ─── Recursive widget builder ────────────────────────────────
@@ -184,16 +172,7 @@ String generateviewClass(
       final textCapitalization = (field['textCapitalization'] ?? 'none')
           .toString()
           .toLowerCase();
-      final minLength = int.tryParse(field['minLength']?.toString() ?? '') ?? 0;
       final maxLength = int.tryParse(field['maxLength']?.toString() ?? '') ?? 0;
-      final staticOpts =
-          (field['options'] as List<dynamic>?) ??
-          (field['staticOptions'] as List<dynamic>?);
-      final useStatic = field['useStaticOptions'] == true;
-      final isApiDropdown =
-          (type == 'dropdown' || type == 'api_dropdown') &&
-          !useStatic &&
-          field['dropdownApiUrl'] != null;
 
       final fieldId = field['id']?.toString() ?? '';
       final constName =
@@ -212,991 +191,29 @@ String generateviewClass(
       buffer.writeln("                  if (!$visibilityCheck) return const SizedBox.shrink();");
       buffer.writeln("                  return ");
 
-      if (type == 'text' || type == 'textfield') {
-        _writeTextFormField(
+      final plugin = FieldGeneratorRegistry.find(type);
+      if (plugin != null) {
+        plugin.generateWidget(
           buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: isPassword,
-          isReadOnly: isReadOnly,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          textCapitalization: textCapitalization,
-          errorRef: errorRef,
-          inputFormatters: null,
-          maxLength: null,
-          maxLines: null,
-          minLines: null,
+          field,
+          name,
+          capitalLabel,
+          rawLabel,
+          hint,
+          isRequired,
+          isPassword,
+          isReadOnly,
+          keyboardType,
+          textInputAction,
+          textCapitalization,
+          maxLength,
+          errorRef,
+          className,
+          buildWidgets,
         );
-      } else if (type == 'phone') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'phone',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-          inputFormatters: 'FilteringTextInputFormatter.digitsOnly',
-        );
-      } else if (type == 'email') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'emailAddress',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-        );
-      } else if (type == 'password') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: true,
-          isReadOnly: isReadOnly,
-          keyboardType: 'text',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-        );
-      } else if (type == 'textarea') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'multiline',
-          textInputAction: 'newline',
-          textCapitalization: 'sentences',
-          errorRef: errorRef,
-          maxLines: 4,
-          minLines: 3,
-        );
-      } else if (type == 'number' || type == 'integer' || type == 'int') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'number',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-        );
-      } else if (type == 'decimal' || type == 'double' || type == 'float') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'decimalPad',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-        );
-      } else if (type == 'otp') {
-        _writeTextFormField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isPassword: false,
-          isReadOnly: isReadOnly,
-          keyboardType: 'number',
-          textInputAction: textInputAction,
-          textCapitalization: 'none',
-          errorRef: errorRef,
-          maxLength: maxLength > 0 ? maxLength : 6,
-        );
-      } else if (type == 'date') {
-        buffer.writeln("                  AppDatePickerField(");
-        buffer.writeln("                    label: '$rawLabel',");
-        buffer.writeln(
-          "                    hint: '${hint.isNotEmpty ? hint : 'Select date'}',",
-        );
-        buffer.writeln(
-          "                    value: controller.${name}Controller.value,",
-        );
-        buffer.writeln("                    errorText: $errorRef,");
-        buffer.writeln("                    enabled: ${!isReadOnly},");
-        buffer.writeln("                    onChanged: (picked) {");
-        buffer.writeln("                      if (picked != null) {");
-        buffer.writeln(
-          "                        controller.${name}Controller.value = picked;",
-        );
-        buffer.writeln("                      }");
-        buffer.writeln("                    },");
-        buffer.writeln("                  ),");
-      } else if (type == 'datetime' || type == 'date time') {
-        _writeDateTimePickerField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isReadOnly: isReadOnly,
-          errorRef: errorRef,
-        );
-      } else if (type == 'time') {
-        _writeTimePickerField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          hint: hint,
-          isRequired: isRequired,
-          isReadOnly: isReadOnly,
-          errorRef: errorRef,
-        );
-      } else if (type == 'dropdown' || type == 'api_dropdown') {
-        if (isApiDropdown) {
-          final dropdownmodel = resolveGetxModelClassName(field);
-          final dropdownKey = (field['dropdownValue'] ?? 'title').toString();
-          buffer.writeln(
-            "                  AppDropdownField<$dropdownmodel>(",
-          );
-          buffer.writeln("                    label: '$rawLabel',");
-          buffer.writeln("                    hint: '$hint',");
-          buffer.writeln(
-            "                    itemLabelBuilder: (item) => item.$dropdownKey?.toString() ?? '',",
-          );
-          buffer.writeln(
-            "                    items: controller.${name}Options.value,",
-          );
-          buffer.writeln(
-            "                    value: controller.selected$capitalLabel.value,",
-          );
-          buffer.writeln(
-            "                    onChanged: (val) => controller.selected$capitalLabel.value = val,",
-          );
-          buffer.writeln("                    errorText: $errorRef,");
-          buffer.writeln("                  ),");
-        } else {
-          buffer.writeln(
-            "                  AppDropdownField<DropdownItem>(",
-          );
-          buffer.writeln("                    label: '$rawLabel',");
-          buffer.writeln("                    hint: '$hint',");
-          buffer.writeln(
-            "                    itemLabelBuilder: (item) => item.value,",
-          );
-          buffer.writeln(
-            "                    items: controller.${name}Options,",
-          );
-          buffer.writeln(
-            "                    value: controller.selected$capitalLabel.value,",
-          );
-          buffer.writeln(
-            "                    onChanged: (val) => controller.selected$capitalLabel.value = val,",
-          );
-          buffer.writeln("                    errorText: $errorRef,");
-          buffer.writeln("                  ),");
-        }
-      } else if (type == 'radio' || type == 'radio buttons') {
-        buffer.writeln("                  AppRadioGroupField(");
-        buffer.writeln("                    label: '$rawLabel',");
-        buffer.writeln("                    errorText: $errorRef,");
-        buffer.writeln(
-          "                    value: controller.selected$capitalLabel.value?.toString(),",
-        );
-        buffer.writeln(
-          "                    onChanged: (value) => controller.selected$capitalLabel.value = value ?? '',",
-        );
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          buffer.writeln(
-            "                    options: controller.${name}Options.value.map((e) => e.toString()).toList(),",
-          );
-        } else {
-          buffer.writeln(
-            "                    options: controller.${name}Options.value.map((e) => e.toString()).toList(),",
-          );
-        }
-        buffer.writeln("                  );");
-      } else if (type == 'switch') {
-        buffer.writeln("                  SwitchListTile(");
-        buffer.writeln("                    title: Text('$rawLabel'),");
-        buffer.writeln(
-          "                    value: controller.${name}Value.value,",
-        );
-        buffer.writeln(
-          "                    onChanged: (val) => controller.${name}Value.value = val,",
-        );
-        buffer.writeln("                    contentPadding: EdgeInsets.zero,");
-        buffer.writeln("                  );");
-      } else if (type == 'file') {
-        _writeFilePickerField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          pickMethod: "pick${capitalLabel}File",
-          errorRef: errorRef,
-        );
-      } else if (type == 'checkbox') {
-        buffer.writeln("                  AppCheckboxField(");
-        buffer.writeln("                    label: '$rawLabel',");
-        buffer.writeln(
-          "                    value: controller.${name}Value.value,",
-        );
-        buffer.writeln(
-          "                    onChanged: (val) => controller.${name}Value.value = val ?? false,",
-        );
-        buffer.writeln("                    errorText: $errorRef,");
-        buffer.writeln("                  ),");
-      } else if (type == 'multiselect' ||
-          type == 'multi select' ||
-          type == 'multi_select') {
-        buffer.writeln("                  AppMultiSelectField(");
-        buffer.writeln("                    label: '$rawLabel',");
-        if (staticOpts != null && staticOpts.isNotEmpty) {
-          buffer.writeln(
-            "                    options: controller.${name}Options,",
-          );
-        } else {
-          buffer.writeln(
-            "                    options: controller.${name}Options.value.map((e) => e.toString()).toList(),",
-          );
-        }
-        buffer.writeln(
-          "                    selectedValues: controller.${name}Selected.toList(),",
-        );
-        buffer.writeln("                    errorText: $errorRef,");
-        buffer.writeln("                    onChanged: (values) {");
-        buffer.writeln(
-          "                      controller.${name}Selected.assignAll(values);",
-        );
-        buffer.writeln("                    },");
-        buffer.writeln("                  ),");
-      } else if (type == 'slider' || type == 'range slider') {
-        final minVal = (field['minValue'] as num?)?.toDouble() ?? 0.0;
-        final maxVal = (field['maxValue'] as num?)?.toDouble() ?? 100.0;
-        buffer.writeln("                  Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Row(");
-        buffer.writeln(
-          "                        mainAxisAlignment: MainAxisAlignment.spaceBetween,",
-        );
-        buffer.writeln("                        children: [");
-        buffer.writeln(
-          "                          Text('$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
-        );
-        buffer.writeln(
-          "                          Text('\${controller.${name}Value.value.toStringAsFixed(0)}',",
-        );
-        buffer.writeln(
-          "                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),",
-        );
-        buffer.writeln("                        ],");
-        buffer.writeln("                      ),");
-        buffer.writeln("                      Slider(");
-        buffer.writeln(
-          "                        value: controller.${name}Value.value,",
-        );
-        buffer.writeln("                        min: $minVal,");
-        buffer.writeln("                        max: $maxVal,");
-        buffer.writeln(
-          "                        onChanged: (val) => controller.${name}Value.value = val,",
-        );
-        buffer.writeln("                      ),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'label') {
-        buffer.writeln("                  Padding(");
-        buffer.writeln(
-          "                    padding: const EdgeInsets.symmetric(vertical: 4.0),",
-        );
-        buffer.writeln("                    child: Text(");
-        buffer.writeln("                      '$rawLabel',");
-        buffer.writeln(
-          "                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),",
-        );
-        buffer.writeln("                    ),");
-        buffer.writeln("                  ),");
-      } else if (type == 'hidden') {
-        continue;
-      } else if (type == 'image') {
-        _writeFilePickerField(
-          buffer,
-          label: rawLabel,
-          name: name,
-          capitalLabel: capitalLabel,
-          pickMethod: "pick${capitalLabel}Image",
-          errorRef: errorRef,
-        );
-      } else if (type == 'starrating' ||
-          type == 'rating' ||
-          type == 'star rating') {
-        final maxStars = (field['maxValue'] as num?)?.toInt() ?? 5;
-        buffer.writeln("                  Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln(
-          "                      Text('$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
-        );
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      Row(");
-        buffer.writeln(
-          "                        children: List.generate($maxStars, (index) {",
-        );
-        buffer.writeln("                          final star = index + 1;");
-        buffer.writeln("                          return GestureDetector(");
-        buffer.writeln(
-          "                            onTap: () => controller.${name}Value.value = star.toDouble(),",
-        );
-        buffer.writeln("                            child: Icon(");
-        buffer.writeln(
-          "                              star <= controller.${name}Value.value.round() ? Icons.star : Icons.star_border,",
-        );
-        buffer.writeln("                              color: Colors.amber,");
-        buffer.writeln("                              size: 32,");
-        buffer.writeln("                            ),");
-        buffer.writeln("                          );");
-        buffer.writeln("                        }),");
-        buffer.writeln("                      ),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'section') {
-        buffer.writeln("                  Padding(");
-        buffer.writeln(
-          "                    padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),",
-        );
-        buffer.writeln("                    child: Column(");
-        buffer.writeln(
-          "                      crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                      children: [");
-        buffer.writeln("                        Text(");
-        buffer.writeln("                          '$rawLabel',");
-        buffer.writeln(
-          "                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),",
-        );
-        buffer.writeln("                        ),");
-        buffer.writeln("                        const SizedBox(height: 4),");
-        buffer.writeln(
-          "                        Divider(thickness: 1.5, color: theme.colorScheme.outline),",
-        );
-        buffer.writeln("                        const SizedBox(height: 8),");
-        final nested = field['nestedFields'] as List<dynamic>? ?? [];
-        if (nested.isNotEmpty) buildWidgets(nested);
-        buffer.writeln("                      ],");
-        buffer.writeln("                    ),");
-        buffer.writeln("                  ),");
-      } else if (type == 'card') {
-        buffer.writeln("                  Card(");
-        buffer.writeln("                    elevation: 2,");
-        buffer.writeln(
-          "                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),",
-        );
-        buffer.writeln("                    child: Padding(");
-        buffer.writeln(
-          "                      padding: const EdgeInsets.all(16.0),",
-        );
-        buffer.writeln("                      child: Column(");
-        buffer.writeln(
-          "                        crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                        children: [");
-        buffer.writeln("                          Text(");
-        buffer.writeln("                            '$rawLabel',");
-        buffer.writeln(
-          "                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln("                          const SizedBox(height: 12),");
-        final nested = field['nestedFields'] as List<dynamic>? ?? [];
-        if (nested.isNotEmpty) {
-          buildWidgets(nested);
-        } else {
-          buffer.writeln("                          // No child fields defined");
-        }
-        buffer.writeln("                        ],");
-        buffer.writeln("                      ),");
-        buffer.writeln("                    ),");
-        buffer.writeln("                  ),");
-      } else if (type == 'tabs') {
-        final nested = field['nestedFields'] as List<dynamic>? ?? [];
-        final tabOptions = nested.isNotEmpty
-            ? nested
-                  .map((t) => ((t as Map)['label'] ?? 'Tab').toString())
-                  .toList()
-            : (staticOpts != null && staticOpts.isNotEmpty
-                  ? staticOpts.map((o) => o.toString()).toList()
-                  : ['Tab 1', 'Tab 2']);
-        final tabLength = tabOptions.length;
-        final tabItems = tabOptions
-            .map((t) => "Tab(text: '${t.replaceAll("'", "\\'")}')")
-            .join(', ');
-        buffer.writeln("                  DefaultTabController(");
-        buffer.writeln("                    length: $tabLength,");
-        buffer.writeln("                    child: Column(");
-        buffer.writeln(
-          "                      crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                      children: [");
-        if (rawLabel.isNotEmpty) {
-          buffer.writeln(
-            "                        Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
-          );
-          buffer.writeln("                        const SizedBox(height: 8),");
-        }
-        buffer.writeln(
-          "                        const TabBar(tabs: [$tabItems]),",
-        );
-        buffer.writeln("                        SizedBox(");
-        buffer.writeln("                          height: 200,");
-        buffer.writeln("                          child: TabBarView(children: [");
-        for (int i = 0; i < tabLength; i++) {
-          buffer.writeln("                            SingleChildScrollView(");
-          buffer.writeln(
-            "                              padding: const EdgeInsets.all(16.0),",
-          );
-          buffer.writeln("                              child: Column(");
-          buffer.writeln(
-            "                                crossAxisAlignment: CrossAxisAlignment.start,",
-          );
-          buffer.writeln("                                children: [");
-          if (nested.isNotEmpty && i < nested.length) {
-            final tabNested =
-                (nested[i] as Map)['nestedFields'] as List<dynamic>? ?? [];
-            if (tabNested.isNotEmpty) buildWidgets(tabNested);
-          } else {
-            buffer.writeln(
-              "                                  const Center(child: Text('// No content')),",
-            );
-          }
-          buffer.writeln("                                ],");
-          buffer.writeln("                              ),");
-          buffer.writeln("                            ),");
-        }
-        buffer.writeln("                          ]),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ],");
-        buffer.writeln("                    ),");
-        buffer.writeln("                  ),");
-      } else if (type == 'accordion') {
-        buffer.writeln("                  ExpansionTile(");
-        buffer.writeln(
-          "                    title: Text('$rawLabel', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),",
-        );
-        buffer.writeln("                    shape: RoundedRectangleBorder(");
-        buffer.writeln(
-          "                      side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),",
-        );
-        buffer.writeln(
-          "                      borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln(
-          "                    collapsedShape: RoundedRectangleBorder(",
-        );
-        buffer.writeln(
-          "                      side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),",
-        );
-        buffer.writeln(
-          "                      borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln("                    ),");
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Padding(");
-        buffer.writeln(
-          "                        padding: const EdgeInsets.all(16.0),",
-        );
-        buffer.writeln("                        child: Column(");
-        buffer.writeln(
-          "                          crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                          children: [");
-        final nested = field['nestedFields'] as List<dynamic>? ?? [];
-        if (nested.isNotEmpty) buildWidgets(nested);
-        buffer.writeln("                          ],");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'grid' ||
-          type == 'table' ||
-          type == 'table/grid' ||
-          type == 'table grid' ||
-          type == 'table_grid') {
-        final config = field['componentConfig'] as Map<String, dynamic>? ?? {};
-        final columns =
-            (config['columns'] as List<dynamic>?) ??
-            (field['columns'] as List<dynamic>?) ??
-            [];
-        final hasColumns = columns.isNotEmpty;
-        buffer.writeln("                  Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Row(");
-        buffer.writeln(
-          "                        mainAxisAlignment: MainAxisAlignment.spaceBetween,",
-        );
-        buffer.writeln("                        children: [");
-        buffer.writeln(
-          "                          Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
-        );
-        buffer.writeln("                          ElevatedButton.icon(");
-        buffer.writeln(
-          "                            onPressed: () => controller.add${capitalLabel}Row(),",
-        );
-        buffer.writeln(
-          "                            icon: const Icon(Icons.add, size: 18),",
-        );
-        buffer.writeln(
-          "                            label: const Text('Add Row'),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ],");
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      SingleChildScrollView(");
-        buffer.writeln(
-          "                        scrollDirection: Axis.horizontal,",
-        );
-        buffer.writeln("                        child: DataTable(");
-        buffer.write("                          columns: [");
-        if (hasColumns) {
-          for (final col in columns) {
-            final colLabel = col is Map
-                ? (col['label'] ?? col['id'] ?? col['fieldId'] ?? 'Column')
-                      .toString()
-                : col.toString();
-            buffer.write(
-              "DataColumn(label: Text('${colLabel.replaceAll("'", "\\'")}')), ",
-            );
-          }
-        } else {
-          buffer.write(
-            "const DataColumn(label: Text('#')), const DataColumn(label: Text('Value')), const DataColumn(label: Text('Actions')), ",
-          );
-        }
-        buffer.writeln("],");
-        buffer.writeln(
-          "                          rows: controller.${name}Rows.asMap().entries.map((entry) {",
-        );
-        buffer.writeln("                            final i = entry.key;");
-        buffer.writeln("                            final row = entry.value;");
-        buffer.writeln("                            return DataRow(cells: [");
-        if (hasColumns) {
-          for (final col in columns) {
-            final fieldId = col is Map
-                ? (col['fieldId'] ?? col['id'] ?? col['label'] ?? 'value')
-                      .toString()
-                : col.toString();
-            buffer.writeln("                              DataCell(");
-            buffer.writeln("                                TextFormField(");
-            buffer.writeln(
-              "                                  initialValue: row['${fieldId.replaceAll("'", "\\'")}']?.toString() ?? '',",
-            );
-            buffer.writeln(
-              "                                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),",
-            );
-            buffer.writeln(
-              "                                  onChanged: (val) => controller.update${capitalLabel}Cell(i, '${fieldId.replaceAll("'", "\\'")}', val),",
-            );
-            buffer.writeln("                                ),");
-            buffer.writeln("                              ),");
-          }
-        } else {
-          buffer.writeln(
-            "                              DataCell(Text('\${i + 1}')),",
-          );
-          buffer.writeln("                              DataCell(");
-          buffer.writeln("                                TextFormField(");
-          buffer.writeln(
-            "                                  initialValue: row.toString(),",
-          );
-          buffer.writeln(
-            "                                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),",
-          );
-          buffer.writeln(
-            "                                  onChanged: (val) => controller.update${capitalLabel}Cell(i, 'value', val),",
-          );
-          buffer.writeln("                                ),");
-          buffer.writeln("                              ),");
-        }
-        buffer.writeln("                              DataCell(Row(children: [");
-        buffer.writeln(
-          "                                IconButton(icon: const Icon(Icons.delete, size: 18, color: Colors.red), onPressed: () => controller.delete${capitalLabel}Row(i)),",
-        );
-        buffer.writeln("                              ])),");
-        buffer.writeln("                            ]);");
-        buffer.writeln("                          }).toList(),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'repeater') {
-        final nestedFields =
-            field['nestedFields'] as List<dynamic>? ??
-            (field['componentConfig']?['fields'] as List<dynamic>?) ??
-            [];
-        buffer.writeln("                  Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln("                      Row(");
-        buffer.writeln(
-          "                        mainAxisAlignment: MainAxisAlignment.spaceBetween,",
-        );
-        buffer.writeln("                        children: [");
-        buffer.writeln(
-          "                          Text('$rawLabel${isRequired ? ' *' : ''}', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
-        );
-        buffer.writeln("                          ElevatedButton.icon(");
-        buffer.writeln(
-          "                            onPressed: () => controller.add${capitalLabel}Item(),",
-        );
-        buffer.writeln(
-          "                            icon: const Icon(Icons.add, size: 18),",
-        );
-        buffer.writeln("                            label: const Text('Add'),");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        ],");
-        buffer.writeln("                      ),");
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln(
-          "                      ...controller.${name}Items.asMap().entries.map((entry) {",
-        );
-        buffer.writeln("                        final i = entry.key;");
-        buffer.writeln("                        final item = entry.value;");
-        buffer.writeln("                        return Card(");
-        buffer.writeln(
-          "                          margin: const EdgeInsets.only(bottom: 8),",
-        );
-        buffer.writeln("                          child: Padding(");
-        buffer.writeln(
-          "                            padding: const EdgeInsets.all(12.0),",
-        );
-        buffer.writeln("                            child: Column(");
-        buffer.writeln(
-          "                              crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                              children: [");
-        if (nestedFields.isNotEmpty) {
-          void buildRepeaterChild(List<dynamic> fields) {
-            for (final child in fields) {
-              if (child is! Map) continue;
-              final childType = (child['type'] ?? '').toString().toLowerCase();
-              final childId = (child['id'] ?? child['fieldId'] ?? '').toString();
-              final childLabel = (child['label'] ?? childId).toString();
-              final childName = camelCaseName(
-                (child['label'] ?? child['id'] ?? child['fieldId'] ?? 'field')
-                    .toString()
-                    .trim(),
-              );
-              final childCapitalLabel = pascalCaseName(
-                (child['label'] ?? child['id'] ?? child['fieldId'] ?? 'field')
-                    .toString()
-                    .trim(),
-              );
-              if (childType == 'text' || childType == 'textfield') {
-                buffer.writeln("                                TextFormField(");
-                buffer.writeln("                                  decoration: InputDecoration(");
-                buffer.writeln("                                    labelText: '${childLabel.replaceAll("'", "\\'")}',");
-                buffer.writeln("                                    errorText: controller.fieldErrors['$childId'],");
-                buffer.writeln("                                  ),");
-                buffer.writeln("                                  initialValue: item['$childId']?.toString() ?? '',");
-                buffer.writeln("                                  onChanged: (val) => controller.update${capitalLabel}ItemField(i, '$childId', val),");
-                buffer.writeln("                                ),");
-              } else if (childType == 'dropdown') {
-                buffer.writeln("                                AppDropdownField<DropdownItem>(");
-                buffer.writeln("                                  label: '${childLabel.replaceAll("'", "\\'")}',");
-                buffer.writeln("                                  value: item['$childId'] != null ? DropdownItem(key: item['$childId'], value: item['$childId']) : null,");
-                buffer.writeln("                                  items: controller.${childName}Options.value,");
-                buffer.writeln("                                  onChanged: (val) => controller.update${capitalLabel}ItemField(i, '$childId', val?.key),");
-                buffer.writeln("                                  errorText: controller.fieldErrors['$childId'],");
-                buffer.writeln("                                );");
-              }
-            }
-          }
-          buildRepeaterChild(nestedFields);
-        } else {
-          buffer.writeln(
-            "                                Text('$rawLabel \${i + 1}'),",
-          );
-        }
-        buffer.writeln("                                Row(");
-        buffer.writeln(
-          "                                  mainAxisAlignment: MainAxisAlignment.end,",
-        );
-        buffer.writeln("                                  children: [");
-        buffer.writeln("                                    IconButton(");
-        buffer.writeln(
-          "                                      icon: const Icon(Icons.delete, color: Colors.red),",
-        );
-        buffer.writeln(
-          "                                      onPressed: () => controller.remove${capitalLabel}Item(i),",
-        );
-        buffer.writeln("                                    ),");
-        buffer.writeln("                                  ],");
-        buffer.writeln("                                ),");
-        buffer.writeln("                              ],");
-        buffer.writeln("                            ),");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        );");
-        buffer.writeln("                      }).toList(),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'timeline') {
-        buffer.writeln(
-          "                  Column(  // Make sure controller has final ${name}Steps = <String>[].obs;",
-        );
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln(
-          "                      Text('$rawLabel', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),",
-        );
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln(
-          "                      ...controller.${name}Steps.asMap().entries.map((entry) {",
-        );
-        buffer.writeln("                        final i = entry.key;");
-        buffer.writeln("                        final step = entry.value;");
-        buffer.writeln(
-          "                        final isLast = i == controller.${name}Steps.length - 1;",
-        );
-        buffer.writeln("                        return IntrinsicHeight(");
-        buffer.writeln("                          child: Row(");
-        buffer.writeln(
-          "                            crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                            children: [");
-        buffer.writeln("                              Column(");
-        buffer.writeln("                                children: [");
-        buffer.writeln("                                  Container(");
-        buffer.writeln(
-          "                                    width: 24, height: 24,",
-        );
-        buffer.writeln(
-          "                                    decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),",
-        );
-        buffer.writeln(
-          "                                    child: Center(child: Text('\${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 12))),",
-        );
-        buffer.writeln("                                  ),");
-        buffer.writeln(
-          "                                  if (!isLast) Expanded(child: Container(width: 2, color: theme.colorScheme.outline.withValues(alpha: 0.3))),",
-        );
-        buffer.writeln("                                ],");
-        buffer.writeln("                              ),");
-        buffer.writeln(
-          "                              const SizedBox(width: 12),",
-        );
-        buffer.writeln("                              Expanded(");
-        buffer.writeln("                                child: Padding(");
-        buffer.writeln(
-          "                                  padding: const EdgeInsets.only(bottom: 16.0),",
-        );
-        buffer.writeln(
-          "                                  child: Text(step.toString(), style: theme.textTheme.bodyMedium),",
-        );
-        buffer.writeln("                                ),");
-        buffer.writeln("                              ),");
-        buffer.writeln("                            ],");
-        buffer.writeln("                          ),");
-        buffer.writeln("                        );");
-        buffer.writeln("                      }).toList(),");
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'autocomplete') {
-        buffer.writeln("                  Autocomplete<String>(");
-        buffer.writeln(
-          "                    optionsBuilder: (TextEditingValue textEditingValue) {",
-        );
-        buffer.writeln(
-          "                      if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();",
-        );
-        buffer.writeln(
-          "                      return controller.${name}Options.value.where((opt) =>",
-        );
-        buffer.writeln(
-          "                        opt.toLowerCase().contains(textEditingValue.text.toLowerCase()));",
-        );
-        buffer.writeln("                    },");
-        buffer.writeln(
-          "                    onSelected: (val) => controller.selected${capitalLabel}Text.value = val,",
-        );
-        buffer.writeln(
-          "                    fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {",
-        );
-        buffer.writeln("                      return AppTextField(");
-        buffer.writeln("                        label: '$rawLabel',");
-        buffer.writeln("                        hint: '$hint',");
-        buffer.writeln("                        controller: textController,");
-        buffer.writeln("                        focusNode: focusNode,");
-        buffer.writeln(
-          "                        errorText: $errorRef,",
-        );
-        buffer.writeln("                      );");
-        buffer.writeln("                    },");
-        buffer.writeln("                  ),");
-      } else if (type == 'signature') {
-        buffer.writeln("                  Column(");
-        buffer.writeln(
-          "                    crossAxisAlignment: CrossAxisAlignment.start,",
-        );
-        buffer.writeln("                    children: [");
-        buffer.writeln(
-          "                      Text('$rawLabel${isRequired ? ' *' : ''}',",
-        );
-        buffer.writeln(
-          "                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),",
-        );
-        buffer.writeln("                      const SizedBox(height: 8),");
-        buffer.writeln("                      GestureDetector(");
-        buffer.writeln("                        onTap: () async {");
-        buffer.writeln(
-          "                          await controller.capture${capitalLabel}Signature();",
-        );
-        buffer.writeln("                        },");
-        buffer.writeln("                        child: Container(");
-        buffer.writeln("                          width: double.infinity,");
-        buffer.writeln("                          height: 120,");
-        buffer.writeln("                          decoration: BoxDecoration(");
-        buffer.writeln("                            border: Border.all(");
-        buffer.writeln(
-          "                              color: $errorRef != null ? Colors.red : theme.colorScheme.outline,",
-        );
-        buffer.writeln("                            ),");
-        buffer.writeln(
-          "                            borderRadius: BorderRadius.circular(8),",
-        );
-        buffer.writeln("                          ),");
-        buffer.writeln(
-          "                          child: controller.${name}Signed.value",
-        );
-        buffer.writeln(
-          "                              ? const Center(child: Icon(Icons.check_circle, color: Colors.green, size: 40))",
-        );
-        buffer.writeln(
-          "                              : const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [",
-        );
-        buffer.writeln(
-          "                                  Icon(Icons.draw, color: Colors.grey),",
-        );
-        buffer.writeln("                                  SizedBox(height: 4),");
-        buffer.writeln(
-          "                                  Text('Tap to sign', style: TextStyle(color: Colors.grey)),",
-        );
-        buffer.writeln("                                ])),");
-        buffer.writeln("                        ),");
-        buffer.writeln("                      ),");
-        if (isRequired) {
-          buffer.writeln(
-            "                      Obx(() => $errorRef != null",
-          );
-          buffer.writeln("                          ? Padding(");
-          buffer.writeln(
-            "                              padding: const EdgeInsets.only(top: 6, left: 4),",
-          );
-          buffer.writeln("                              child: Text(");
-          buffer.writeln(
-            "                                $errorRef!,",
-          );
-          buffer.writeln(
-            "                                style: const TextStyle(color: Colors.red, fontSize: 12),",
-          );
-          buffer.writeln("                              ),");
-          buffer.writeln("                            )");
-          buffer.writeln("                          : const SizedBox.shrink()),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'row') {
-        buffer.writeln("                  Wrap(");
-        buffer.writeln("                    spacing: 12, runSpacing: 12,");
-        buffer.writeln("                    children: [");
-        final nested = field['nestedFields'] as List<dynamic>? ?? [];
-        for (final child in nested) {
-          if (child is! Map) continue;
-          final colSpan =
-              int.tryParse(
-                child['componentConfig']?['colSpan']?.toString() ?? '',
-              ) ??
-              12;
-          buffer.writeln(
-            "                      LayoutBuilder(builder: (context, constraints) {",
-          );
-          buffer.writeln(
-            "                        final w = constraints.maxWidth;",
-          );
-          buffer.writeln(
-            "                        return SizedBox(width: w > 760 ? w * ($colSpan / 12) : double.infinity,",
-          );
-          buffer.writeln(
-            "                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [",
-          );
-          buildWidgets([child]);
-          buffer.writeln("                          ]),");
-          buffer.writeln("                        );");
-          buffer.writeln("                      }),");
-        }
-        buffer.writeln("                    ],");
-        buffer.writeln("                  ),");
-      } else if (type == 'formula') {
-        buffer.writeln("                  InputDecorator(");
-        buffer.writeln("                    decoration: InputDecoration(");
-        buffer.writeln("                      labelText: '$rawLabel',");
-        buffer.writeln("                      hintText: '$hint',");
-        buffer.writeln("                      errorText: $errorRef,");
-        buffer.writeln("                    ),");
-        buffer.writeln(
-          "                    child: Text(controller.$name.value, style: theme.textTheme.bodyLarge),",
-        );
-        buffer.writeln("                  ),");
       } else {
-        buffer.writeln(
-          "                  // TODO: unsupported field type '$type' for '$rawLabel'",
-        );
+        buffer.writeln("                  // TODO: unsupported field type '$type' for '$rawLabel'");
+        buffer.writeln("                  const SizedBox.shrink();");
       }
 
       buffer.writeln("                }),"); // Close outer Obx
@@ -1209,34 +226,9 @@ String generateviewClass(
 
   buildWidgets(fields);
 
-  // ─── Primary action button (wrapped in Obx for reactivity) ──
-  final primaryLabel = stepMeta.primaryButtonLabel;
+  // ─── Render action buttons panel at the bottom of the form ──
   buffer.writeln("                const SizedBox(height: 24),");
-  buffer.writeln("                Obx(() => SizedBox(");
-  buffer.writeln("                  width: double.infinity,");
-  buffer.writeln("                  child: ElevatedButton(");
-  buffer.writeln("                    style: ElevatedButton.styleFrom(");
-  buffer.writeln(
-    "                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),",
-  );
-  buffer.writeln("                      shape: RoundedRectangleBorder(");
-  buffer.writeln(
-    "                        borderRadius: BorderRadius.circular(12),",
-  );
-  buffer.writeln("                      ),");
-  buffer.writeln(
-    "                      backgroundColor: theme.colorScheme.primary,",
-  );
-  buffer.writeln(
-    "                      foregroundColor: theme.colorScheme.onPrimary,",
-  );
-  buffer.writeln("                    ),");
-  buffer.writeln(
-    "                    onPressed: controller.isExecuting.value ? null : () => controller.onPrimaryAction(),",
-  );
-  buffer.writeln("                    child: Text('$primaryLabel'),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                )),");
+  buffer.writeln("                _buildActions(context, isMobile: isMobile),");
 
   buffer.writeln("        ],");
   buffer.writeln("      ),");
@@ -1244,540 +236,45 @@ String generateviewClass(
   buffer.writeln("  }");
   buffer.writeln();
 
-  // ─── Split Screen Layout ──────────────────────────────────────
-  buffer.writeln("  Widget _buildSplitLayout(BuildContext context) {");
-  buffer.writeln("    final theme = Theme.of(context);");
-  buffer.writeln("    final isMobile = context.width < 640;");
-  buffer.writeln();
-  buffer.writeln("    if (isMobile) {");
-  buffer.writeln("      return SingleChildScrollView(");
-  buffer.writeln("        padding: const EdgeInsets.all(16),");
-  buffer.writeln("        child: _buildFormContent(context, isMobile: true),");
-  buffer.writeln("      );");
-  buffer.writeln("    }");
-  buffer.writeln();
-  buffer.writeln("    return Center(");
-  buffer.writeln("      child: ConstrainedBox(");
-  buffer.writeln("        constraints: const BoxConstraints(maxWidth: 1060),");
+  // Generate layouts helpers
+  _generateLayoutHelperMethods(buffer, normStyle, stepsList, activeIdxClamp, flatFields);
+
+  // Generate loading overlay
+  buffer.writeln("  Widget _buildLoadingOverlay() {");
+  buffer.writeln("    return Obx(() {");
+  buffer.writeln("      if (!controller.isExecuting.value) return const SizedBox.shrink();");
+  buffer.writeln("      return AbsorbPointer(");
+  buffer.writeln("        absorbing: true,");
   buffer.writeln("        child: Container(");
-  buffer.writeln("          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),");
-  buffer.writeln("          decoration: BoxDecoration(");
-  buffer.writeln("            color: Colors.white,");
-  buffer.writeln("            borderRadius: BorderRadius.circular(24),");
-  buffer.writeln("            boxShadow: const [");
-  buffer.writeln("              BoxShadow(");
-  buffer.writeln("                color: Color(0x125B4FCF),");
-  buffer.writeln("                blurRadius: 40,");
-  buffer.writeln("                offset: Offset(0, 8),");
-  buffer.writeln("              ),");
-  buffer.writeln("            ],");
-  buffer.writeln("          ),");
-  buffer.writeln("          child: Row(");
-  buffer.writeln("            crossAxisAlignment: CrossAxisAlignment.stretch,");
-  buffer.writeln("            children: [");
-  buffer.writeln("              // Left info panel");
-  buffer.writeln("              Container(");
-  buffer.writeln("                width: 270,");
-  buffer.writeln("                decoration: const BoxDecoration(");
-  buffer.writeln("                  color: Color(0xFFF7F5FF),");
-  buffer.writeln("                  borderRadius: BorderRadius.only(");
-  buffer.writeln("                    topLeft: Radius.circular(24),");
-  buffer.writeln("                    bottomLeft: Radius.circular(24),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
-  buffer.writeln("                padding: const EdgeInsets.all(26),");
-  buffer.writeln("                child: Column(");
-  buffer.writeln("                  crossAxisAlignment: CrossAxisAlignment.start,");
-  buffer.writeln("                  children: [");
-  buffer.writeln("                    Container(");
-  buffer.writeln("                      width: 48,");
-  buffer.writeln("                      height: 48,");
-  buffer.writeln("                      decoration: const BoxDecoration(");
-  buffer.writeln("                        color: Color(0xFF5B4FCF),");
-  buffer.writeln("                        shape: BoxShape.circle,");
-  buffer.writeln("                      ),");
-  buffer.writeln("                      child: const Icon(Icons.shield_outlined, color: Colors.white, size: 22),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                    const SizedBox(height: 18),");
-  buffer.writeln("                    Text(");
-  buffer.writeln("                      'Secure Processing',");
-  buffer.writeln("                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1A1A2E)),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                    const SizedBox(height: 6),");
-  buffer.writeln("                    Text(");
-  buffer.writeln("                      'Please fill out all the details to successfully complete this step of your journey.',");
-  buffer.writeln("                      style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280), height: 1.5),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                    const Spacer(),");
-  buffer.writeln("                    Container(");
-  buffer.writeln("                      padding: const EdgeInsets.all(12),");
-  buffer.writeln("                      decoration: BoxDecoration(");
-  buffer.writeln("                        color: Colors.white,");
-  buffer.writeln("                        borderRadius: BorderRadius.circular(12),");
-  buffer.writeln("                        border: Border.all(color: const Color(0xFFE4E6F0)),");
-  buffer.writeln("                      ),");
-  buffer.writeln("                      child: Row(");
-  buffer.writeln("                        children: [");
-  buffer.writeln("                          const Icon(Icons.lock_outline_rounded, color: Color(0xFF5B4FCF), size: 16),");
-  buffer.writeln("                          const SizedBox(width: 8),");
-  buffer.writeln("                          Expanded(");
-  buffer.writeln("                            child: Text(");
-  buffer.writeln("                              'End-to-end encrypted details',");
-  buffer.writeln("                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),");
-  buffer.writeln("                            ),");
-  buffer.writeln("                          ),");
-  buffer.writeln("                        ],");
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  ],");
-  buffer.writeln("                ),");
-  buffer.writeln("              ),");
-  buffer.writeln("              Container(width: 1, color: const Color(0xFFE4E6F0)),");
-  buffer.writeln("              // Right form panel");
-  buffer.writeln("              Expanded(");
-  buffer.writeln("                child: SingleChildScrollView(");
-  buffer.writeln("                  padding: const EdgeInsets.all(32),");
-  buffer.writeln("                  child: _buildFormContent(context),");
-  buffer.writeln("                ),");
-  buffer.writeln("              ),");
-  buffer.writeln("            ],");
-  buffer.writeln("          ),");
-  buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
-  buffer.writeln("  }");
-  buffer.writeln();
-
-  // ─── Conversational Focus Layout ──────────────────────────────
-  buffer.writeln("  Widget _buildFocusLayout(BuildContext context) {");
-  buffer.writeln("    return SingleChildScrollView(");
-  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),");
-  buffer.writeln("      child: Center(");
-  buffer.writeln("        child: ConstrainedBox(");
-  buffer.writeln("          constraints: const BoxConstraints(maxWidth: 600),");
-  buffer.writeln("          child: Container(");
-  buffer.writeln("            padding: const EdgeInsets.all(32),");
-  buffer.writeln("            decoration: BoxDecoration(");
-  buffer.writeln("              color: Colors.white,");
-  buffer.writeln("              borderRadius: BorderRadius.circular(28),");
-  buffer.writeln("              boxShadow: const [");
-  buffer.writeln("                BoxShadow(");
-  buffer.writeln("                  color: Color(0x155B4FCF),");
-  buffer.writeln("                  blurRadius: 45,");
-  buffer.writeln("                  offset: Offset(0, 12),");
-  buffer.writeln("                ),");
-  buffer.writeln("              ],");
-  buffer.writeln("            ),");
-  buffer.writeln("            child: Column(");
-  buffer.writeln("              mainAxisSize: MainAxisSize.min,");
-  buffer.writeln("              children: [");
-  buffer.writeln("                Container(");
-  buffer.writeln("                  width: 60,");
-  buffer.writeln("                  height: 60,");
-  buffer.writeln("                  decoration: const BoxDecoration(");
-  buffer.writeln("                    color: Color(0xFFEEECFD),");
-  buffer.writeln("                    shape: BoxShape.circle,");
-  buffer.writeln("                  ),");
-  buffer.writeln("                  child: const Center(");
-  buffer.writeln("                    child: Icon(Icons.center_focus_strong_rounded, color: Color(0xFF5B4FCF), size: 28),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
-  buffer.writeln("                const SizedBox(height: 24),");
-  buffer.writeln("                _buildFormContent(context),");
-  buffer.writeln("              ],");
+  buffer.writeln("          color: Colors.black.withValues(alpha: 0.15),");
+  buffer.writeln("          child: const Center(");
+  buffer.writeln("            child: CircularProgressIndicator(");
+  buffer.writeln("              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5B4FCF)),");
   buffer.writeln("            ),");
   buffer.writeln("          ),");
   buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
-  buffer.writeln("  }");
-  buffer.writeln();
-
-  // ─── Continuous Vertical Timeline Layout ──────────────────────
-  buffer.writeln("  Widget _buildTimelineLayout(BuildContext context) {");
-  buffer.writeln("    return SingleChildScrollView(");
-  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),");
-  buffer.writeln("      child: Center(");
-  buffer.writeln("        child: ConstrainedBox(");
-  buffer.writeln("          constraints: const BoxConstraints(maxWidth: 700),");
-  buffer.writeln("          child: Row(");
-  buffer.writeln("            crossAxisAlignment: CrossAxisAlignment.start,");
-  buffer.writeln("            children: [");
-  buffer.writeln("              Column(");
-  buffer.writeln("                children: [");
-  buffer.writeln("                  Container(");
-  buffer.writeln("                    width: 32,");
-  buffer.writeln("                    height: 32,");
-  buffer.writeln("                    decoration: const BoxDecoration(");
-  buffer.writeln("                      color: Color(0xFF5B4FCF),");
-  buffer.writeln("                      shape: BoxShape.circle,");
-  buffer.writeln("                    ),");
-  buffer.writeln("                    child: const Center(");
-  buffer.writeln("                      child: Icon(Icons.circle, color: Colors.white, size: 12),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                  Container(");
-  buffer.writeln("                    width: 2,");
-  buffer.writeln("                    height: 300,");
-  buffer.writeln("                    color: const Color(0xFF5B4FCF),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ],");
-  buffer.writeln("              ),");
-  buffer.writeln("              const SizedBox(width: 16),");
-  buffer.writeln("              Expanded(");
-  buffer.writeln("                child: Container(");
-  buffer.writeln("                  padding: const EdgeInsets.all(24),");
-  buffer.writeln("                  decoration: BoxDecoration(");
-  buffer.writeln("                    color: Colors.white,");
-  buffer.writeln("                    borderRadius: BorderRadius.circular(20),");
-  buffer.writeln("                    border: Border.all(color: const Color(0xFF5B4FCF), width: 1.5),");
-  buffer.writeln("                    boxShadow: const [");
-  buffer.writeln("                      BoxShadow(");
-  buffer.writeln("                        color: Color(0x105B4FCF),");
-  buffer.writeln("                        blurRadius: 30,");
-  buffer.writeln("                        offset: Offset(0, 6),");
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ],");
-  buffer.writeln("                  ),");
-  buffer.writeln("                  child: _buildFormContent(context),");
-  buffer.writeln("                ),");
-  buffer.writeln("              ),");
-  buffer.writeln("            ],");
-  buffer.writeln("          ),");
-  buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
-  buffer.writeln("  }");
-  buffer.writeln();
-
-  // ─── Tabbed Sidebar Navigation Layout ─────────────────────────
-  buffer.writeln("  Widget _buildTabbedLayout(BuildContext context) {");
-  buffer.writeln("    final theme = Theme.of(context);");
-  buffer.writeln("    final isMobile = context.width < 800;");
-  buffer.writeln();
-  buffer.writeln("    if (isMobile) {");
-  buffer.writeln("      return SingleChildScrollView(");
-  buffer.writeln("        padding: const EdgeInsets.all(16),");
-  buffer.writeln("        child: _buildFormContent(context, isMobile: true),");
   buffer.writeln("      );");
-  buffer.writeln("    }");
-  buffer.writeln();
-  buffer.writeln("    return Padding(");
-  buffer.writeln("      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),");
-  buffer.writeln("      child: Row(");
-  buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.stretch,");
-  buffer.writeln("        children: [");
-  buffer.writeln("          // Left Step Tab");
-  buffer.writeln("          Container(");
-  buffer.writeln("            width: 200,");
-  buffer.writeln("            decoration: BoxDecoration(");
-  buffer.writeln("              color: const Color(0xFFF7F5FF),");
-  buffer.writeln("              borderRadius: BorderRadius.circular(20),");
-  buffer.writeln("              border: Border.all(color: const Color(0xFFE4E6F0)),");
-  buffer.writeln("            ),");
-  buffer.writeln("            padding: const EdgeInsets.all(16),");
-  buffer.writeln("            child: Column(");
-  buffer.writeln("              crossAxisAlignment: CrossAxisAlignment.start,");
-  buffer.writeln("              children: [");
-  buffer.writeln("                Text(");
-  buffer.writeln("                  'CURRENT STEP',");
-  buffer.writeln("                  style: theme.textTheme.labelSmall?.copyWith(");
-  buffer.writeln("                    fontWeight: FontWeight.bold,");
-  buffer.writeln("                    color: const Color(0xFF6B7280),");
-  buffer.writeln("                    letterSpacing: 1.2,");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
-  buffer.writeln("                const SizedBox(height: 12),");
-  buffer.writeln("                Container(");
-  buffer.writeln("                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),");
-  buffer.writeln("                  decoration: BoxDecoration(");
-  buffer.writeln("                    color: const Color(0xFF5B4FCF),");
-  buffer.writeln("                    borderRadius: BorderRadius.circular(10),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                  child: Row(");
-  buffer.writeln("                    children: [");
-  buffer.writeln("                      const Icon(Icons.circle, size: 8, color: Colors.white),");
-  buffer.writeln("                      const SizedBox(width: 8),");
-  buffer.writeln("                      Expanded(");
-  buffer.writeln("                        child: Text(");
-  buffer.writeln("                          'Primary Step',");
-  buffer.writeln("                          style: theme.textTheme.bodySmall?.copyWith(");
-  buffer.writeln("                            fontWeight: FontWeight.bold,");
-  buffer.writeln("                            color: Colors.white,");
-  buffer.writeln("                          ),");
-  buffer.writeln("                        ),");
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ],");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ),");
-  buffer.writeln("              ],");
-  buffer.writeln("            ),");
-  buffer.writeln("          ),");
-  buffer.writeln("          const SizedBox(width: 16),");
-  buffer.writeln("          // Center Form Panel");
-  buffer.writeln("          Expanded(");
-  buffer.writeln("            child: Container(");
-  buffer.writeln("              decoration: BoxDecoration(");
-  buffer.writeln("                color: Colors.white,");
-  buffer.writeln("                borderRadius: BorderRadius.circular(20),");
-  buffer.writeln("                border: Border.all(color: const Color(0xFFE4E6F0)),");
-  buffer.writeln("                boxShadow: const [");
-  buffer.writeln("                  BoxShadow(");
-  buffer.writeln("                    color: Color(0x085B4FCF),");
-  buffer.writeln("                    blurRadius: 20,");
-  buffer.writeln("                    offset: Offset(0, 4),");
-  buffer.writeln("                  ),");
-  buffer.writeln("                ],");
-  buffer.writeln("              ),");
-  buffer.writeln("              child: ClipRRect(");
-  buffer.writeln("                borderRadius: BorderRadius.circular(20),");
-  buffer.writeln("                child: SingleChildScrollView(");
-  buffer.writeln("                  padding: const EdgeInsets.all(28),");
-  buffer.writeln("                  child: _buildFormContent(context),");
-  buffer.writeln("                ),");
-  buffer.writeln("              ),");
-  buffer.writeln("            ),");
-  buffer.writeln("          ),");
-  buffer.writeln("        ],");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
+  buffer.writeln("    });");
   buffer.writeln("  }");
-  buffer.writeln();
 
-  // ─── Header segmented switcher icon button helper ─────────────
-  buffer.writeln("  Widget _buildStyleIcon(GeneratedRunnerLayoutStyle style, IconData icon, String tooltip) {");
-  buffer.writeln("    final active = layoutStyle.value == style;");
-  buffer.writeln("    return Tooltip(");
-  buffer.writeln("      message: tooltip,");
-  buffer.writeln("      child: GestureDetector(");
-  buffer.writeln("        onTap: () => layoutStyle.value = style,");
-  buffer.writeln("        child: AnimatedContainer(");
-  buffer.writeln("          duration: const Duration(milliseconds: 200),");
-  buffer.writeln("          width: 32,");
-  buffer.writeln("          height: 32,");
-  buffer.writeln("          margin: const EdgeInsets.symmetric(horizontal: 2),");
-  buffer.writeln("          decoration: BoxDecoration(");
-  buffer.writeln("            color: active ? const Color(0xFF5B4FCF) : Colors.transparent,");
-  buffer.writeln("            borderRadius: BorderRadius.circular(8),");
-  buffer.writeln("          ),");
-  buffer.writeln("          child: Icon(");
-  buffer.writeln("            icon,");
-  buffer.writeln("            size: 16,");
-  buffer.writeln("            color: active ? Colors.white : const Color(0xFF6B7280),");
-  buffer.writeln("          ),");
-  buffer.writeln("        ),");
-  buffer.writeln("      ),");
-  buffer.writeln("    );");
-  buffer.writeln("  }");
+  // Generate _formatDateTime if any datetime fields exist
+  final hasDateTime = flatFields.any((f) {
+    final t = (f['type'] ?? '').toString().toLowerCase();
+    return t == 'datetime' || t == 'date time';
+  });
+  if (hasDateTime) {
+    buffer.writeln();
+    buffer.writeln("  String _formatDateTime(DateTime dt) {");
+    buffer.writeln("    return '\${dt.year}-\${dt.month.toString().padLeft(2, '0')}-\${dt.day.toString().padLeft(2, '0')} '");
+    buffer.writeln("        '\${dt.hour.toString().padLeft(2, '0')}:\${dt.minute.toString().padLeft(2, '0')}';");
+    buffer.writeln("  }");
+  }
+
   buffer.writeln("}");
-
   return buffer.toString();
 }
 
-// ─── Helper: text field (no inner Obx) ─────────────────────────
-void _writeTextFormField(
-  StringBuffer buffer, {
-  required String label,
-  required String name,
-  required String capitalLabel,
-  required String hint,
-  required bool isRequired,
-  required bool isPassword,
-  required bool isReadOnly,
-  required String keyboardType,
-  required String textInputAction,
-  required String textCapitalization,
-  required String errorRef,
-  String? inputFormatters,
-  int? maxLength,
-  int? maxLines,
-  int? minLines,
-}) {
-  buffer.writeln("                  AppTextField(");
-  buffer.writeln("                    label: '$label',");
-  buffer.writeln("                    hint: '$hint',");
-  buffer.writeln("                    controller: controller.${name}Controller,");
-  buffer.writeln(
-    "                    keyboardType: TextInputType.$keyboardType,",
-  );
-  buffer.writeln("                    obscureText: $isPassword,");
-  buffer.writeln("                    readOnly: $isReadOnly,");
-  buffer.writeln(
-    "                    textInputAction: TextInputAction.$textInputAction,",
-  );
-  buffer.writeln(
-    "                    textCapitalization: TextCapitalization.$textCapitalization,",
-  );
-  if (maxLength != null && maxLength > 0) {
-    buffer.writeln("                    maxLength: $maxLength,");
-  }
-  if (maxLines != null) {
-    buffer.writeln("                    maxLines: $maxLines,");
-  }
-  if (minLines != null) {
-    buffer.writeln("                    minLines: $minLines,");
-  }
-  if (inputFormatters != null) {
-    buffer.writeln("                    inputFormatters: [$inputFormatters],");
-  }
-  buffer.writeln("                    errorText: $errorRef,");
-  buffer.writeln("                  );");
-}
-
-// ─── Time picker ───────────────────────────────────────────────
-void _writeTimePickerField(
-  StringBuffer buffer, {
-  required String label,
-  required String name,
-  required String capitalLabel,
-  required String hint,
-  required bool isRequired,
-  required bool isReadOnly,
-  required String errorRef,
-}) {
-  buffer.writeln("                  GestureDetector(");
-  buffer.writeln(
-    "                    onTap: ${isReadOnly ? 'null' : '() async {'}",
-  );
-  if (!isReadOnly) {
-    buffer.writeln("                      final picked = await showTimePicker(");
-    buffer.writeln("                        context: context,");
-    buffer.writeln(
-      "                        initialTime: controller.${name}Controller.value ?? TimeOfDay.now(),",
-    );
-    buffer.writeln("                      );");
-    buffer.writeln("                      if (picked != null) {");
-    buffer.writeln(
-      "                        controller.${name}Controller.value = picked;",
-    );
-    buffer.writeln("                      }");
-    buffer.writeln("                    },");
-  }
-  buffer.writeln("                    child: AbsorbPointer(");
-  buffer.writeln("                      child: InputDecorator(");
-  buffer.writeln("                        decoration: InputDecoration(");
-  buffer.writeln("                          labelText: '$label',");
-  buffer.writeln(
-    "                          hintText: '${hint.isNotEmpty ? hint : 'Select time'}',",
-  );
-  buffer.writeln("                          errorText: $errorRef,");
-  buffer.writeln(
-    "                          suffixIcon: const Icon(Icons.access_time_rounded),",
-  );
-  buffer.writeln("                        ),");
-  buffer.writeln(
-    "                        child: Text(controller.${name}Controller.value?.format(context) ?? '', style: theme.textTheme.bodyLarge),",
-  );
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  );");
-}
-
-// ─── DateTime picker ───────────────────────────────────────────
-void _writeDateTimePickerField(
-  StringBuffer buffer, {
-  required String label,
-  required String name,
-  required String capitalLabel,
-  required String hint,
-  required bool isRequired,
-  required bool isReadOnly,
-  required String errorRef,
-}) {
-  buffer.writeln("                  GestureDetector(");
-  buffer.writeln(
-    "                    onTap: ${isReadOnly ? 'null' : '() async {'}",
-  );
-  if (!isReadOnly) {
-    buffer.writeln("                      final date = await showDatePicker(");
-    buffer.writeln("                        context: context,");
-    buffer.writeln(
-      "                        initialDate: controller.${name}Controller.value ?? DateTime.now(),",
-    );
-    buffer.writeln("                        firstDate: DateTime(1900),");
-    buffer.writeln("                        lastDate: DateTime(2100),");
-    buffer.writeln("                      );");
-    buffer.writeln("                      if (date == null) return;");
-    buffer.writeln("                      final time = await showTimePicker(");
-    buffer.writeln("                        context: context,");
-    buffer.writeln(
-      "                        initialTime: controller.${name}Controller.value != null",
-    );
-    buffer.writeln(
-      "                            ? TimeOfDay.fromDateTime(controller.${name}Controller.value!)",
-    );
-    buffer.writeln("                            : TimeOfDay.now(),");
-    buffer.writeln("                      );");
-    buffer.writeln("                      if (time == null) return;");
-    buffer.writeln(
-      "                      controller.${name}Controller.value = DateTime(",
-    );
-    buffer.writeln("                        date.year,");
-    buffer.writeln("                        date.month,");
-    buffer.writeln("                        date.day,");
-    buffer.writeln("                        time.hour,");
-    buffer.writeln("                        time.minute,");
-    buffer.writeln("                      );");
-    buffer.writeln("                    },");
-  }
-  buffer.writeln("                    child: AbsorbPointer(");
-  buffer.writeln("                      child: InputDecorator(");
-  buffer.writeln("                        decoration: InputDecoration(");
-  buffer.writeln("                          labelText: '$label',");
-  buffer.writeln(
-    "                          hintText: '${hint.isNotEmpty ? hint : 'Select date and time'}',",
-  );
-  buffer.writeln("                          errorText: $errorRef,");
-  buffer.writeln(
-    "                          suffixIcon: const Icon(Icons.calendar_month_rounded),",
-  );
-  buffer.writeln("                        ),");
-  buffer.writeln(
-    "                        child: Text(controller.${name}Controller.value != null ? DateHelper.formatDateTime(controller.${name}Controller.value!) : '', style: theme.textTheme.bodyLarge),",
-  );
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  );");
-}
-
-// ─── File picker ───────────────────────────────────────────────
-void _writeFilePickerField(
-  StringBuffer buffer, {
-  required String label,
-  required String name,
-  required String capitalLabel,
-  required String pickMethod,
-  required String errorRef,
-}) {
-  buffer.writeln("                  Container(");
-  buffer.writeln("                    padding: const EdgeInsets.all(16),");
-  buffer.writeln("                    decoration: BoxDecoration(");
-  buffer.writeln(
-    "                      borderRadius: BorderRadius.circular(16),",
-  );
-  buffer.writeln("                      color: Colors.grey.shade50,");
-  buffer.writeln(
-    "                      border: Border.all(color: Colors.grey.shade200),",
-  );
-  buffer.writeln("                    ),");
-  buffer.writeln("                    child: Tooltip(");
-  buffer.writeln("                      message: 'Upload $label',");
-  buffer.writeln("                      child: AppFileUploadField(");
-  buffer.writeln("                        label: '$label',");
-  buffer.writeln(
-    "                        value: controller.${name}FileName.value.isEmpty ? null : controller.${name}FileName.value,",
-  );
-  buffer.writeln("                        hint: 'Tap Browse to select file',");
-  buffer.writeln("                        errorText: $errorRef,");
-  buffer.writeln("                        onChanged: (_) async {");
-  buffer.writeln("                          await controller.$pickMethod();");
-  buffer.writeln("                        },");
-  buffer.writeln("                      ),");
-  buffer.writeln("                    ),");
-  buffer.writeln("                  );");
-}
-
-// ─── Keyboard mapping & name helpers (unchanged) ───────────────
+// ─── Keyboard mapping & name helpers ───────────────────────────
 String _mapKeyboardType(String raw) {
   switch (raw) {
     case 'number':
@@ -1815,4 +312,326 @@ String camelCaseName(String label) {
 String pascalCaseName(String label) {
   final n = normalizeLabel(label);
   return n.isEmpty ? '' : n[0].toUpperCase() + n.substring(1);
+}
+
+void _generateLayoutHelperMethods(
+  StringBuffer buffer,
+  String layoutStyle,
+  List<dynamic> stepsList,
+  int activeIdxClamp,
+  List<Map<String, dynamic>> flatFields,
+) {
+  // Generate _getStepTitle
+  buffer.writeln("  String _getStepTitle(int index) {");
+  buffer.writeln("    switch (index) {");
+  for (int i = 0; i < stepsList.length; i++) {
+    final title = (stepsList[i]['title'] ?? 'Step ${i + 1}').toString().replaceAll("'", "\\'");
+    buffer.writeln("      case $i: return '$title';");
+  }
+  buffer.writeln("      default: return 'Step';");
+  buffer.writeln("    }");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Generate _getStepDesc
+  buffer.writeln("  String _getStepDesc(int index) {");
+  buffer.writeln("    switch (index) {");
+  for (int i = 0; i < stepsList.length; i++) {
+    final desc = (stepsList[i]['description'] ?? '').toString().replaceAll("'", "\\'");
+    buffer.writeln("      case $i: return '$desc';");
+  }
+  buffer.writeln("      default: return '';");
+  buffer.writeln("    }");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Generate _getStepId
+  buffer.writeln("  String _getStepId(int index) {");
+  buffer.writeln("    switch (index) {");
+  for (int i = 0; i < stepsList.length; i++) {
+    final id = (stepsList[i]['id'] ?? 'step').toString().replaceAll("'", "\\'");
+    buffer.writeln("      case $i: return '$id';");
+  }
+  buffer.writeln("      default: return '';");
+  buffer.writeln("    }");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Generate _stepIconForTitle
+  buffer.writeln("  IconData _stepIconForTitle(String title) {");
+  buffer.writeln("    final t = title.toLowerCase();");
+  buffer.writeln("    if (t.contains('personal')) return Icons.person_outline_rounded;");
+  buffer.writeln("    if (t.contains('vehicle')) return Icons.directions_car_outlined;");
+  buffer.writeln("    if (t.contains('nominee')) return Icons.supervisor_account_outlined;");
+  buffer.writeln("    if (t.contains('document')) return Icons.upload_file_outlined;");
+  buffer.writeln("    if (t.contains('review') || t.contains('confirm')) {");
+  buffer.writeln("      return Icons.fact_check_outlined;");
+  buffer.writeln("    }");
+  buffer.writeln("    if (t.contains('payment')) return Icons.credit_card_outlined;");
+  buffer.writeln("    if (t.contains('success')) return Icons.verified_outlined;");
+  buffer.writeln("    return Icons.article_outlined;");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Generate _buildIllustration
+  buffer.writeln("  Widget _buildIllustration(String title) {");
+  buffer.writeln("    final icon = _stepIconForTitle(title);");
+  buffer.writeln("    return SizedBox(");
+  buffer.writeln("      height: 150,");
+  buffer.writeln("      child: Stack(");
+  buffer.writeln("        alignment: Alignment.center,");
+  buffer.writeln("        children: [");
+  buffer.writeln("          Container(");
+  buffer.writeln("            width: 140,");
+  buffer.writeln("            height: 140,");
+  buffer.writeln("            decoration: BoxDecoration(");
+  buffer.writeln("              color: const Color(0xFF5B4FCF).withValues(alpha: 0.05),");
+  buffer.writeln("              shape: BoxShape.circle,");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("          Container(");
+  buffer.writeln("            width: 100,");
+  buffer.writeln("            height: 100,");
+  buffer.writeln("            decoration: BoxDecoration(");
+  buffer.writeln("              color: const Color(0xFF5B4FCF).withValues(alpha: 0.08),");
+  buffer.writeln("              shape: BoxShape.circle,");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("          Container(");
+  buffer.writeln("            width: 68,");
+  buffer.writeln("            height: 68,");
+  buffer.writeln("            decoration: const BoxDecoration(");
+  buffer.writeln("              color: Color(0xFFEEECFD),");
+  buffer.writeln("              shape: BoxShape.circle,");
+  buffer.writeln("              boxShadow: [");
+  buffer.writeln("                BoxShadow(");
+  buffer.writeln("                  color: Color(0x215B4FCF),");
+  buffer.writeln("                  blurRadius: 18,");
+  buffer.writeln("                  offset: Offset(0, 5),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ],");
+  buffer.writeln("            ),");
+  buffer.writeln("            child: Icon(icon, color: const Color(0xFF5B4FCF), size: 32),");
+  buffer.writeln("          ),");
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Generate _buildActions panel method
+  _generateActionsBuilder(buffer, stepsList, activeIdxClamp);
+
+  // Generate style-specific helper methods
+  if (layoutStyle == 'split') {
+    generateSplitHelpers(buffer, activeIdxClamp, stepsList.length);
+  } else if (layoutStyle == 'focus') {
+    generateFocusHelpers(buffer);
+  } else if (layoutStyle == 'tabbed') {
+    _generateLiveSummaryBuilder(buffer, flatFields);
+  } else if (layoutStyle == 'carousel' || layoutStyle == 'curasole') {
+    generateCarouselHelpers(buffer);
+  } else if (layoutStyle == 'dashboard') {
+    generateDashboardHelpers(buffer);
+  } else if (layoutStyle == 'chat' || layoutStyle == 'chatform') {
+    generateChatHelpers(buffer);
+  } else if (layoutStyle == 'kanban') {
+    generateKanbanHelpers(buffer);
+  }
+}
+
+void _generateActionsBuilder(StringBuffer buffer, List<dynamic> stepsList, int activeIdxClamp) {
+  buffer.writeln("  Widget _buildActions(BuildContext context, {bool isMobile = false}) {");
+  buffer.writeln("    final canGoBack = $activeIdxClamp > 0;");
+  if (activeIdxClamp > 0 && activeIdxClamp - 1 < stepsList.length) {
+    final backId = stepsList[activeIdxClamp - 1]['id'];
+    buffer.writeln("    final backTarget = '$backId';");
+  } else {
+    buffer.writeln("    final backTarget = '';");
+  }
+  buffer.writeln();
+
+  buffer.writeln("    final primaryButton = Obx(() => ElevatedButton.icon(");
+  buffer.writeln("      onPressed: controller.isExecuting.value");
+  buffer.writeln("          ? null");
+  buffer.writeln("          : () => controller.onPrimaryAction(),");
+  buffer.writeln("      icon: controller.isExecuting.value");
+  buffer.writeln("          ? const SizedBox(");
+  buffer.writeln("              width: 16,");
+  buffer.writeln("              height: 16,");
+  buffer.writeln("              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),");
+  buffer.writeln("            )");
+  buffer.writeln("          : const Icon(Icons.arrow_forward_rounded, size: 18),");
+  buffer.writeln("      label: Text(");
+  buffer.writeln("        'Save & Continue',");
+  buffer.writeln("        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),");
+  buffer.writeln("      ),");
+  buffer.writeln("      style: ElevatedButton.styleFrom(");
+  buffer.writeln("        backgroundColor: const Color(0xFF5B4FCF),");
+  buffer.writeln("        foregroundColor: Colors.white,");
+  buffer.writeln("        disabledBackgroundColor: const Color(0xFF5B4FCF).withValues(alpha: 0.45),");
+  buffer.writeln("        elevation: 0,");
+  buffer.writeln("        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),");
+  buffer.writeln("        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),");
+  buffer.writeln("      ),");
+  buffer.writeln("    ));");
+  buffer.writeln();
+
+  buffer.writeln("    final draftButton = OutlinedButton.icon(");
+  buffer.writeln("      onPressed: () {");
+  buffer.writeln("        Get.snackbar(");
+  buffer.writeln("          'Draft Saved',");
+  buffer.writeln("          'Your progress has been saved successfully.',");
+  buffer.writeln("          snackPosition: SnackPosition.BOTTOM,");
+  buffer.writeln("          backgroundColor: const Color(0xFF5B4FCF),");
+  buffer.writeln("          colorText: Colors.white,");
+  buffer.writeln("          borderRadius: 8,");
+  buffer.writeln("          margin: const EdgeInsets.all(12),");
+  buffer.writeln("        );");
+  buffer.writeln("      },");
+  buffer.writeln("      icon: const Icon(Icons.bookmark_border_rounded, size: 15),");
+  buffer.writeln("      label: Text(");
+  buffer.writeln("        'Save Draft',");
+  buffer.writeln("        style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13),");
+  buffer.writeln("      ),");
+  buffer.writeln("      style: OutlinedButton.styleFrom(");
+  buffer.writeln("        foregroundColor: const Color(0xFF6B7280),");
+  buffer.writeln("        side: const BorderSide(color: Color(0xFFE4E6F0)),");
+  buffer.writeln("        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),");
+  buffer.writeln("        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln();
+
+  buffer.writeln("    Widget? backButton;");
+  buffer.writeln("    if (canGoBack) {");
+  buffer.writeln("      backButton = OutlinedButton.icon(");
+  buffer.writeln("        onPressed: () => Get.toNamed('/' + backTarget),");
+  buffer.writeln("        icon: const Icon(Icons.arrow_back_rounded, size: 15),");
+  buffer.writeln("        label: Text(");
+  buffer.writeln("          'Back',");
+  buffer.writeln("          style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13),");
+  buffer.writeln("        ),");
+  buffer.writeln("        style: OutlinedButton.styleFrom(");
+  buffer.writeln("          foregroundColor: const Color(0xFF5B4FCF),");
+  buffer.writeln("          side: const BorderSide(color: Color(0xFFE4E6F0)),");
+  buffer.writeln("          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),");
+  buffer.writeln("          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),");
+  buffer.writeln("        ),");
+  buffer.writeln("      );");
+  buffer.writeln("    }");
+  buffer.writeln();
+
+  buffer.writeln("    if (isMobile) {");
+  buffer.writeln("      return Column(");
+  buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.stretch,");
+  buffer.writeln("        children: [");
+  buffer.writeln("          SizedBox(width: double.infinity, child: primaryButton),");
+  buffer.writeln("          const SizedBox(height: 10),");
+  buffer.writeln("          Row(");
+  buffer.writeln("            children: [");
+  buffer.writeln("              if (backButton != null) ...[");
+  buffer.writeln("                Expanded(child: backButton),");
+  buffer.writeln("                const SizedBox(width: 10),");
+  buffer.writeln("              ],");
+  buffer.writeln("              Expanded(child: draftButton),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ],");
+  buffer.writeln("      );");
+  buffer.writeln("    }");
+  buffer.writeln();
+
+  buffer.writeln("    return Row(");
+  buffer.writeln("      mainAxisAlignment: MainAxisAlignment.end,");
+  buffer.writeln("      children: [");
+  buffer.writeln("        if (backButton != null) ...[");
+  buffer.writeln("          backButton,");
+  buffer.writeln("          const SizedBox(width: 10),");
+  buffer.writeln("        ],");
+  buffer.writeln("        draftButton,");
+  buffer.writeln("        const SizedBox(width: 10),");
+  buffer.writeln("        primaryButton,");
+  buffer.writeln("      ],");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+}
+
+void _generateLiveSummaryBuilder(StringBuffer buffer, List<Map<String, dynamic>> flatFields) {
+  buffer.writeln("  Widget _buildLiveSummaryCard(BuildContext context) {");
+  buffer.writeln("    return Column(");
+  buffer.writeln("      crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("      children: [");
+  buffer.writeln("        Row(");
+  buffer.writeln("          children: [");
+  buffer.writeln("            const Icon(Icons.analytics_outlined, color: Color(0xFF5B4FCF), size: 18),");
+  buffer.writeln("            const SizedBox(width: 8),");
+  buffer.writeln("            Text(");
+  buffer.writeln("              'Real-time Summary',");
+  buffer.writeln("              style: GoogleFonts.poppins(");
+  buffer.writeln("                fontSize: 13,");
+  buffer.writeln("                fontWeight: FontWeight.bold,");
+  buffer.writeln("                color: const Color(0xFF1A1A2E),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ),");
+  buffer.writeln("          ],");
+  buffer.writeln("        ),");
+  buffer.writeln("        const SizedBox(height: 12),");
+  buffer.writeln("        const Divider(color: Color(0xFFE4E6F0), height: 1),");
+  buffer.writeln("        const SizedBox(height: 12),");
+  buffer.writeln("        Expanded(");
+  buffer.writeln("          child: ListView(");
+  buffer.writeln("            children: [");
+
+  for (final field in flatFields) {
+    final rawId = (field['label'] ?? field['id'] ?? 'field').toString().trim();
+    final rawLabel = rawId;
+    final name = camelCaseName(rawId);
+    final capitalLabel = pascalCaseName(rawId);
+    final type = (field['type'] ?? '').toString().toLowerCase().trim();
+
+    final plugin = FieldGeneratorRegistry.find(type);
+    if (plugin != null) {
+      plugin.generateSummaryRow(
+        buffer,
+        field,
+        name,
+        capitalLabel,
+        rawLabel,
+      );
+    }
+  }
+
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ],");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+
+  // Summary Row Widget
+  buffer.writeln("  Widget _buildSummaryRow(String label, String value) {");
+  buffer.writeln("    return Padding(");
+  buffer.writeln("      padding: const EdgeInsets.only(bottom: 8.0),");
+  buffer.writeln("      child: Column(");
+  buffer.writeln("        crossAxisAlignment: CrossAxisAlignment.start,");
+  buffer.writeln("        children: [");
+  buffer.writeln("          Text(");
+  buffer.writeln("            label.toUpperCase(),");
+  buffer.writeln("            style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF5B4FCF)),");
+  buffer.writeln("          ),");
+  buffer.writeln("          const SizedBox(height: 2),");
+  buffer.writeln("          Text(");
+  buffer.writeln("            value,");
+  buffer.writeln("            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),");
+  buffer.writeln("          ),");
+  buffer.writeln("          const SizedBox(height: 6),");
+  buffer.writeln("          const Divider(color: Color(0xFFE4E6F0), height: 1),");
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
 }

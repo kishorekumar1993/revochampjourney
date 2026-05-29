@@ -19,6 +19,8 @@ List<Map<String, String>> generateGetxFiles({
   required List<Map<String, dynamic>> rawFields,
   List<Map<String, dynamic>>? flatFields,
   Map<String, dynamic>? stepJson,
+  List<dynamic>? allSteps,
+  String layoutStyle = 'split',
 }) {
   final result    = <Map<String, String>>[];
   final baseName  = screenName.toLowerCase();
@@ -55,6 +57,8 @@ List<Map<String, String>> generateGetxFiles({
     rawFields,
     fileName,
     stepJson: stepJson,
+    allSteps: allSteps,
+    layoutStyle: layoutStyle,
   );
 
   result.addAll([

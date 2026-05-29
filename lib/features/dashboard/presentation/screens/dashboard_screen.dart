@@ -321,6 +321,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
         bool blocSelected = true;
         bool getxSelected = true;
         bool riverpodSelected = true;
+        String selectedLayout = 'split';
 
         return StatefulBuilder(
           builder: (sbContext, setStateDialog) {
@@ -393,6 +394,43 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "GetX View Layout Style",
+                      style: textStyle.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: RevoTheme.cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: RevoTheme.cardBorder),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedLayout,
+                          dropdownColor: RevoTheme.cardBg,
+                          isExpanded: true,
+                          style: GoogleFonts.inter(color: RevoTheme.textPrimary, fontSize: 13),
+                          items: const [
+                            DropdownMenuItem(value: 'split', child: Text('Split Screen View')),
+                            DropdownMenuItem(value: 'focus', child: Text('Conversational Focus View')),
+                            DropdownMenuItem(value: 'timeline', child: Text('Vertical Timeline View')),
+                            DropdownMenuItem(value: 'tabbed', child: Text('Tabbed Sidebar Navigation')),
+                            DropdownMenuItem(value: 'carousel', child: Text('Carousel Card Slider')),
+                            DropdownMenuItem(value: 'masterdetail', child: Text('Master Detail View')),
+                            DropdownMenuItem(value: 'accordion', child: Text('Accordion List View')),
+                            DropdownMenuItem(value: 'form', child: Text('Simple Scrollable Form')),
+                          ],
+                          onChanged: (val) {
+                            setStateDialog(() {
+                              if (val != null) selectedLayout = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -418,6 +456,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                             final files = await bloc_gen.generateAllFilesDataIsolate(
                               journeyConfig: journeyConfig,
                               architectures: architectures,
+                              layoutStyle: selectedLayout,
                             );
                             
                             if (files.isEmpty) {
@@ -463,9 +502,10 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                             await bloc_gen.generateAndSaveAllFiles(
                               journeyConfig: journeyConfig,
                               architectures: architectures,
+                              layoutStyle: selectedLayout,
                             );
 
-                  if (!context.mounted) return;
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("✅ Code generation started — select your project folder!"),
@@ -475,7 +515,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                             );
                           } catch (e, stack) {
                             debugPrint("Generation error: $e\n$stack");
-                  if (!context.mounted) return;
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text("Generation error: $e"),
@@ -489,7 +529,6 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                   ),
                   child: const Text("Generate"),
                 ),
-          
               ],
             );
           },

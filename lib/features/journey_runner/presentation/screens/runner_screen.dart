@@ -9,17 +9,22 @@ import 'package:revojourneytryone/features/journey_runner/presentation/screens/s
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/accordin_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/carousel_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/master_detail.dart';
-import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/tiled_runner_view.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../application/journey_draft_store.dart';
 import '../../application/journey_execution_engine.dart';
 import '../../domain/journey_execution_models.dart';
-import 'advanced_formula_field_widget.dart';
 import 'views/split_view.dart';
 import 'views/focus_view.dart';
 import 'views/timeline_view.dart';
 import 'views/tabbed_view.dart';
+import 'views/wizard_view.dart';
+import 'views/review_view.dart';
+import 'views/dashboard_view.dart';
+import 'views/chat_view.dart';
+import 'views/kanban_view.dart';
+import 'views/stepper_view.dart';
+import 'fields/field_plugins.dart';
 
 enum RunnerLayoutStyle {
   split,
@@ -30,6 +35,12 @@ enum RunnerLayoutStyle {
   masterdetail,
   accordion,
   form,
+  wizard,
+  review,
+  dashboard,
+  chat,
+  kanban,
+  stepper,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -611,6 +622,128 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
               _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
           },
         );
+      case RunnerLayoutStyle.wizard:
+        return WizardRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.review:
+        return ReviewRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formValues: formValues,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.dashboard:
+        return DashboardRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.chat:
+        return ChatRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formValues: formValues,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.kanban:
+        return KanbanRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+      case RunnerLayoutStyle.stepper:
+        return StepperRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
       case RunnerLayoutStyle.form:
         return _buildMobileLayout(cfg, activeStep, activeIdx, formValues, showSubmit);
          }
@@ -651,23 +784,33 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
 
   Widget _buildStyleSwitcher() {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 400),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: _IT.bg,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _styleIconBtn(RunnerLayoutStyle.split, Icons.splitscreen_rounded, 'Split View'),
-          _styleIconBtn(RunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),
-          _styleIconBtn(RunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),
-          _styleIconBtn(RunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),
-          _styleIconBtn(RunnerLayoutStyle.curasole, Icons.view_carousel_rounded, 'Carousel  View'),
-          _styleIconBtn(RunnerLayoutStyle.masterdetail, Icons.view_carousel_rounded, 'Master-Detail View'),
-          _styleIconBtn(RunnerLayoutStyle.accordion, Icons.view_agenda_rounded, 'Accordion View'),
-          _styleIconBtn(RunnerLayoutStyle.form, Icons.mobile_friendly_rounded, 'Mobile Form View'),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _styleIconBtn(RunnerLayoutStyle.split, Icons.splitscreen_rounded, 'Split View'),
+            _styleIconBtn(RunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),
+            _styleIconBtn(RunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),
+            _styleIconBtn(RunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),
+            _styleIconBtn(RunnerLayoutStyle.curasole, Icons.view_carousel_rounded, 'Carousel View'),
+            _styleIconBtn(RunnerLayoutStyle.masterdetail, Icons.dashboard_customize_rounded, 'Master-Detail View'),
+            _styleIconBtn(RunnerLayoutStyle.accordion, Icons.view_agenda_rounded, 'Accordion View'),
+            _styleIconBtn(RunnerLayoutStyle.wizard, Icons.wb_auto_rounded, 'Wizard View'),
+            _styleIconBtn(RunnerLayoutStyle.review, Icons.rate_review_rounded, 'Review View'),
+            _styleIconBtn(RunnerLayoutStyle.dashboard, Icons.space_dashboard_rounded, 'Dashboard View'),
+            _styleIconBtn(RunnerLayoutStyle.chat, Icons.chat_rounded, 'Chat View'),
+            _styleIconBtn(RunnerLayoutStyle.kanban, Icons.view_week_rounded, 'Kanban View'),
+            _styleIconBtn(RunnerLayoutStyle.stepper, Icons.linear_scale_rounded, 'Stepper View'),
+            _styleIconBtn(RunnerLayoutStyle.form, Icons.mobile_friendly_rounded, 'Mobile Form View'),
+          ],
+        ),
       ),
     );
   }
@@ -1375,444 +1518,30 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   }
 
   Widget _buildField(JourneyField field, Map<String, dynamic> values) {
-    final hasErr = _errors.containsKey(field.id);
-    final errMsg = _errors[field.id];
-
-    switch (field.type.toLowerCase()) {
-      case 'divider':
-        return Padding(
-          padding: const EdgeInsets.only(top: 6, bottom: 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                field.label,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _IT.brand,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Divider(color: _IT.dividerColor, height: 1),
-            ],
-          ),
-        );
-
-      case 'dropdown':
-        final opts = field.getResolvedOptions();
-        final disp = opts.isEmpty ? ["Select"] : opts;
-        final cur = values[field.id]?.toString();
-        return DropdownButtonFormField<String>(
-          value: disp.contains(cur) ? cur : null,
-          decoration: _fd(
-            label: field.label,
-            hint: field.placeholder ?? field.hintText,
-            error: hasErr ? errMsg : null,
-          ),
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          dropdownColor: _IT.white,
-          borderRadius: BorderRadius.circular(14),
-          items: disp
-              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-              .toList(),
-          onChanged: (v) {
-            if (v != null) {
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v);
-            }
-          },
-        );
-
-      case 'api_dropdown':
-        return ApiDropdownWidget(
-          field: field,
-          initialValue: values[field.id]?.toString(),
-          onChanged: (v) =>
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v),
-          errorText: hasErr ? errMsg : null,
-        );
-
-      case 'radio':
-        final opts = field.getResolvedOptions();
-        final cur = values[field.id]?.toString();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              field.label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _IT.textMid,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: opts.map((opt) {
-                final sel = cur == opt;
-                return GestureDetector(
-                  onTap: () => ref
-                      .read(formValuesProvider.notifier)
-                      .updateValue(field.id, opt),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: sel ? _IT.brand : _IT.white,
-                      border: Border.all(color: sel ? _IT.brand : _IT.border),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.person_outline_rounded,
-                          size: 14,
-                          color: sel ? Colors.white : _IT.textMid,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          opt,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: sel ? Colors.white : _IT.textDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            if (hasErr) ...[
-              const SizedBox(height: 6),
-              Text(
-                errMsg!,
-                style: GoogleFonts.poppins(fontSize: 11, color: _IT.error),
-              ),
-            ],
-          ],
-        );
-
-      case 'checkbox':
-        final cur = values[field.id]?.toString() == 'true';
-        return Container(
-          decoration: BoxDecoration(
-            color: _IT.inputBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _IT.border),
-          ),
-          child: CheckboxListTile(
-            title: Text(
-              field.label,
-              style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-            ),
-            value: cur,
-            activeColor: _IT.brand,
-            checkColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            onChanged: (v) => ref
-                .read(formValuesProvider.notifier)
-                .updateValue(field.id, (v ?? false).toString()),
-            subtitle: hasErr
-                ? Text(
-                    errMsg!,
-                    style: GoogleFonts.poppins(fontSize: 11, color: _IT.error),
-                  )
-                : null,
-          ),
-        );
-
-      case 'switch':
-        final cur = values[field.id]?.toString() == 'true';
-        return Container(
-          decoration: BoxDecoration(
-            color: _IT.inputBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _IT.border),
-          ),
-          child: SwitchListTile(
-            title: Text(
-              field.label,
-              style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-            ),
-            value: cur,
-            activeColor: _IT.brand,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            onChanged: (v) => ref
-                .read(formValuesProvider.notifier)
-                .updateValue(field.id, v.toString()),
-            subtitle: hasErr
-                ? Text(
-                    errMsg!,
-                    style: GoogleFonts.poppins(fontSize: 11, color: _IT.error),
-                  )
-                : null,
-          ),
-        );
-
-      case 'date':
-      case 'time':
-      case 'datetime':
-        final cur = values[field.id]?.toString() ?? '';
-        return TextField(
-          controller: TextEditingController(text: cur),
-          readOnly: true,
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          decoration: _fd(
-            label: field.label,
-            hint: field.type == 'time' ? 'HH : MM' : 'DD / MM / YYYY',
-            prefix: Icon(
-              Icons.calendar_today_outlined,
-              color: _IT.brand,
-              size: 17,
-            ),
-            error: hasErr ? errMsg : null,
-          ),
-          onTap: () async {
-            if (field.type == 'time') {
-              final p = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.now(),
-                builder: (c, ch) => Theme(data: _pickerTheme(), child: ch!),
-              );
-              if (p != null && context.mounted) {
-                ref
-                    .read(formValuesProvider.notifier)
-                    .updateValue(field.id, p.format(context));
-              }
-              return;
-            }
-            final p = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(1900),
-              lastDate: DateTime(2100),
-              builder: (c, ch) => Theme(data: _pickerTheme(), child: ch!),
-            );
-            if (p != null) {
-              ref
-                  .read(formValuesProvider.notifier)
-                  .updateValue(
-                    field.id,
-                    "${p.day.toString().padLeft(2, '0')}/${p.month.toString().padLeft(2, '0')}/${p.year}",
-                  );
-            }
-          },
-        );
-
-      case 'number':
-        return TextField(
-          keyboardType: TextInputType.number,
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          onChanged: (v) =>
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v),
-          decoration: _fd(
-            label: field.label,
-            hint: field.placeholder,
-            error: hasErr ? errMsg : null,
-          ),
-        );
-
-      case 'email':
-        return TextField(
-          keyboardType: TextInputType.emailAddress,
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          onChanged: (v) =>
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v),
-          decoration: _fd(
-            label: field.label,
-            hint: field.placeholder ?? 'Enter email address',
-            prefix: const Icon(
-              Icons.mail_outline_rounded,
-              color: _IT.brand,
-              size: 17,
-            ),
-            error: hasErr ? errMsg : null,
-          ),
-        );
-
-      case 'phone':
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: _IT.inputBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _IT.border, width: 1.2),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text("🇮🇳", style: TextStyle(fontSize: 17)),
-                  const SizedBox(width: 4),
-                  Text(
-                    "+91",
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: _IT.textDark,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 15,
-                    color: _IT.textMid,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                keyboardType: TextInputType.phone,
-                style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-                onChanged: (v) => ref
-                    .read(formValuesProvider.notifier)
-                    .updateValue(field.id, v),
-                decoration: _fd(
-                  label: field.label,
-                  hint: field.placeholder ?? 'Enter mobile number',
-                  error: hasErr ? errMsg : null,
-                ),
-              ),
-            ),
-          ],
-        );
-
-      case 'textarea':
-        return TextField(
-          maxLines: 4,
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          onChanged: (v) =>
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v),
-          decoration: _fd(
-            label: field.label,
-            hint: field.placeholder,
-            error: hasErr ? errMsg : null,
-          ).copyWith(alignLabelWithHint: true),
-        );
-
-      case 'otp':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              field.label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _IT.textMid,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(
-                6,
-                (idx) => SizedBox(
-                  width: 44,
-                  child: TextField(
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: _IT.textDark,
-                    ),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      filled: true,
-                      fillColor: _IT.inputBg,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: _IT.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                          color: _IT.brand,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    onChanged: (v) {
-                      if (v.isNotEmpty && idx < 5) {
-                        FocusScope.of(context).nextFocus();
-                      }
-                      ref
-                          .read(formValuesProvider.notifier)
-                          .updateValue(field.id, "123456");
-                    },
-                  ),
-                ),
-              ),
-            ),
-            if (hasErr) ...[
-              const SizedBox(height: 6),
-              Text(
-                errMsg!,
-                style: GoogleFonts.poppins(fontSize: 11, color: _IT.error),
-              ),
-            ],
-          ],
-        );
-
-      case 'image':
-        return _buildUpload(field, values, hasErr, errMsg, isImage: true);
-      case 'file':
-        return _buildUpload(field, values, hasErr, errMsg);
-
-      case 'table_grid':
-        return _buildGrid(field);
-      case 'repeater':
-        return _buildRepeater(field);
-      case 'timeline':
-        return _buildTimeline(field);
-      case 'section':
-        return _buildNested(field, values, Icons.view_agenda_outlined);
-      case 'card':
-        return _buildNested(field, values, Icons.crop_square_rounded);
-      case 'tabs':
-        return _buildTabs(field, values);
-      case 'accordion':
-        return _buildNested(field, values, Icons.unfold_more_rounded);
-      case 'row':
-        return _buildNestedRow(field, values);
-      case 'formula':
-        return FormulaFieldWidget(
-          label: field.label,
-          formula: field.formula!,
-          formValues: values,
-        );
-
-      default:
-        return TextField(
-          style: GoogleFonts.poppins(fontSize: 13, color: _IT.textDark),
-          onChanged: (v) =>
-              ref.read(formValuesProvider.notifier).updateValue(field.id, v),
-          decoration: _fd(
-            label: field.label,
-            hint: field.placeholder,
-            error: hasErr ? errMsg : null,
-          ),
-        );
-    }
+    return RunnerFieldPluginRegistry.buildField(
+      FieldBuildContext(
+        context: context,
+        field: field,
+        values: values,
+        ref: ref,
+        errors: _errors,
+        fd: _fd,
+        buildField: _buildField,
+        buildUpload: _buildUpload,
+        buildGrid: _buildGrid,
+        buildRepeater: _buildRepeater,
+        buildTimeline: _buildTimeline,
+        buildNested: _buildNested,
+        buildTabs: _buildTabs,
+        buildNestedRow: _buildNestedRow,
+        buildApiDropdown: (f, initVal, onChange, err) => ApiDropdownWidget(
+          field: f,
+          initialValue: initVal,
+          onChanged: onChange,
+          errorText: err,
+        ),
+      ),
+    );
   }
 
   ThemeData _pickerTheme() => ThemeData(

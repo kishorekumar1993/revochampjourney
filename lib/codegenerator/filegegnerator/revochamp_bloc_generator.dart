@@ -20,6 +20,7 @@ import 'package:revojourneytryone/codegenerator/filegegnerator/common_bloc_gener
 import 'package:revojourneytryone/codegenerator/filegegnerator/getx_generator.dart';
 import 'package:revojourneytryone/codegenerator/filegegnerator/riverpodgenerator.dart';
 import 'package:revojourneytryone/codegenerator/getx/getx_core_generator.dart';
+import 'package:revojourneytryone/codegenerator/generators/bloc/generators/widget_generator.dart';
 
 import '../../features/journey_builder/domain/entities/journey_models.dart';
 
@@ -43,6 +44,7 @@ List<Map<String, String>> generateAllFilesData({
     Architecture.getx,
     Architecture.riverpod,
   },
+  String layoutStyle = 'split',
 }) {
   if (journeyConfig.steps.isEmpty) return [];
 
@@ -122,12 +124,15 @@ List<Map<String, String>> generateAllFilesData({
 
     // ── 2. GetX ───────────────────────────────────────────────────────────
     if (architectures.contains(Architecture.getx)) {
+      final allStepsJson = journeyConfig.steps.map((e) => e.toJson()).toList();
       final getxFiles = generateGetxFiles(
         screenName: screenName,
         journeyNamespace: journeyNamespace,
         rawFields: rawFields,
         flatFields: flatFields,
         stepJson: stepJson,
+        allSteps: allStepsJson,
+        layoutStyle: layoutStyle,
       );
       final coreFiles = generateGetxCoreFiles(
         projectName: screenName,
@@ -136,7 +141,30 @@ List<Map<String, String>> generateAllFilesData({
         generateResultClass: true,
         generateBaseController: true,
       );
-final allStepsJson = journeyConfig.steps.map((e) => e.toJson()).toList();
+      
+      if (!coreFilesAdded) {
+        final widgetsBase = 'lib/getx/core/widgets';
+        final getxWidgetsBarrel = ReusableWidgetSources.widgetsBarrel.replaceFirst(
+          "export 'app_async_dropdown_field.dart';\n",
+          "",
+        );
+        coreFiles.addAll([
+          {'folderPath': widgetsBase, 'fileName': 'form_field_wrapper.dart', 'textContent': ReusableWidgetSources.formFieldWrapper},
+          {'folderPath': widgetsBase, 'fileName': 'app_text_field.dart', 'textContent': ReusableWidgetSources.appTextField},
+          {'folderPath': widgetsBase, 'fileName': 'app_dropdown_field.dart', 'textContent': ReusableWidgetSources.appDropdownField},
+          {'folderPath': widgetsBase, 'fileName': 'app_checkbox_field.dart', 'textContent': ReusableWidgetSources.appCheckboxField},
+          {'folderPath': widgetsBase, 'fileName': 'app_date_picker_field.dart', 'textContent': ReusableWidgetSources.appDatePickerField},
+          {'folderPath': widgetsBase, 'fileName': 'app_radio_group_field.dart', 'textContent': ReusableWidgetSources.appRadioGroupField},
+          {'folderPath': widgetsBase, 'fileName': 'app_file_upload_field.dart', 'textContent': ReusableWidgetSources.appFileUploadField},
+          {'folderPath': widgetsBase, 'fileName': 'app_multi_select_field.dart', 'textContent': ReusableWidgetSources.appMultiSelectField},
+          {'folderPath': widgetsBase, 'fileName': 'app_form_button.dart', 'textContent': ReusableWidgetSources.appFormButton},
+          {'folderPath': widgetsBase, 'fileName': 'app_error_widget.dart', 'textContent': ReusableWidgetSources.appErrorWidget},
+          {'folderPath': widgetsBase, 'fileName': 'app_loading_widget.dart', 'textContent': ReusableWidgetSources.appLoadingWidget},
+          {'folderPath': widgetsBase, 'fileName': 'app_data_grid.dart', 'textContent': ReusableWidgetSources.appDataGrid},
+          {'folderPath': widgetsBase, 'fileName': 'widgets.dart', 'textContent': getxWidgetsBarrel},
+        ]);
+      }
+
 final routerFiles = generateGetXRouterFromSteps(allStepsJson, journeyNamespace);
 allFiles.addAll(routerFiles);
       allFiles.addAll(getxFiles);
@@ -190,10 +218,12 @@ Future<void> generateAndSaveAllFiles({
     Architecture.getx,
     Architecture.riverpod,
   },
+  String layoutStyle = 'split',
 }) async {
   final allFiles = await generateAllFilesDataIsolate(
     journeyConfig: journeyConfig,
     architectures: architectures,
+    layoutStyle: layoutStyle,
   );
 
   if (allFiles.isEmpty) {
@@ -213,12 +243,14 @@ Future<List<Map<String, String>>> generateAllFilesDataIsolate({
     Architecture.getx,
     Architecture.riverpod,
   },
+  String layoutStyle = 'split',
 }) async {
   // Flutter Web does not support real isolates; run generation on main thread.
   if (kIsWeb) {
     return generateAllFilesData(
       journeyConfig: journeyConfig,
       architectures: architectures,
+      layoutStyle: layoutStyle,
     );
   }
 
@@ -229,6 +261,7 @@ Future<List<Map<String, String>>> generateAllFilesDataIsolate({
   return compute(_generateAllFilesDataEntry, <String, dynamic>{
     'journeyJson': journeyJson,
     'architectures': archNames,
+    'layoutStyle': layoutStyle,
   });
 }
 
@@ -238,6 +271,7 @@ List<Map<String, String>> _generateAllFilesDataEntry(
 ) {
   final journeyJson = payload['journeyJson'] as Map<String, dynamic>;
   final archNames = (payload['architectures'] as List<dynamic>).cast<String>();
+  final layoutStyle = payload['layoutStyle']?.toString() ?? 'split';
 
   final archSet = <Architecture>{};
   for (final name in archNames) {
@@ -258,6 +292,7 @@ List<Map<String, String>> _generateAllFilesDataEntry(
   return generateAllFilesData(
     journeyConfig: journeyConfig,
     architectures: archSet,
+    layoutStyle: layoutStyle,
   );
 }
 
@@ -309,7 +344,9 @@ List<Map<String, dynamic>> flattenFields(List<dynamic> source) {
   void flatten(dynamic item) {
     if (item == null) return;
     if (item is List) {
-      for (final i in item) flatten(i);
+      for (final i in item) {
+        flatten(i);
+      }
       return;
     }
     if (item is! Map) return;

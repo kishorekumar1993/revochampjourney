@@ -1,0 +1,131 @@
+import 'package:revojourneytryone/codegenerator/filegegnerator/journey_step_codegen.dart';
+
+void generateFocusLayout(
+  StringBuffer buffer,
+  JourneyStepCodegen stepMeta,
+  String className,
+  List<dynamic> stepsList,
+  int activeIdxClamp,
+) {
+  final total = stepsList.isNotEmpty ? stepsList.length : 1;
+  buffer.writeln("    final total = $total;");
+  buffer.writeln("    final activeIdx = $activeIdxClamp;");
+  buffer.writeln("    final progress = (activeIdx + 1) / total;");
+  buffer.writeln("    return Scaffold(");
+  buffer.writeln("      backgroundColor: const Color(0xFFF0F0FF),");
+  buffer.writeln("      appBar: AppBar(");
+  buffer.writeln("        title: const Text('${stepMeta.escapedTitle}'),");
+  buffer.writeln("        backgroundColor: Colors.white,");
+  buffer.writeln("        foregroundColor: const Color(0xFF1A1A2E),");
+  buffer.writeln("        elevation: 0,");
+  buffer.writeln("        centerTitle: true,");
+  buffer.writeln("      ),");
+  buffer.writeln("      body: GestureDetector(");
+  buffer.writeln("        onTap: () => FocusScope.of(context).unfocus(),");
+  buffer.writeln("        child: SafeArea(");
+  buffer.writeln("          child: Stack(");
+  buffer.writeln("            children: [");
+  buffer.writeln("              SingleChildScrollView(");
+  buffer.writeln("                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),");
+  buffer.writeln("                child: Center(");
+  buffer.writeln("                  child: ConstrainedBox(");
+  buffer.writeln("                    constraints: const BoxConstraints(maxWidth: 680),");
+  buffer.writeln("                    child: Container(");
+  buffer.writeln("                      padding: const EdgeInsets.all(32),");
+  buffer.writeln("                      decoration: BoxDecoration(");
+  buffer.writeln("                        color: Colors.white,");
+  buffer.writeln("                        borderRadius: BorderRadius.circular(28),");
+  buffer.writeln("                        boxShadow: const [");
+  buffer.writeln("                          BoxShadow(");
+  buffer.writeln("                            color: Color(0x155B4FCF),");
+  buffer.writeln("                            blurRadius: 45,");
+  buffer.writeln("                            offset: Offset(0, 12),");
+  buffer.writeln("                          ),");
+  buffer.writeln("                        ],");
+  buffer.writeln("                      ),");
+  buffer.writeln("                      child: Column(");
+  buffer.writeln("                        mainAxisSize: MainAxisSize.min,");
+  buffer.writeln("                        children: [");
+  buffer.writeln("                          _buildCircularProgress(progress, total),");
+  buffer.writeln("                          const SizedBox(height: 24),");
+  buffer.writeln("                          Text(");
+  buffer.writeln("                            'Step \${activeIdx + 1} of \$total',");
+  buffer.writeln("                            style: GoogleFonts.poppins(");
+  buffer.writeln("                              fontSize: 12,");
+  buffer.writeln("                              fontWeight: FontWeight.w600,");
+  buffer.writeln("                              color: const Color(0xFF5B4FCF),");
+  buffer.writeln("                              letterSpacing: 1.0,");
+  buffer.writeln("                            ),");
+  buffer.writeln("                          ),");
+  buffer.writeln("                          const SizedBox(height: 12),");
+  buffer.writeln("                          _buildFormContent(context),");
+  buffer.writeln("                        ],");
+  buffer.writeln("                      ),");
+  buffer.writeln("                    ),");
+  buffer.writeln("                  ),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("              _buildLoadingOverlay(),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ),");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+}
+
+void generateFocusHelpers(StringBuffer buffer) {
+  buffer.writeln("  Widget _buildCircularProgress(double progress, int total) {");
+  buffer.writeln("    return Container(");
+  buffer.writeln("      width: 80,");
+  buffer.writeln("      height: 80,");
+  buffer.writeln("      decoration: BoxDecoration(");
+  buffer.writeln("        color: const Color(0xFFEEECFD),");
+  buffer.writeln("        shape: BoxShape.circle,");
+  buffer.writeln("        boxShadow: [");
+  buffer.writeln("          BoxShadow(");
+  buffer.writeln("            color: const Color(0xFF5B4FCF).withValues(alpha: 0.1),");
+  buffer.writeln("            blurRadius: 16,");
+  buffer.writeln("            offset: const Offset(0, 4),");
+  buffer.writeln("          ),");
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("      child: Stack(");
+  buffer.writeln("        alignment: Alignment.center,");
+  buffer.writeln("        children: [");
+  buffer.writeln("          SizedBox(");
+  buffer.writeln("            width: 72,");
+  buffer.writeln("            height: 72,");
+  buffer.writeln("            child: CircularProgressIndicator(");
+  buffer.writeln("              value: progress,");
+  buffer.writeln("              strokeWidth: 5,");
+  buffer.writeln("              backgroundColor: Colors.white,");
+  buffer.writeln("              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5B4FCF)),");
+  buffer.writeln("            ),");
+  buffer.writeln("          ),");
+  buffer.writeln("          Column(");
+  buffer.writeln("            mainAxisAlignment: MainAxisAlignment.center,");
+  buffer.writeln("            children: [");
+  buffer.writeln("              Text(");
+  buffer.writeln("                '\n\${(progress * 100).toInt()}%',");
+  buffer.writeln("                style: GoogleFonts.poppins(");
+  buffer.writeln("                  fontSize: 14,");
+  buffer.writeln("                  fontWeight: FontWeight.w700,");
+  buffer.writeln("                  color: const Color(0xFF1A1A2E),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("              Text(");
+  buffer.writeln("                'Done',");
+  buffer.writeln("                style: GoogleFonts.poppins(");
+  buffer.writeln("                  fontSize: 8,");
+  buffer.writeln("                  fontWeight: FontWeight.w500,");
+  buffer.writeln("                  color: const Color(0xFF6B7280),");
+  buffer.writeln("                ),");
+  buffer.writeln("              ),");
+  buffer.writeln("            ],");
+  buffer.writeln("          ),");
+  buffer.writeln("        ],");
+  buffer.writeln("      ),");
+  buffer.writeln("    );");
+  buffer.writeln("  }");
+  buffer.writeln();
+}
