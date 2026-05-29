@@ -6,6 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/stepper.dart';
+import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/accordin_view.dart';
+import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/carousel_view.dart';
+import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/master_detail.dart';
+import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/tiled_runner_view.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../application/journey_draft_store.dart';
@@ -22,6 +26,10 @@ enum RunnerLayoutStyle {
   focus,
   timeline,
   tabbed,
+  curasole,
+  masterdetail,
+  accordion,
+  form,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -541,8 +549,72 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
             }
           },
         );
-    }
-  }
+    
+    
+    
+      case RunnerLayoutStyle.curasole:
+        return CarouselRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+
+        case RunnerLayoutStyle.masterdetail:
+        return MasterDetailRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+            if (idx <= activeIdx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+            }
+          },
+        );
+ case RunnerLayoutStyle.accordion:
+        return AccordionRunnerView(
+          cfg: cfg,
+          activeStep: activeStep,
+          activeIdx: activeIdx,
+          formContentBuilder: (ctx, {bool isMobile = false}) => _buildFormContent(
+            cfg,
+            activeStep,
+            activeIdx,
+            formValues,
+            showSubmit,
+            isMobile: isMobile,
+          ),
+          bottomBarBuilder: () => _buildBottomBar(cfg, activeStep),
+          onStepTap: (idx) {
+              _runAction(JourneyAction.previous, cfg.steps[idx], cfg);
+          },
+        );
+      case RunnerLayoutStyle.form:
+        return _buildMobileLayout(cfg, activeStep, activeIdx, formValues, showSubmit);
+         }
+}
 
   // ── HEADER ────────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context, JourneyConfig cfg) {
@@ -591,6 +663,10 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
           _styleIconBtn(RunnerLayoutStyle.focus, Icons.center_focus_strong_rounded, 'Focus View'),
           _styleIconBtn(RunnerLayoutStyle.timeline, Icons.route_rounded, 'Timeline View'),
           _styleIconBtn(RunnerLayoutStyle.tabbed, Icons.view_sidebar_rounded, 'Tabbed View'),
+          _styleIconBtn(RunnerLayoutStyle.curasole, Icons.view_carousel_rounded, 'Carousel  View'),
+          _styleIconBtn(RunnerLayoutStyle.masterdetail, Icons.view_carousel_rounded, 'Master-Detail View'),
+          _styleIconBtn(RunnerLayoutStyle.accordion, Icons.view_agenda_rounded, 'Accordion View'),
+          _styleIconBtn(RunnerLayoutStyle.form, Icons.mobile_friendly_rounded, 'Mobile Form View'),
         ],
       ),
     );
