@@ -398,6 +398,17 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     state = state.copyWith(steps: updatedSteps);
   }
 
+  void updateStepLayout(String stepId, Map<String, dynamic> screenLayout, List<JourneyField> fields) {
+    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
+    if (stepIndex == -1) return;
+    final step = state.steps[stepIndex];
+    final updatedStep = step.copyWith(
+      screenLayout: screenLayout,
+      fields: fields,
+    );
+    updateStep(stepId, updatedStep);
+  }
+
   // --- Step Collection Helpers (Conditions, Validations, APIs, Actions) ---
 
   void addConditionToStep(String stepId, StepCondition condition) {

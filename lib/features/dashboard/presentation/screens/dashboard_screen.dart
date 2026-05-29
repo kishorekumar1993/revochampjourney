@@ -6,7 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:revojourneytryone/codegenerator/filegegnerator/revochamp_bloc_generator.dart'
     deferred as bloc_gen;
+import 'package:revojourneytryone/features/builder_workspace/presentation/provider/builder_mode_provider.dart';
 import '../../../../core/theme.dart';
+import '../../../builder_workspace/presentation/screen/builder_workspace_screen.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../../journey_builder/presentation/widgets/canvas_panel/canvas_panel_main.dart';
@@ -18,6 +20,7 @@ import 'templates_screen.dart';
 import 'journeys_screen.dart';
 import 'runs_screen.dart';
 import 'misc_screens.dart';
+import '../../../visual_builder/presentation/screen/visual_builder_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -31,8 +34,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _environment = 'Production';
   bool _isEditingJourney = false;
   bool _isSidebarCollapsed = false;
-  bool _showStepsPanel = true;
-  bool _showPropertiesPanel = true;
 
   void _exportJson(BuildContext context, Map<String, dynamic> jsonMap) {
     // Mock export by printing and showing dialog
@@ -645,19 +646,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                                                                 });
                                                               },
                                                             )
-                                                          : Row(
-                                                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                              children: [
-                                                                // Steps Sidebar (Column 2)
-                                                                if (_showStepsPanel) RevoStepsPanel(),
-
-                                                                // Canvas Builder Area (Column 3)
-                                                                RevoCanvasPanel(),
-
-                                                                // Right properties editor panel (Column 4)
-                                                                if (_showPropertiesPanel) RevoPropertiesPanel(),
-                                                              ],
-                                                            ),
+                                                          : const BuilderWorkspaceScreen(),
                 ),
               ],
             ),
@@ -670,6 +659,8 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
   Widget _buildTopHeader(BuildContext context, dynamic journeyConfig) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isCompact = screenWidth < 1350;
+    final showSteps = ref.watch(showStepsPanelProvider);
+    final showProps = ref.watch(showPropertiesPanelProvider);
 
     return Container(
       height: 70,
@@ -762,85 +753,77 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                     if (isCompact) ...[
                       IconButton(
                         icon: Icon(
-                          _showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
-                          color: _showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          showSteps ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
+                          color: showSteps ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                           size: 20,
                         ),
-                        tooltip: _showStepsPanel ? "Hide Steps Panel" : "Show Steps Panel",
+                        tooltip: showSteps ? "Hide Steps Panel" : "Show Steps Panel",
                         onPressed: () {
-                          setState(() {
-                            _showStepsPanel = !_showStepsPanel;
-                          });
+                          ref.read(showStepsPanelProvider.notifier).state = !showSteps;
                         },
                       ),
                       const SizedBox(width: 8),
                       IconButton(
                         icon: Icon(
-                          _showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
-                          color: _showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          showProps ? Icons.tune_rounded : Icons.tune_outlined,
+                          color: showProps ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                           size: 20,
                         ),
-                        tooltip: _showPropertiesPanel ? "Hide Properties Panel" : "Show Properties Panel",
+                        tooltip: showProps ? "Hide Properties Panel" : "Show Properties Panel",
                         onPressed: () {
-                          setState(() {
-                            _showPropertiesPanel = !_showPropertiesPanel;
-                          });
+                          ref.read(showPropertiesPanelProvider.notifier).state = !showProps;
                         },
                       ),
                     ] else ...[
                       OutlinedButton.icon(
                         onPressed: () {
-                          setState(() {
-                            _showStepsPanel = !_showStepsPanel;
-                          });
+                          ref.read(showStepsPanelProvider.notifier).state = !showSteps;
                         },
                         icon: Icon(
-                          _showStepsPanel ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
+                          showSteps ? Icons.format_list_bulleted_rounded : Icons.list_rounded,
                           size: 16,
-                          color: _showStepsPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          color: showSteps ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                         ),
                         label: Text(
-                          _showStepsPanel ? "Hide Steps" : "Show Steps",
+                          showSteps ? "Hide Steps" : "Show Steps",
                           style: TextStyle(
                             fontSize: 11,
-                            color: _showStepsPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                            color: showSteps ? RevoTheme.textPrimary : RevoTheme.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
+                            color: showSteps ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: _showStepsPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
+                          backgroundColor: showSteps ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: () {
-                          setState(() {
-                            _showPropertiesPanel = !_showPropertiesPanel;
-                          });
+                          ref.read(showPropertiesPanelProvider.notifier).state = !showProps;
                         },
                         icon: Icon(
-                          _showPropertiesPanel ? Icons.tune_rounded : Icons.tune_outlined,
+                          showProps ? Icons.tune_rounded : Icons.tune_outlined,
                           size: 16,
-                          color: _showPropertiesPanel ? RevoTheme.primaryLight : RevoTheme.textSecondary,
+                          color: showProps ? RevoTheme.primaryLight : RevoTheme.textSecondary,
                         ),
                         label: Text(
-                          _showPropertiesPanel ? "Hide Props" : "Show Props",
+                          showProps ? "Hide Props" : "Show Props",
                           style: TextStyle(
                             fontSize: 11,
-                            color: _showPropertiesPanel ? RevoTheme.textPrimary : RevoTheme.textSecondary,
+                            color: showProps ? RevoTheme.textPrimary : RevoTheme.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           side: BorderSide(
-                            color: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
+                            color: showProps ? RevoTheme.primary.withValues(alpha:0.5) : RevoTheme.cardBorder,
                           ),
-                          backgroundColor: _showPropertiesPanel ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
+                          backgroundColor: showProps ? RevoTheme.primary.withValues(alpha:0.08) : Colors.transparent,
                         ),
                       ),
                     ],

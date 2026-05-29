@@ -79,6 +79,7 @@ class JourneyStep {
   List<StepCondition> conditions;
   List<StepAPI> apiCalls;
   List<StepAction> actions;
+  Map<String, dynamic>? screenLayout;
   List<JourneyField>? _flattenedCache;
 
   JourneyStep({
@@ -91,6 +92,7 @@ class JourneyStep {
     this.conditions = const [],
     this.apiCalls = const [],
     this.actions = const [],
+    this.screenLayout,
   });
 
   List<JourneyField> get flattenedFields {
@@ -130,6 +132,7 @@ class JourneyStep {
       conditions: conditionsList.map((cond) => StepCondition.fromJson(cond)).toList(),
       apiCalls: apiCallsList.map((api) => StepAPI.fromJson(api)).toList(),
       actions: actionsList.map((act) => StepAction.fromJson(act)).toList(),
+      screenLayout: json['screenLayout'],
     );
   }
 
@@ -144,6 +147,7 @@ class JourneyStep {
       'conditions': conditions.map((c) => c.toJson()).toList(),
       'apiCalls': apiCalls.map((a) => a.toJson()).toList(),
       'actions': actions.map((a) => a.toJson()).toList(),
+      if (screenLayout != null) 'screenLayout': screenLayout,
     };
   }
 
@@ -157,6 +161,7 @@ class JourneyStep {
     List<StepCondition>? conditions,
     List<StepAPI>? apiCalls,
     List<StepAction>? actions,
+    Map<String, dynamic>? screenLayout,
   }) {
     return JourneyStep(
       id: id ?? this.id,
@@ -168,6 +173,7 @@ class JourneyStep {
       conditions: conditions ?? this.conditions.map((c) => c.copyWith()).toList(),
       apiCalls: apiCalls ?? this.apiCalls.map((a) => a.copyWith()).toList(),
       actions: actions ?? this.actions.map((a) => a.copyWith()).toList(),
+      screenLayout: screenLayout ?? this.screenLayout,
     );
   }
 }
