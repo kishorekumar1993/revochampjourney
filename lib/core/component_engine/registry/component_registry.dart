@@ -133,6 +133,17 @@ class ComponentRegistry {
         'color': '#E4E6F0',
       },
     ),
+    const ComponentMetadata(
+      type: 'SizedBox',
+      label: 'SizedBox',
+      icon: Icons.aspect_ratio_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      defaultProperties: {
+        'width': null,
+        'height': null,
+      },
+    ),
 
     // --- FORM ---
     const ComponentMetadata(

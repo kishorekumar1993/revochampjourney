@@ -16,30 +16,28 @@ class RevoBuilderCanvas extends ConsumerWidget {
 
     final scale = builderState.canvasScale;
 
-    return Expanded(
-      child: Container(
-        color: RevoTheme.background,
-        child: Column(
-          children: [
-            // Canvas Toolbar
-            _buildCanvasToolbar(context, ref, builderState, controller),
+    return Container(
+      color: RevoTheme.background,
+      child: Column(
+        children: [
+          // Canvas Toolbar
+          _buildCanvasToolbar(context, ref, builderState, controller),
 
-            // Canvas Workspace
-            Expanded(
-              child: InteractiveViewer(
-                minScale: 0.2,
-                maxScale: 3.0,
-                boundaryMargin: const EdgeInsets.all(500),
-                child: Center(
-                  child: Transform.scale(
-                    scale: scale,
-                    child: _buildDeviceMockup(context, ref, builderState, controller),
-                  ),
+          // Canvas Workspace
+          Expanded(
+            child: InteractiveViewer(
+              minScale: 0.2,
+              maxScale: 3.0,
+              boundaryMargin: const EdgeInsets.all(500),
+              child: Center(
+                child: Transform.scale(
+                  scale: scale,
+                  child: _buildDeviceMockup(context, ref, builderState, controller),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -259,30 +257,45 @@ class RevoBuilderCanvas extends ConsumerWidget {
               ),
             ),
 
-          // Main screen scrolling body
           Positioned.fill(
             top: state.canvasWidth < 600 ? 32 : 0,
             bottom: state.canvasWidth < 600 ? 24 : 0,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ComponentRenderer.render(
-                    rootNode,
-                    isDesignMode: state.isDesignMode,
-                    selectedNode: state.selectedNode,
-                    hoveredNode: state.hoveredNode,
-                    onSelect: controller.selectNode,
-                    onHover: controller.hoverNode,
-                    onDelete: (node) => controller.deleteNode(node.id),
-                    onDuplicate: (node) => controller.duplicateNode(node.id),
-                    onMoveChild: controller.moveChildNode,
-                    onAddChild: (parent, type) => controller.addChildNode(parent.id, type),
+            child: rootNode.type == 'Scaffold'
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: ComponentRenderer.render(
+                      rootNode,
+                      isDesignMode: state.isDesignMode,
+                      selectedNode: state.selectedNode,
+                      hoveredNode: state.hoveredNode,
+                      onSelect: controller.selectNode,
+                      onHover: controller.hoverNode,
+                      onDelete: (node) => controller.deleteNode(node.id),
+                      onDuplicate: (node) => controller.duplicateNode(node.id),
+                      onMoveChild: controller.moveChildNode,
+                      onAddChild: (parent, type) => controller.addChildNode(parent.id, type),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ComponentRenderer.render(
+                          rootNode,
+                          isDesignMode: state.isDesignMode,
+                          selectedNode: state.selectedNode,
+                          hoveredNode: state.hoveredNode,
+                          onSelect: controller.selectNode,
+                          onHover: controller.hoverNode,
+                          onDelete: (node) => controller.deleteNode(node.id),
+                          onDuplicate: (node) => controller.duplicateNode(node.id),
+                          onMoveChild: controller.moveChildNode,
+                          onAddChild: (parent, type) => controller.addChildNode(parent.id, type),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
           ),
 
           // Simulated home indicator for mobile designs
@@ -308,6 +321,7 @@ class RevoBuilderCanvas extends ConsumerWidget {
 
     // If design mode, root node (column/layout) itself is a drop target!
     if (state.isDesignMode) {
+      final originalCanvasContent = canvasContent;
       canvasContent = DragTarget<Object>(
         onWillAcceptWithDetails: (details) => true,
         onAcceptWithDetails: (details) {
@@ -338,7 +352,7 @@ class RevoBuilderCanvas extends ConsumerWidget {
                 )
               ],
             ),
-            child: canvasContent,
+            child: originalCanvasContent,
           );
         },
       );

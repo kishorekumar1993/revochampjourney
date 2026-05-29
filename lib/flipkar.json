@@ -1,0 +1,2282 @@
+{
+  "id": "flipkart_dashboard",
+  "type": "Scaffold",
+  "isLocked": false,
+  "isVisible": true,
+  "isReusable": false,
+  "properties": {
+    "backgroundColor": "#F5F5F5"
+  },
+  "styles": {},
+  "responsive": {
+    "breakpoints": {
+      "mobile": 0,
+      "tablet": 600,
+      "desktop": 1024
+    }
+  },
+  "bindings": {
+    "cartCount": {
+      "type": "state",
+      "defaultValue": 3,
+      "source": "global.cart.items.length"
+    }
+  },
+  "animations": {},
+  "children": [
+    {
+      "id": "app_bar",
+      "type": "Container",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": true,
+      "properties": {},
+      "styles": {
+        "backgroundColor": "#2874F0",
+        "padding": {
+          "left": 16,
+          "right": 16,
+          "top": 12,
+          "bottom": 12
+        },
+        "elevation": 4
+      },
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "app_bar_row",
+          "type": "Row",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "mainAxisAlignment": "space_between",
+            "crossAxisAlignment": "center"
+          },
+          "styles": {},
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "logo",
+              "type": "Text",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "label": "Flipkart"
+              },
+              "styles": {
+                "fontSize": 22,
+                "fontWeight": "bold",
+                "color": "#FFFFFF",
+                "letterSpacing": 0.5
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [],
+              "actions": []
+            },
+            {
+              "id": "search_box",
+              "type": "Container",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {},
+              "styles": {
+                "flex": 1,
+                "margin": {
+                  "left": 16,
+                  "right": 16
+                }
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "search_field",
+                  "type": "TextField",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "fieldName": "search",
+                    "hint": "Search for products, brands and more",
+                    "required": false
+                  },
+                  "styles": {
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": 8,
+                    "padding": 10,
+                    "fontSize": 14
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "cart_icon_with_badge",
+              "type": "Stack",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {},
+              "styles": {},
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "cart_icon",
+                  "type": "Icon",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "icon": "shopping_cart"
+                  },
+                  "styles": {
+                    "fontSize": 28,
+                    "color": "#FFFFFF"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": [
+                    {
+                      "event": "onTap",
+                      "steps": [
+                        {
+                          "id": "go_to_cart",
+                          "type": "navigate",
+                          "pageId": "cart_page",
+                          "enabled": true,
+                          "conditions": [],
+                          "successSteps": [],
+                          "failureSteps": [],
+                          "nestedSteps": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "cart_badge",
+                  "type": "Container",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {},
+                  "styles": {
+                    "position": "topRight",
+                    "backgroundColor": "#FF6161",
+                    "borderRadius": 12,
+                    "padding": {
+                      "left": 4,
+                      "right": 4,
+                      "top": 2,
+                      "bottom": 2
+                    },
+                    "margin": {
+                      "top": -4,
+                      "right": -4
+                    }
+                  },
+                  "responsive": {},
+                  "bindings": {
+                    "visible": "cartCount > 0"
+                  },
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "cart_count_text",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "fontSize": 10,
+                        "fontWeight": "bold",
+                        "color": "#FFFFFF"
+                      },
+                      "responsive": {},
+                      "bindings": {
+                        "label": "cartCount"
+                      },
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "actions": []
+        }
+      ],
+      "actions": []
+    },
+    {
+      "id": "main_content",
+      "type": "ListView",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": false,
+      "properties": {
+        "shrinkWrap": true,
+        "padding": {
+          "bottom": 8
+        }
+      },
+      "styles": {},
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "offer_carousel",
+          "type": "Carousel",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "autoPlay": true,
+            "height": 180,
+            "viewportFraction": 0.9
+          },
+          "styles": {
+            "margin": {
+              "top": 8,
+              "bottom": 8
+            }
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "offer_1",
+              "type": "Image",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "label": "Big Billion Days"
+              },
+              "styles": {
+                "src": "https://rukminim2.flixcart.com/fk-p-flap/1600/270/image/ea7e2c0b9f7c9e2e.jpg",
+                "borderRadius": 12,
+                "fit": "cover"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [],
+              "actions": [
+                {
+                  "event": "onTap",
+                  "steps": [
+                    {
+                      "id": "open_offer",
+                      "type": "navigate",
+                      "pageId": "sale_page",
+                      "enabled": true,
+                      "conditions": [],
+                      "successSteps": [],
+                      "failureSteps": [],
+                      "nestedSteps": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "offer_2",
+              "type": "Image",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "label": "Bank Offer"
+              },
+              "styles": {
+                "src": "https://rukminim2.flixcart.com/fk-p-flap/1600/270/image/3c1b3c7b6b3c1b3c.jpg",
+                "borderRadius": 12,
+                "fit": "cover"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [],
+              "actions": []
+            }
+          ],
+          "actions": []
+        },
+        {
+          "id": "categories_section",
+          "type": "Column",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {},
+          "styles": {
+            "margin": {
+              "bottom": 16
+            }
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "categories_header",
+              "type": "Row",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "mainAxisAlignment": "space_between",
+                "crossAxisAlignment": "center"
+              },
+              "styles": {
+                "padding": {
+                  "left": 16,
+                  "right": 16,
+                  "top": 8,
+                  "bottom": 8
+                }
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "categories_title",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "Top Categories"
+                  },
+                  "styles": {
+                    "fontSize": 18,
+                    "fontWeight": "bold",
+                    "color": "#212121"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                },
+                {
+                  "id": "categories_link",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "View All"
+                  },
+                  "styles": {
+                    "fontSize": 14,
+                    "color": "#2874F0"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": [
+                    {
+                      "event": "onTap",
+                      "steps": [
+                        {
+                          "id": "nav_all_cats",
+                          "type": "navigate",
+                          "pageId": "categories_page",
+                          "enabled": true,
+                          "conditions": [],
+                          "successSteps": [],
+                          "failureSteps": [],
+                          "nestedSteps": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "categories_horizontal",
+              "type": "SingleChildScrollView",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "scrollDirection": "horizontal"
+              },
+              "styles": {},
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "categories_row",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "start",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {
+                    "padding": {
+                      "left": 8,
+                      "right": 8
+                    }
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "cat_electronics",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "center",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "margin": {
+                          "left": 8,
+                          "right": 8
+                        },
+                        "width": 72
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "elec_icon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "width": 48,
+                            "height": 48,
+                            "borderRadius": 24,
+                            "backgroundColor": "#E8EAF6"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "elec_icon_inner",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "laptop"
+                              },
+                              "styles": {
+                                "fontSize": 28,
+                                "color": "#2874F0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "elec_label",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Electronics"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "margin": {
+                              "top": 4
+                            },
+                            "color": "#212121",
+                            "textAlign": "center"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "cat_fashion",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "center",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "margin": {
+                          "left": 8,
+                          "right": 8
+                        },
+                        "width": 72
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "fashion_icon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "width": 48,
+                            "height": 48,
+                            "borderRadius": 24,
+                            "backgroundColor": "#E8EAF6"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "fashion_icon_inner",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "checkroom"
+                              },
+                              "styles": {
+                                "fontSize": 28,
+                                "color": "#2874F0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "fashion_label",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Fashion"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "margin": {
+                              "top": 4
+                            },
+                            "color": "#212121",
+                            "textAlign": "center"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "cat_mobiles",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "center",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "margin": {
+                          "left": 8,
+                          "right": 8
+                        },
+                        "width": 72
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "mobiles_icon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "width": 48,
+                            "height": 48,
+                            "borderRadius": 24,
+                            "backgroundColor": "#E8EAF6"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "mobiles_icon_inner",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "smartphone"
+                              },
+                              "styles": {
+                                "fontSize": 28,
+                                "color": "#2874F0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "mobiles_label",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Mobiles"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "margin": {
+                              "top": 4
+                            },
+                            "color": "#212121",
+                            "textAlign": "center"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "cat_home",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "center",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "margin": {
+                          "left": 8,
+                          "right": 8
+                        },
+                        "width": 72
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "home_icon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "width": 48,
+                            "height": 48,
+                            "borderRadius": 24,
+                            "backgroundColor": "#E8EAF6"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "home_icon_inner",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "kitchen"
+                              },
+                              "styles": {
+                                "fontSize": 28,
+                                "color": "#2874F0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "home_label",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Home"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "margin": {
+                              "top": 4
+                            },
+                            "color": "#212121",
+                            "textAlign": "center"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "cat_appliances",
+                      "type": "Column",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "center",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {
+                        "margin": {
+                          "left": 8,
+                          "right": 8
+                        },
+                        "width": 72
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "appl_icon",
+                          "type": "Container",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {},
+                          "styles": {
+                            "width": 48,
+                            "height": 48,
+                            "borderRadius": 24,
+                            "backgroundColor": "#E8EAF6"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "appl_icon_inner",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "microwave"
+                              },
+                              "styles": {
+                                "fontSize": 28,
+                                "color": "#2874F0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "appl_label",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "Appliances"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "margin": {
+                              "top": 4
+                            },
+                            "color": "#212121",
+                            "textAlign": "center"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "actions": []
+        },
+        {
+          "id": "deal_section",
+          "type": "Column",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {},
+          "styles": {
+            "margin": {
+              "bottom": 8
+            }
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [
+            {
+              "id": "deal_header",
+              "type": "Row",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "mainAxisAlignment": "space_between",
+                "crossAxisAlignment": "center"
+              },
+              "styles": {
+                "padding": {
+                  "left": 16,
+                  "right": 16,
+                  "top": 8,
+                  "bottom": 8
+                },
+                "backgroundColor": "#FFFFFF"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "deal_title",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "start",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {},
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "deal_icon",
+                      "type": "Icon",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "icon": "bolt"
+                      },
+                      "styles": {
+                        "fontSize": 20,
+                        "color": "#FF6161",
+                        "margin": {
+                          "right": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "deal_label",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Today's Deals"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#212121"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "deal_link",
+                  "type": "Text",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "label": "View All"
+                  },
+                  "styles": {
+                    "fontSize": 14,
+                    "color": "#2874F0"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "deal_grid",
+              "type": "GridView",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {
+                "crossAxisCount": 2,
+                "childAspectRatio": 0.75,
+                "padding": {
+                  "left": 8,
+                  "right": 8,
+                  "top": 4,
+                  "bottom": 8
+                },
+                "mainAxisSpacing": 8,
+                "crossAxisSpacing": 8
+              },
+              "styles": {},
+              "responsive": {
+                "tablet": {
+                  "crossAxisCount": 3
+                },
+                "desktop": {
+                  "crossAxisCount": 4
+                }
+              },
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "product_1",
+                  "type": "Card",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": true,
+                  "properties": {},
+                  "styles": {
+                    "elevation": 1,
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": 12,
+                    "padding": 8
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "p1_badge",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "position": "topLeft",
+                        "backgroundColor": "#FFE57F",
+                        "borderRadius": 4,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4,
+                          "left": 4
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p1_badge_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "-60%"
+                          },
+                          "styles": {
+                            "fontSize": 10,
+                            "fontWeight": "bold",
+                            "color": "#212121"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p1_img",
+                      "type": "Image",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "src": "https://rukminim2.flixcart.com/image/200/200/xif0q/mobile/u/o/z/-original-imaghc9fkzghzqgg.jpeg",
+                        "height": 140,
+                        "fit": "contain",
+                        "margin": {
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p1_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "iPhone 15"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "fontWeight": "bold",
+                        "color": "#212121"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p1_price_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {},
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p1_price",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹69,999"
+                          },
+                          "styles": {
+                            "fontSize": 16,
+                            "fontWeight": "bold",
+                            "color": "#388E3C"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        },
+                        {
+                          "id": "p1_mrp",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹1,19,900"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "decoration": "lineThrough",
+                            "color": "#9E9E9E",
+                            "margin": {
+                              "left": 8
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p1_rating",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#388E3C",
+                        "borderRadius": 12,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4
+                        },
+                        "width": "fit"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p1_rating_row",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "p1_rating_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "4.5"
+                              },
+                              "styles": {
+                                "fontSize": 11,
+                                "color": "#FFFFFF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "p1_star",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "star"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#FFFFFF",
+                                "margin": {
+                                  "left": 2
+                                }
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "event": "onTap",
+                      "steps": [
+                        {
+                          "id": "to_product",
+                          "type": "navigate",
+                          "pageId": "product_detail_1",
+                          "enabled": true,
+                          "conditions": [],
+                          "successSteps": [],
+                          "failureSteps": [],
+                          "nestedSteps": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "product_2",
+                  "type": "Card",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": true,
+                  "properties": {},
+                  "styles": {
+                    "elevation": 1,
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": 12,
+                    "padding": 8
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "p2_badge",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "position": "topLeft",
+                        "backgroundColor": "#FFE57F",
+                        "borderRadius": 4,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4,
+                          "left": 4
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p2_badge_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "-40%"
+                          },
+                          "styles": {
+                            "fontSize": 10,
+                            "fontWeight": "bold",
+                            "color": "#212121"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p2_img",
+                      "type": "Image",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "src": "https://rukminim2.flixcart.com/image/200/200/kp5e3m80/smartwatch/t/k/a/-original-imag3h5kzfwzhfyh.jpeg",
+                        "height": 140,
+                        "fit": "contain",
+                        "margin": {
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p2_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Noise Smartwatch"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "fontWeight": "bold",
+                        "color": "#212121"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p2_price_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {},
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p2_price",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹2,999"
+                          },
+                          "styles": {
+                            "fontSize": 16,
+                            "fontWeight": "bold",
+                            "color": "#388E3C"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        },
+                        {
+                          "id": "p2_mrp",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹4,999"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "decoration": "lineThrough",
+                            "color": "#9E9E9E",
+                            "margin": {
+                              "left": 8
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p2_rating",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#388E3C",
+                        "borderRadius": 12,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4
+                        },
+                        "width": "fit"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p2_rating_row",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "p2_rating_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "4.2"
+                              },
+                              "styles": {
+                                "fontSize": 11,
+                                "color": "#FFFFFF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "p2_star",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "star"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#FFFFFF",
+                                "margin": {
+                                  "left": 2
+                                }
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "product_3",
+                  "type": "Card",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": true,
+                  "properties": {},
+                  "styles": {
+                    "elevation": 1,
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": 12,
+                    "padding": 8
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "p3_badge",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "position": "topLeft",
+                        "backgroundColor": "#FFE57F",
+                        "borderRadius": 4,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4,
+                          "left": 4
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p3_badge_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "-50%"
+                          },
+                          "styles": {
+                            "fontSize": 10,
+                            "fontWeight": "bold",
+                            "color": "#212121"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p3_img",
+                      "type": "Image",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "src": "https://rukminim2.flixcart.com/image/200/200/kqj8qrk0/t-shirt/f/s/q/m-black-str-original-imag4khkvgzbbhzm.jpeg",
+                        "height": 140,
+                        "fit": "contain",
+                        "margin": {
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p3_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Men's T-Shirt"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "fontWeight": "bold",
+                        "color": "#212121"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p3_price_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {},
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p3_price",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹599"
+                          },
+                          "styles": {
+                            "fontSize": 16,
+                            "fontWeight": "bold",
+                            "color": "#388E3C"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        },
+                        {
+                          "id": "p3_mrp",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹1,199"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "decoration": "lineThrough",
+                            "color": "#9E9E9E",
+                            "margin": {
+                              "left": 8
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p3_rating",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#388E3C",
+                        "borderRadius": 12,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4
+                        },
+                        "width": "fit"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p3_rating_row",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "p3_rating_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "4.0"
+                              },
+                              "styles": {
+                                "fontSize": 11,
+                                "color": "#FFFFFF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "p3_star",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "star"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#FFFFFF",
+                                "margin": {
+                                  "left": 2
+                                }
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "product_4",
+                  "type": "Card",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": true,
+                  "properties": {},
+                  "styles": {
+                    "elevation": 1,
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": 12,
+                    "padding": 8
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "p4_badge",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "position": "topLeft",
+                        "backgroundColor": "#FFE57F",
+                        "borderRadius": 4,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4,
+                          "left": 4
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p4_badge_text",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "-65%"
+                          },
+                          "styles": {
+                            "fontSize": 10,
+                            "fontWeight": "bold",
+                            "color": "#212121"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p4_img",
+                      "type": "Image",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "src": "https://rukminim2.flixcart.com/image/200/200/kx50djk0/headphone/z/x/m/-original-imag9y2hfzqhrhgz.jpeg",
+                        "height": 140,
+                        "fit": "contain",
+                        "margin": {
+                          "bottom": 8
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p4_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Boat Headphones"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "fontWeight": "bold",
+                        "color": "#212121"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "p4_price_row",
+                      "type": "Row",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "center"
+                      },
+                      "styles": {},
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p4_price",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹1,299"
+                          },
+                          "styles": {
+                            "fontSize": 16,
+                            "fontWeight": "bold",
+                            "color": "#388E3C"
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        },
+                        {
+                          "id": "p4_mrp",
+                          "type": "Text",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "label": "₹3,990"
+                          },
+                          "styles": {
+                            "fontSize": 12,
+                            "decoration": "lineThrough",
+                            "color": "#9E9E9E",
+                            "margin": {
+                              "left": 8
+                            }
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "p4_rating",
+                      "type": "Container",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "backgroundColor": "#388E3C",
+                        "borderRadius": 12,
+                        "padding": {
+                          "left": 6,
+                          "right": 6,
+                          "top": 2,
+                          "bottom": 2
+                        },
+                        "margin": {
+                          "top": 4
+                        },
+                        "width": "fit"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "p4_rating_row",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "p4_rating_text",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "4.3"
+                              },
+                              "styles": {
+                                "fontSize": 11,
+                                "color": "#FFFFFF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "p4_star",
+                              "type": "Icon",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "icon": "star"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "color": "#FFFFFF",
+                                "margin": {
+                                  "left": 2
+                                }
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "actions": []
+        }
+      ],
+      "actions": []
+    },
+    {
+      "id": "bottom_navigation",
+      "type": "BottomNavigationBar",
+      "isLocked": false,
+      "isVisible": true,
+      "isReusable": false,
+      "properties": {
+        "currentIndex": 0,
+        "type": "fixed",
+        "showSelectedLabels": true
+      },
+      "styles": {
+        "backgroundColor": "#FFFFFF",
+        "elevation": 8
+      },
+      "responsive": {},
+      "bindings": {},
+      "animations": {},
+      "children": [
+        {
+          "id": "nav_home",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Home",
+            "icon": "home",
+            "activeIcon": "home_filled"
+          },
+          "styles": {
+            "activeColor": "#2874F0",
+            "inactiveColor": "#757575"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "set_home",
+                  "type": "state",
+                  "target": "currentIndex",
+                  "value": 0,
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_categories",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Categories",
+            "icon": "category",
+            "activeIcon": "category_filled"
+          },
+          "styles": {
+            "activeColor": "#2874F0",
+            "inactiveColor": "#757575"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_cats",
+                  "type": "navigate",
+                  "pageId": "categories_page",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_cart",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Cart",
+            "icon": "shopping_cart",
+            "activeIcon": "shopping_cart_filled"
+          },
+          "styles": {
+            "activeColor": "#2874F0",
+            "inactiveColor": "#757575"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_cart",
+                  "type": "navigate",
+                  "pageId": "cart_page",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nav_account",
+          "type": "BottomNavigationBarItem",
+          "isLocked": false,
+          "isVisible": true,
+          "isReusable": false,
+          "properties": {
+            "label": "Account",
+            "icon": "person",
+            "activeIcon": "person_filled"
+          },
+          "styles": {
+            "activeColor": "#2874F0",
+            "inactiveColor": "#757575"
+          },
+          "responsive": {},
+          "bindings": {},
+          "animations": {},
+          "children": [],
+          "actions": [
+            {
+              "event": "onTap",
+              "steps": [
+                {
+                  "id": "nav_to_account",
+                  "type": "navigate",
+                  "pageId": "account_page",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": []
+    }
+  ],
+  "actions": []
+}

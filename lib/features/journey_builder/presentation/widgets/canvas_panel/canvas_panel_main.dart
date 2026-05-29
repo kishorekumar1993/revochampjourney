@@ -238,12 +238,10 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     }));
 
     if (step == null || activeStepIndex == -1) {
-      return Expanded(
-        child: Center(
-          child: Text(
-            "Select or create a step to begin building.",
-            style: TextStyle(fontFamily: 'Inter', color: RevoTheme.textSecondary),
-          ),
+      return Center(
+        child: Text(
+          "Select or create a step to begin building.",
+          style: TextStyle(fontFamily: 'Inter', color: RevoTheme.textSecondary),
         ),
       );
     }
@@ -251,41 +249,39 @@ class _RevoCanvasPanelState extends ConsumerState<RevoCanvasPanel> {
     final selectedFieldId = ref.watch(selectedFieldIdProvider);
     final formValues = ref.watch(formValuesProvider);
 
-    return Expanded(
-      child: Container(
-        color: RevoTheme.background,
-        child: Column(
-          children: [
-            // Panel Header
-            _buildHeader(context, step, activeStepIndex, previousStepId, nextStepId),
+    return Container(
+      color: RevoTheme.background,
+      child: Column(
+        children: [
+          // Panel Header
+          _buildHeader(context, step, activeStepIndex, previousStepId, nextStepId),
 
-            // Tabs sub-bar
-            _buildTabBar(step),
+          // Tabs sub-bar
+          _buildTabBar(step),
 
-            // Workspace Layout
-            Expanded(
-              child: Row(
-                children: [
-                  // 1. ToolBox Palette
-                  CanvasToolbox(
-                    componentGroups: _componentGroups,
-                    onAddField: _addField,
-                  ),
+          // Workspace Layout
+          Expanded(
+            child: Row(
+              children: [
+                // 1. ToolBox Palette
+                CanvasToolbox(
+                  componentGroups: _componentGroups,
+                  onAddField: _addField,
+                ),
 
-                  // 2. Editor Canvas
-                  _buildCanvas(step, selectedFieldId),
+                // 2. Editor Canvas
+                _buildCanvas(step, selectedFieldId),
 
-                  // 3. Mobile/Desktop Live simulator view
-                  if (_showPreview)
-                    _buildLivePreview(step, formValues, previousStepId, nextStepId),
-                ],
-              ),
+                // 3. Mobile/Desktop Live simulator view
+                if (_showPreview)
+                  _buildLivePreview(step, formValues, previousStepId, nextStepId),
+              ],
             ),
+          ),
 
-            // Step Configurations (bottom bar)
-            CanvasBottomStats(step: step),
-          ],
-        ),
+          // Step Configurations (bottom bar)
+          CanvasBottomStats(step: step),
+        ],
       ),
     );
   }

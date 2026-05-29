@@ -52,13 +52,21 @@ class ComponentPropertyKeys {
 class PropertyParser {
   static EdgeInsetsGeometry parsePadding(dynamic val) {
     if (val == null) return EdgeInsets.zero;
-    if (val is num) return EdgeInsets.all(val.toDouble());
+    if (val is num) {
+      final d = val.toDouble();
+      return EdgeInsets.all(d < 0.0 ? 0.0 : d);
+    }
     if (val is Map) {
       final left = double.tryParse(val['left']?.toString() ?? '0') ?? 0.0;
       final top = double.tryParse(val['top']?.toString() ?? '0') ?? 0.0;
       final right = double.tryParse(val['right']?.toString() ?? '0') ?? 0.0;
       final bottom = double.tryParse(val['bottom']?.toString() ?? '0') ?? 0.0;
-      return EdgeInsets.fromLTRB(left, top, right, bottom);
+      return EdgeInsets.fromLTRB(
+        left < 0.0 ? 0.0 : left,
+        top < 0.0 ? 0.0 : top,
+        right < 0.0 ? 0.0 : right,
+        bottom < 0.0 ? 0.0 : bottom,
+      );
     }
     return EdgeInsets.zero;
   }

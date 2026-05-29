@@ -29,100 +29,130 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
             flex: 3,
             child: Container(
               color: RevoTheme.background,
-              child: Center(
-                child: Container(
-                  width: 412,
-                  height: 915,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(36),
-                    border: Border.all(color: const Color(0xFF1E1E2F), width: 12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 24,
-                        offset: Offset(0, 12),
-                      )
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: Stack(
-                      children: [
-                        // Status Bar Mockup
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            color: Colors.white,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "9:30",
-                                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
-                                ),
-                                Row(
-                                  children: const [
-                                    Icon(Icons.wifi, size: 14, color: Colors.black),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.signal_cellular_4_bar, size: 14, color: Colors.black),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.battery_full, size: 14, color: Colors.black),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const deviceW = 412.0;
+                  const deviceH = 915.0;
+                  final availableH = constraints.maxHeight - 32;
+                  final availableW = constraints.maxWidth - 32;
+                  final scale = (availableH / deviceH).clamp(0.3, 1.0).clamp(0.0, availableW / deviceW);
 
-                        // Rendered Interactive Screen
-                        Positioned.fill(
-                          top: 32,
-                          bottom: 24,
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                ComponentRenderer.render(
-                                  rootNode,
-                                  isDesignMode: false,
-                                  formValues: _formValues,
-                                  onFormValueChanged: (field, val) {
-                                    setState(() {
-                                      _formValues[field] = val;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
+                  return Center(
+                    child: Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: deviceW,
+                        height: deviceH,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(36),
+                          border: Border.all(color: const Color(0xFF1E1E2F), width: 12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 24,
+                              offset: Offset(0, 12),
+                            )
+                          ],
                         ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Stack(
+                            children: [
+                              // Explicit white background so ClipRRect never shows dark canvas
+                              const Positioned.fill(child: ColoredBox(color: Colors.white)),
 
-                        // Home Indicator Mockup
-                        Positioned(
-                          bottom: 6,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              width: 140,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(2),
+                              // Status Bar Mockup
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  height: 32,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  color: Colors.white,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "9:30",
+                                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+                                      ),
+                                      Row(
+                                        children: const [
+                                          Icon(Icons.wifi, size: 14, color: Colors.black),
+                                          SizedBox(width: 4),
+                                          Icon(Icons.signal_cellular_4_bar, size: 14, color: Colors.black),
+                                          SizedBox(width: 4),
+                                          Icon(Icons.battery_full, size: 14, color: Colors.black),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+
+                              // Rendered Interactive Screen
+                              Positioned.fill(
+                                top: 32,
+                                bottom: 24,
+                                child: rootNode.type == 'Scaffold'
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: ComponentRenderer.render(
+                                          rootNode,
+                                          isDesignMode: false,
+                                          formValues: _formValues,
+                                          onFormValueChanged: (field, val) {
+                                            setState(() {
+                                              _formValues[field] = val;
+                                            });
+                                          },
+                                        ),
+                                      )
+                                    : SingleChildScrollView(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            ComponentRenderer.render(
+                                              rootNode,
+                                              isDesignMode: false,
+                                              formValues: _formValues,
+                                              onFormValueChanged: (field, val) {
+                                                setState(() {
+                                                  _formValues[field] = val;
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                              ),
+
+                              // Home Indicator Mockup
+                              Positioned(
+                                bottom: 6,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: Container(
+                                    width: 140,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.8),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -170,7 +200,7 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
                         )
                       : ListView.separated(
                           itemCount: _formValues.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final key = _formValues.keys.elementAt(index);
                             final val = _formValues[key];

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/component_node.dart';
 import '../models/component_property.dart';
@@ -7,10 +8,11 @@ class ComponentRenderer {
   static Widget render(
     ComponentNode node, {
     required bool isDesignMode,
+    ComponentNode? parentNode,
     ComponentNode? selectedNode,
     ComponentNode? hoveredNode,
-    void Function(ComponentNode)? onSelect,
-    void Function(ComponentNode)? onHover,
+    void Function(ComponentNode?)? onSelect,
+    void Function(ComponentNode?)? onHover,
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild, // (parent, child, index)
@@ -33,6 +35,7 @@ class ComponentRenderer {
         childWidget = render(
           node.children.first,
           isDesignMode: isDesignMode,
+          parentNode: node,
           selectedNode: selectedNode,
           hoveredNode: hoveredNode,
           onSelect: onSelect,
@@ -45,7 +48,8 @@ class ComponentRenderer {
           onFormValueChanged: onFormValueChanged,
         );
       }
-      return Expanded(child: childWidget);
+      final bool isValidParent = parentNode != null && (parentNode.type == 'Row' || parentNode.type == 'Column' || parentNode.type == 'Flex');
+      return isValidParent ? Expanded(child: childWidget) : childWidget;
     }
 
     if (node.type == 'Flexible') {
@@ -63,6 +67,7 @@ class ComponentRenderer {
         childWidget = render(
           node.children.first,
           isDesignMode: isDesignMode,
+          parentNode: node,
           selectedNode: selectedNode,
           hoveredNode: hoveredNode,
           onSelect: onSelect,
@@ -75,13 +80,15 @@ class ComponentRenderer {
           onFormValueChanged: onFormValueChanged,
         );
       }
-      return Flexible(child: childWidget);
+      final bool isValidParent = parentNode != null && (parentNode.type == 'Row' || parentNode.type == 'Column' || parentNode.type == 'Flex');
+      return isValidParent ? Flexible(child: childWidget) : childWidget;
     }
 
     // 1. Render the actual core widget
     Widget coreWidget = _buildWidget(
       node,
       isDesignMode: isDesignMode,
+      parentNode: parentNode,
       selectedNode: selectedNode,
       hoveredNode: hoveredNode,
       onSelect: onSelect,
@@ -93,6 +100,11 @@ class ComponentRenderer {
       formValues: formValues,
       onFormValueChanged: onFormValueChanged,
     );
+
+    // Apply global padding and sizing
+    coreWidget = _applyPaddingAndSizing(coreWidget, node);
+    // Apply global decoration (background color, border radius)
+    coreWidget = _applyDecoration(coreWidget, node);
 
     // 2. If Design Mode, wrap with interaction overlays (selection border, hover border, drag/drop wrappers)
     if (isDesignMode) {
@@ -209,46 +221,50 @@ class ComponentRenderer {
 
       // If it is a container, wrap it with DragTarget to support dropping items into it
       if (canAcceptChildren) {
-        return DragTarget<Object>(
-          onWillAcceptWithDetails: (details) {
-            // details.data can be a String (from palette) or a ComponentNode (moving inside canvas)
-            return true;
-          },
-          onAcceptWithDetails: (details) {
-            final data = details.data;
-            if (data is String) {
-              // dropped from palette
-              if (onAddChild != null) onAddChild(node, data);
-            } else if (data is ComponentNode) {
-              // moved inside canvas
-              if (onMoveChild != null && data.id != node.id) {
-                onMoveChild(node, data, node.children.length);
+        return _applyMargin(
+          DragTarget<Object>(
+            onWillAcceptWithDetails: (details) {
+              // details.data can be a String (from palette) or a ComponentNode (moving inside canvas)
+              return true;
+            },
+            onAcceptWithDetails: (details) {
+              final data = details.data;
+              if (data is String) {
+                // dropped from palette
+                if (onAddChild != null) onAddChild(node, data);
+              } else if (data is ComponentNode) {
+                // moved inside canvas
+                if (onMoveChild != null && data.id != node.id) {
+                  onMoveChild(node, data, node.children.length);
+                }
               }
-            }
-          },
-          builder: (context, candidateData, rejectedData) {
-            final isOver = candidateData.isNotEmpty;
-            return Container(
-              color: isOver ? const Color(0x155B4FCF) : Colors.transparent,
-              child: dragSource,
-            );
-          },
+            },
+            builder: (context, candidateData, rejectedData) {
+              final isOver = candidateData.isNotEmpty;
+              return Container(
+                color: isOver ? const Color(0x155B4FCF) : Colors.transparent,
+                child: dragSource,
+              );
+            },
+          ),
+          node,
         );
       }
 
-      return dragSource;
+      return _applyMargin(dragSource, node);
     }
 
-    return coreWidget;
+    return _applyMargin(coreWidget, node);
   }
 
   static Widget _buildWidget(
     ComponentNode node, {
     required bool isDesignMode,
+    ComponentNode? parentNode,
     ComponentNode? selectedNode,
     ComponentNode? hoveredNode,
-    void Function(ComponentNode)? onSelect,
-    void Function(ComponentNode)? onHover,
+    void Function(ComponentNode?)? onSelect,
+    void Function(ComponentNode?)? onHover,
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild,
@@ -275,6 +291,7 @@ class ComponentRenderer {
           .map((child) => render(
                 child,
                 isDesignMode: isDesignMode,
+                parentNode: node,
                 selectedNode: selectedNode,
                 hoveredNode: hoveredNode,
                 onSelect: onSelect,
@@ -347,6 +364,7 @@ class ComponentRenderer {
               : render(
                   node.children.first,
                   isDesignMode: isDesignMode,
+                  parentNode: node,
                   selectedNode: selectedNode,
                   hoveredNode: hoveredNode,
                   onSelect: onSelect,
@@ -382,6 +400,7 @@ class ComponentRenderer {
             final childWidget = render(
               childNode,
               isDesignMode: isDesignMode,
+              parentNode: node,
               selectedNode: selectedNode,
               hoveredNode: hoveredNode,
               onSelect: onSelect,
@@ -393,10 +412,7 @@ class ComponentRenderer {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
             );
-            if (childNode.type == 'Expanded' || childNode.type == 'Flexible') {
-              return childWidget;
-            }
-            return Flexible(fit: FlexFit.loose, child: childWidget);
+            return childWidget;
           }).toList(),
         );
 
@@ -428,10 +444,18 @@ class ComponentRenderer {
       case 'GridView':
         final spacing = double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
         final runSpacing = double.tryParse(getStyle('runSpacing')?.toString() ?? '') ?? 8.0;
+        final crossAxisCount = int.tryParse(properties['crossAxisCount']?.toString() ?? '') ?? 2;
+        final childAspectRatio = double.tryParse(properties['childAspectRatio']?.toString() ?? '') ?? 1.0;
+        final crossAxisSpacing = double.tryParse(properties['crossAxisSpacing']?.toString() ?? '') ?? spacing;
+        final mainAxisSpacing = double.tryParse(properties['mainAxisSpacing']?.toString() ?? '') ?? runSpacing;
+        final pad = PropertyParser.parsePadding(getStyle('padding'));
+
         return GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: runSpacing,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
+          crossAxisSpacing: crossAxisSpacing,
+          mainAxisSpacing: mainAxisSpacing,
+          padding: pad,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: renderChildren(),
@@ -439,9 +463,11 @@ class ComponentRenderer {
 
       case 'ListView':
         final spacing = double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
+        final pad = PropertyParser.parsePadding(getStyle('padding'));
         return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          padding: pad,
           itemCount: node.children.isEmpty ? 1 : node.children.length,
           separatorBuilder: (_, __) => SizedBox(height: spacing),
           itemBuilder: (context, index) {
@@ -486,6 +512,31 @@ class ComponentRenderer {
           ),
         );
 
+      case 'SizedBox':
+        final width = double.tryParse(getStyle('width')?.toString() ?? '');
+        final height = double.tryParse(getStyle('height')?.toString() ?? '');
+        return SizedBox(
+          width: width,
+          height: height,
+          child: node.children.isEmpty
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
+              : render(
+                  node.children.first,
+                  isDesignMode: isDesignMode,
+                  parentNode: node,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                ),
+        );
+
       case 'Spacer':
         if (isDesignMode) {
           return Container(
@@ -527,25 +578,24 @@ class ComponentRenderer {
         final isReadOnly = properties['readOnly'] == true;
 
         final currentValue = formValues[fieldName]?.toString() ?? '';
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? (isEnabled ? Colors.white : Colors.grey[200]);
+        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 4.0;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: TextFormField(
-            initialValue: isDesignMode ? null : currentValue,
-            key: isDesignMode ? null : ValueKey('$fieldName-$currentValue'),
-            enabled: isEnabled,
-            readOnly: isReadOnly,
-            obscureText: isPassword,
-            onChanged: (val) {
-              if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
-            },
-            decoration: InputDecoration(
-              labelText: label + (isRequired ? ' *' : ''),
-              hintText: hint,
-              border: const OutlineInputBorder(),
-              filled: true,
-              fillColor: isEnabled ? Colors.white : Colors.grey[200],
-            ),
+        return TextFormField(
+          initialValue: isDesignMode ? null : currentValue,
+          key: isDesignMode ? null : ValueKey('$fieldName-$currentValue'),
+          enabled: isEnabled,
+          readOnly: isReadOnly,
+          obscureText: isPassword,
+          onChanged: (val) {
+            if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
+          },
+          decoration: InputDecoration(
+            labelText: label + (isRequired ? ' *' : ''),
+            hintText: hint,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(radius)),
+            filled: true,
+            fillColor: bg,
           ),
         );
 
@@ -559,22 +609,19 @@ class ComponentRenderer {
         final currentValue = formValues[fieldName]?.toString();
         final selectedVal = (currentValue != null && options.contains(currentValue)) ? currentValue : null;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              labelText: label + (isRequired ? ' *' : ''),
-              hintText: hint,
-              border: const OutlineInputBorder(),
-            ),
-            value: selectedVal,
-            items: options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
-            onChanged: isDesignMode
-                ? null
-                : (val) {
-                    if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
-                  },
+        return DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: label + (isRequired ? ' *' : ''),
+            hintText: hint,
+            border: const OutlineInputBorder(),
           ),
+          value: selectedVal,
+          items: options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+          onChanged: isDesignMode
+              ? null
+              : (val) {
+                  if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
+                },
         );
 
       case 'Radio':
@@ -583,26 +630,23 @@ class ComponentRenderer {
         final List<String> options = List<String>.from(properties['options'] ?? []);
         final currentValue = formValues[fieldName]?.toString() ?? '';
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              ...options.map((opt) {
-                return RadioListTile<String>(
-                  title: Text(opt),
-                  value: opt,
-                  groupValue: currentValue,
-                  onChanged: isDesignMode
-                      ? null
-                      : (val) {
-                          if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
-                        },
-                );
-              }),
-            ],
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            ...options.map((opt) {
+              return RadioListTile<String>(
+                title: Text(opt),
+                value: opt,
+                groupValue: currentValue,
+                onChanged: isDesignMode
+                    ? null
+                    : (val) {
+                        if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
+                      },
+              );
+            }),
+          ],
         );
 
       case 'Checkbox':
@@ -627,25 +671,22 @@ class ComponentRenderer {
         final hint = properties['hint'] ?? 'DD/MM/YYYY';
         final val = formValues[fieldName]?.toString() ?? '';
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: InkWell(
-            onTap: isDesignMode
-                ? null
-                : () async {
-                    // simulate date picker interaction
-                    if (onFormValueChanged != null) {
-                      onFormValueChanged(fieldName, '29/05/2026');
-                    }
-                  },
-            child: InputDecorator(
-              decoration: InputDecoration(
-                labelText: label,
-                border: const OutlineInputBorder(),
-                suffixIcon: const Icon(Icons.calendar_today),
-              ),
-              child: Text(val.isNotEmpty ? val : hint, style: TextStyle(color: val.isNotEmpty ? Colors.black : Colors.grey)),
+        return InkWell(
+          onTap: isDesignMode
+              ? null
+              : () async {
+                  // simulate date picker interaction
+                  if (onFormValueChanged != null) {
+                    onFormValueChanged(fieldName, '29/05/2026');
+                  }
+                },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+              suffixIcon: const Icon(Icons.calendar_today),
             ),
+            child: Text(val.isNotEmpty ? val : hint, style: TextStyle(color: val.isNotEmpty ? Colors.black : Colors.grey)),
           ),
         );
 
@@ -695,19 +736,16 @@ class ComponentRenderer {
         final fg = PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
         final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 8.0;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ElevatedButton(
-            onPressed: isDesignMode ? () {} : () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: bg,
-              foregroundColor: fg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: Center(
-              child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            ),
+        return ElevatedButton(
+          onPressed: isDesignMode ? () {} : () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: bg,
+            foregroundColor: fg,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          child: Center(
+            child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           ),
         );
 
@@ -945,6 +983,7 @@ class ComponentRenderer {
               : render(
                   node.children.first,
                   isDesignMode: isDesignMode,
+                  parentNode: node,
                   selectedNode: selectedNode,
                   hoveredNode: hoveredNode,
                   onSelect: onSelect,
@@ -962,37 +1001,34 @@ class ComponentRenderer {
         final fieldName = properties['fieldName'] ?? 'file';
         final label = properties['label'] ?? 'Select File';
         final val = formValues[fieldName]?.toString() ?? '';
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: InkWell(
-            onTap: isDesignMode ? null : () {},
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[400]!),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.attach_file, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      val.isNotEmpty ? val : label,
-                      style: TextStyle(color: val.isNotEmpty ? Colors.black : Colors.grey[600]),
-                    ),
+        return InkWell(
+          onTap: isDesignMode ? null : () {},
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.attach_file, color: Colors.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    val.isNotEmpty ? val : label,
+                    style: TextStyle(color: val.isNotEmpty ? Colors.black : Colors.grey[600]),
                   ),
-                  ElevatedButton(
-                    onPressed: isDesignMode ? () {} : () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5B4FCF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    child: const Text('Browse', style: TextStyle(fontSize: 12)),
+                ),
+                ElevatedButton(
+                  onPressed: isDesignMode ? () {} : () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5B4FCF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                ],
-              ),
+                  child: const Text('Browse', style: TextStyle(fontSize: 12)),
+                ),
+              ],
             ),
           ),
         );
@@ -1000,51 +1036,45 @@ class ComponentRenderer {
       case 'OTP':
         final label = properties['label'] ?? 'Enter OTP';
         final length = int.tryParse(properties['length']?.toString() ?? '6') ?? 6;
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(length, (i) {
-                  return Container(
-                    width: 40,
-                    height: 45,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF5B4FCF)),
-                      borderRadius: BorderRadius.circular(8),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(length, (i) {
+                return Container(
+                  width: 40,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF5B4FCF)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '-',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    child: const Center(
-                      child: Text(
-                        '-',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
+                  ),
+                );
+              }),
+            ),
+          ],
         );
 
       case 'Search':
         final fieldName = properties['fieldName'] ?? 'search';
         final label = properties['label'] ?? 'Search';
         final hint = properties['hint'] ?? 'Type keywords...';
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: TextField(
-            enabled: !isDesignMode,
-            decoration: InputDecoration(
-              labelText: label,
-              hintText: hint,
-              prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(24.0)),
-              ),
+        return TextField(
+          enabled: !isDesignMode,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            prefixIcon: const Icon(Icons.search),
+            border: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(24.0)),
             ),
           ),
         );
@@ -1164,6 +1194,107 @@ class ComponentRenderer {
           }).toList(),
         );
 
+      case 'Scaffold':
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? Colors.white;
+        return Scaffold(
+          backgroundColor: bg,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: node.children.map((childNode) {
+              final childWidget = render(
+                childNode,
+                isDesignMode: isDesignMode,
+                parentNode: node,
+                selectedNode: selectedNode,
+                hoveredNode: hoveredNode,
+                onSelect: onSelect,
+                onHover: onHover,
+                onDelete: onDelete,
+                onDuplicate: onDuplicate,
+                onMoveChild: onMoveChild,
+                onAddChild: onAddChild,
+                formValues: formValues,
+                onFormValueChanged: onFormValueChanged,
+              );
+              // Wrap scrollable children in Expanded so they scroll within the Scaffold height
+              final isScrollable = childNode.type == 'ListView' ||
+                  childNode.type == 'SingleChildScrollView' ||
+                  childNode.type == 'GridView';
+              if (isScrollable) {
+                return Expanded(child: childWidget);
+              }
+              return childWidget;
+            }).toList(),
+          ),
+        );
+
+      case 'SingleChildScrollView':
+        final direction = properties['scrollDirection'] == 'horizontal'
+            ? Axis.horizontal
+            : Axis.vertical;
+        return SingleChildScrollView(
+          scrollDirection: direction,
+          child: node.children.isEmpty
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
+              : render(
+                  node.children.first,
+                  isDesignMode: isDesignMode,
+                  parentNode: node,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                ),
+        );
+
+      case 'Carousel':
+        final height = double.tryParse(properties['height']?.toString() ?? '') ?? 180.0;
+        final viewportFraction = double.tryParse(properties['viewportFraction']?.toString() ?? '') ?? 0.9;
+        final autoPlay = properties['autoPlay'] == true;
+        final marg = PropertyParser.parsePadding(getStyle('margin'));
+
+        if (node.children.isEmpty && isDesignMode) {
+          return Container(
+            margin: marg,
+            height: height,
+            child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
+          );
+        }
+
+        final childrenWidgets = node.children.map((childNode) {
+          return render(
+            childNode,
+            isDesignMode: isDesignMode,
+            parentNode: node,
+            selectedNode: selectedNode,
+            hoveredNode: hoveredNode,
+            onSelect: onSelect,
+            onHover: onHover,
+            onDelete: onDelete,
+            onDuplicate: onDuplicate,
+            onMoveChild: onMoveChild,
+            onAddChild: onAddChild,
+            formValues: formValues,
+            onFormValueChanged: onFormValueChanged,
+          );
+        }).toList();
+
+        return Container(
+          margin: marg,
+          child: RevoCarouselWidget(
+            height: height,
+            viewportFraction: viewportFraction,
+            autoPlay: autoPlay,
+            children: childrenWidgets,
+          ),
+        );
+
       default:
         return Container(
           padding: const EdgeInsets.all(12),
@@ -1246,8 +1377,188 @@ class ComponentRenderer {
         return Icons.arrow_forward;
       case 'arrow_back':
         return Icons.arrow_back;
+      case 'shopping_cart':
+        return Icons.shopping_cart;
+      case 'laptop':
+        return Icons.laptop;
+      case 'checkroom':
+        return Icons.checkroom;
+      case 'smartphone':
+        return Icons.smartphone;
+      case 'kitchen':
+        return Icons.kitchen;
+      case 'microwave':
+        return Icons.microwave;
+      case 'bolt':
+        return Icons.bolt;
+      case 'search':
+        return Icons.search;
+      case 'menu':
+        return Icons.menu;
+      case 'favorite':
+        return Icons.favorite;
+      case 'notifications':
+        return Icons.notifications;
       default:
         return Icons.category_outlined;
     }
+  }
+
+  static Widget _applyPaddingAndSizing(Widget widget, ComponentNode node) {
+    if (node.type == 'Container' || node.type == 'Card' || node.type == 'Scaffold' || node.type == 'SizedBox') {
+      return widget;
+    }
+
+    Widget result = widget;
+
+    final width = double.tryParse(node.styles['width']?.toString() ?? node.properties['width']?.toString() ?? '');
+    final height = double.tryParse(node.styles['height']?.toString() ?? node.properties['height']?.toString() ?? '');
+
+    if (width != null || height != null) {
+      result = SizedBox(
+        width: width,
+        height: height,
+        child: result,
+      );
+    }
+
+    final pad = PropertyParser.parsePadding(node.styles['padding'] ?? node.properties['padding']);
+    if (pad != EdgeInsets.zero) {
+      result = Padding(
+        padding: pad,
+        child: result,
+      );
+    }
+
+    return result;
+  }
+
+  static Widget _applyDecoration(Widget widget, ComponentNode node) {
+    if (node.type == 'Scaffold' || node.type == 'Container' || node.type == 'Card' || node.type == 'SizedBox') {
+      return widget;
+    }
+
+    final bg = PropertyParser.parseColor(node.styles['backgroundColor'] ?? node.properties['backgroundColor']);
+    final radius = double.tryParse(node.styles['borderRadius']?.toString() ?? node.properties['borderRadius']?.toString() ?? '');
+
+    if (bg != null || radius != null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: radius != null ? BorderRadius.circular(radius) : null,
+        ),
+        child: widget,
+      );
+    }
+
+    return widget;
+  }
+
+  static Widget _applyMargin(Widget widget, ComponentNode node) {
+    if (node.type == 'Container' || node.type == 'Card' || node.type == 'Scaffold') {
+      return widget;
+    }
+
+    final marg = PropertyParser.parsePadding(node.styles['margin'] ?? node.properties['margin']);
+    if (marg != EdgeInsets.zero) {
+      return Padding(
+        padding: marg,
+        child: widget,
+      );
+    }
+
+    // Default vertical margin for form elements and buttons to maintain nice spacing
+    final isFormElement = node.type == 'TextField' ||
+        node.type == 'Dropdown' ||
+        node.type == 'Radio' ||
+        node.type == 'Checkbox' ||
+        node.type == 'DatePicker' ||
+        node.type == 'Switch' ||
+        node.type == 'Slider' ||
+        node.type == 'FilePicker' ||
+        node.type == 'OTP' ||
+        node.type == 'Search' ||
+        node.type == 'Button';
+    if (isFormElement) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: widget,
+      );
+    }
+
+    return widget;
+  }
+}
+
+class RevoCarouselWidget extends StatefulWidget {
+  final List<Widget> children;
+  final double height;
+  final double viewportFraction;
+  final bool autoPlay;
+
+  const RevoCarouselWidget({
+    super.key,
+    required this.children,
+    this.height = 180,
+    this.viewportFraction = 0.9,
+    this.autoPlay = true,
+  });
+
+  @override
+  State<RevoCarouselWidget> createState() => _RevoCarouselWidgetState();
+}
+
+class _RevoCarouselWidgetState extends State<RevoCarouselWidget> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(
+      initialPage: 0,
+      viewportFraction: widget.viewportFraction,
+    );
+    if (widget.autoPlay && widget.children.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+        if (!mounted) return;
+        final nextPage = (_currentPage + 1) % widget.children.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeIn,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: widget.height,
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.children.length,
+        onPageChanged: (page) {
+          setState(() {
+            _currentPage = page;
+          });
+        },
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: widget.children[index],
+          );
+        },
+      ),
+    );
   }
 }
