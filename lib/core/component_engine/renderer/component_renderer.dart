@@ -1859,21 +1859,15 @@ class ComponentRenderer {
         }
 
         // Vertical scroll: children flow in a Column.
-        // LayoutBuilder guards against being nested inside another scrollable
-        // that passes unconstrained cross-axis (width) constraints.
+        // If the SingleChildScrollView is inside a row or horizontal scroll without explicit width,
+        // using crossAxisAlignment stretch will crash. Defaulting to start to prevent unconstrained width crash.
         return SingleChildScrollView(
           scrollDirection: Axis.vertical,
           physics: scrollPhysics,
-          child: LayoutBuilder(
-            builder: (ctx, constraints) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: constraints.hasBoundedWidth
-                    ? CrossAxisAlignment.stretch
-                    : CrossAxisAlignment.start,
-                children: scvChildren,
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: scvChildren,
           ),
         );
 
