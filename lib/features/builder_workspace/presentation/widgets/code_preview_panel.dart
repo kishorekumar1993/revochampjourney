@@ -6,6 +6,7 @@ import '../../../../core/theme.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../../../codegenerator/filegegnerator/revochamp_bloc_generator.dart' as bloc_gen;
 import '../../../../codegenerator/generators/bloc/runtime/download.dart';
+import '../../../../web_file_exporter.dart';
 
 class RevoCodePreviewPanel extends ConsumerStatefulWidget {
   const RevoCodePreviewPanel({super.key});
@@ -171,13 +172,27 @@ class _RevoCodePreviewPanelState extends ConsumerState<RevoCodePreviewPanel> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: _isGenerating || _generatedFiles.isEmpty ? null : _downloadCode,
                       icon: const Icon(Icons.download_rounded, size: 16, color: Colors.white),
                       label: Text("Save Code Files", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF5B4FCF),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _isGenerating || _generatedFiles.isEmpty
+                          ? null
+                          : () => WebFileExporter.exportZip(_generatedFiles),
+                      icon: const Icon(Icons.archive_rounded, size: 16, color: Colors.white),
+                      label: Text("Export ZIP", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal[700],
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),

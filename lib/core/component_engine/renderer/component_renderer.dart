@@ -18,6 +18,66 @@ class ComponentRenderer {
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
   }) {
+    if (node.type == 'Expanded') {
+      Widget childWidget;
+      if (node.children.isEmpty) {
+        childWidget = isDesignMode
+            ? GestureDetector(
+                onTap: () {
+                  if (onSelect != null) onSelect(node);
+                },
+                child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
+              )
+            : const SizedBox.shrink();
+      } else {
+        childWidget = render(
+          node.children.first,
+          isDesignMode: isDesignMode,
+          selectedNode: selectedNode,
+          hoveredNode: hoveredNode,
+          onSelect: onSelect,
+          onHover: onHover,
+          onDelete: onDelete,
+          onDuplicate: onDuplicate,
+          onMoveChild: onMoveChild,
+          onAddChild: onAddChild,
+          formValues: formValues,
+          onFormValueChanged: onFormValueChanged,
+        );
+      }
+      return Expanded(child: childWidget);
+    }
+
+    if (node.type == 'Flexible') {
+      Widget childWidget;
+      if (node.children.isEmpty) {
+        childWidget = isDesignMode
+            ? GestureDetector(
+                onTap: () {
+                  if (onSelect != null) onSelect(node);
+                },
+                child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
+              )
+            : const SizedBox.shrink();
+      } else {
+        childWidget = render(
+          node.children.first,
+          isDesignMode: isDesignMode,
+          selectedNode: selectedNode,
+          hoveredNode: hoveredNode,
+          onSelect: onSelect,
+          onHover: onHover,
+          onDelete: onDelete,
+          onDuplicate: onDuplicate,
+          onMoveChild: onMoveChild,
+          onAddChild: onAddChild,
+          formValues: formValues,
+          onFormValueChanged: onFormValueChanged,
+        );
+      }
+      return Flexible(child: childWidget);
+    }
+
     // 1. Render the actual core widget
     Widget coreWidget = _buildWidget(
       node,
@@ -197,6 +257,12 @@ class ComponentRenderer {
     void Function(String, dynamic)? onFormValueChanged,
   }) {
     final properties = node.properties;
+    final styles = node.styles;
+
+    dynamic getStyle(String key) {
+      if (node.styles.containsKey(key)) return node.styles[key];
+      return node.properties[key];
+    }
 
     // Helper to render children
     List<Widget> renderChildren() {
@@ -226,12 +292,43 @@ class ComponentRenderer {
     switch (node.type) {
       // ================== LAYOUTS ==================
       case 'Container':
-        final width = double.tryParse(properties['width']?.toString() ?? '');
-        final height = double.tryParse(properties['height']?.toString() ?? '');
-        final bg = PropertyParser.parseColor(properties['backgroundColor']);
-        final pad = PropertyParser.parsePadding(properties['padding']);
-        final marg = PropertyParser.parsePadding(properties['margin']);
-        final radius = double.tryParse(properties['borderRadius']?.toString() ?? '') ?? 0.0;
+        final width = double.tryParse(getStyle('width')?.toString() ?? '');
+        final height = double.tryParse(getStyle('height')?.toString() ?? '');
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor'));
+        final pad = PropertyParser.parsePadding(getStyle('padding'));
+        final marg = PropertyParser.parsePadding(getStyle('margin'));
+        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 0.0;
+        final gradientStart = PropertyParser.parseColor(getStyle('gradientStart'));
+        final gradientEnd = PropertyParser.parseColor(getStyle('gradientEnd'));
+        final borderColor = PropertyParser.parseColor(getStyle('borderColor'));
+        final borderWidth = double.tryParse(getStyle('borderWidth')?.toString() ?? '') ?? 1.0;
+        final elevation = double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 0.0;
+
+        Gradient? gradient;
+        if (gradientStart != null && gradientEnd != null) {
+          gradient = LinearGradient(
+            colors: [gradientStart, gradientEnd],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+        }
+
+        BoxBorder? border;
+        if (borderColor != null) {
+          border = Border.all(color: borderColor, width: borderWidth);
+        }
+
+        List<BoxShadow>? boxShadows;
+        if (elevation > 0) {
+          boxShadows = [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: elevation * 2,
+              spreadRadius: -elevation * 0.5,
+              offset: Offset(0, elevation),
+            )
+          ];
+        }
 
         return Container(
           width: width,
@@ -239,7 +336,10 @@ class ComponentRenderer {
           padding: pad,
           margin: marg,
           decoration: BoxDecoration(
-            color: bg,
+            color: gradient == null ? bg : null,
+            gradient: gradient,
+            border: border,
+            boxShadow: boxShadows,
             borderRadius: BorderRadius.circular(radius),
           ),
           child: node.children.isEmpty
@@ -262,11 +362,42 @@ class ComponentRenderer {
 
       case 'Row':
         final mainAlign = PropertyParser.parseMainAxisAlignment(properties['mainAxisAlignment']);
-        final crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
+        var crossAlign = PropertyParser.parseCrossAxisAlignment(properties['crossAxisAlignment']);
+        if (crossAlign == CrossAxisAlignment.stretch) {
+          crossAlign = CrossAxisAlignment.start; // Safety fallback to avoid infinite height crashes inside scroll view
+        }
+        if (node.children.isEmpty && isDesignMode) {
+          return Row(
+            mainAxisAlignment: mainAlign,
+            crossAxisAlignment: crossAlign,
+            children: [
+              _buildEmptyPlaceholder(node, onAddChild: onAddChild),
+            ],
+          );
+        }
         return Row(
           mainAxisAlignment: mainAlign,
           crossAxisAlignment: crossAlign,
-          children: renderChildren().map((c) => Flexible(fit: FlexFit.loose, child: c)).toList(),
+          children: node.children.map((childNode) {
+            final childWidget = render(
+              childNode,
+              isDesignMode: isDesignMode,
+              selectedNode: selectedNode,
+              hoveredNode: hoveredNode,
+              onSelect: onSelect,
+              onHover: onHover,
+              onDelete: onDelete,
+              onDuplicate: onDuplicate,
+              onMoveChild: onMoveChild,
+              onAddChild: onAddChild,
+              formValues: formValues,
+              onFormValueChanged: onFormValueChanged,
+            );
+            if (childNode.type == 'Expanded' || childNode.type == 'Flexible') {
+              return childWidget;
+            }
+            return Flexible(fit: FlexFit.loose, child: childWidget);
+          }).toList(),
         );
 
       case 'Column':
@@ -286,8 +417,8 @@ class ComponentRenderer {
         );
 
       case 'Wrap':
-        final spacing = double.tryParse(properties['spacing']?.toString() ?? '') ?? 8.0;
-        final runSpacing = double.tryParse(properties['runSpacing']?.toString() ?? '') ?? 8.0;
+        final spacing = double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
+        final runSpacing = double.tryParse(getStyle('runSpacing')?.toString() ?? '') ?? 8.0;
         return Wrap(
           spacing: spacing,
           runSpacing: runSpacing,
@@ -295,8 +426,8 @@ class ComponentRenderer {
         );
 
       case 'GridView':
-        final spacing = double.tryParse(properties['spacing']?.toString() ?? '') ?? 8.0;
-        final runSpacing = double.tryParse(properties['runSpacing']?.toString() ?? '') ?? 8.0;
+        final spacing = double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
+        final runSpacing = double.tryParse(getStyle('runSpacing')?.toString() ?? '') ?? 8.0;
         return GridView.count(
           crossAxisCount: 2,
           crossAxisSpacing: spacing,
@@ -307,7 +438,7 @@ class ComponentRenderer {
         );
 
       case 'ListView':
-        final spacing = double.tryParse(properties['spacing']?.toString() ?? '') ?? 8.0;
+        final spacing = double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
         return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -335,11 +466,11 @@ class ComponentRenderer {
         );
 
       case 'Card':
-        final elevation = double.tryParse(properties['elevation']?.toString() ?? '') ?? 2.0;
-        final bg = PropertyParser.parseColor(properties['backgroundColor']);
-        final pad = PropertyParser.parsePadding(properties['padding']);
-        final marg = PropertyParser.parsePadding(properties['margin']);
-        final radius = double.tryParse(properties['borderRadius']?.toString() ?? '') ?? 12.0;
+        final elevation = double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 2.0;
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor'));
+        final pad = PropertyParser.parsePadding(getStyle('padding'));
+        final marg = PropertyParser.parsePadding(getStyle('margin'));
+        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 12.0;
         return Card(
           elevation: elevation,
           color: bg,
@@ -377,8 +508,8 @@ class ComponentRenderer {
         return const Spacer();
 
       case 'Divider':
-        final height = double.tryParse(properties['height']?.toString() ?? '') ?? 1.0;
-        final color = PropertyParser.parseColor(properties['color']);
+        final height = double.tryParse(getStyle('height')?.toString() ?? '') ?? 1.0;
+        final color = PropertyParser.parseColor(getStyle('color'));
         return Divider(
           height: height * 4,
           thickness: height,
@@ -560,9 +691,9 @@ class ComponentRenderer {
       // ================== BUTTONS ==================
       case 'Button':
         final text = properties['label'] ?? 'Click Me';
-        final bg = PropertyParser.parseColor(properties['backgroundColor']) ?? const Color(0xFF5B4FCF);
-        final fg = PropertyParser.parseColor(properties['textColor']) ?? Colors.white;
-        final radius = double.tryParse(properties['borderRadius']?.toString() ?? '') ?? 8.0;
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? const Color(0xFF5B4FCF);
+        final fg = PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
+        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 8.0;
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -582,7 +713,7 @@ class ComponentRenderer {
 
       case 'IconButton':
         final iconStr = properties['icon'] ?? 'star';
-        final col = PropertyParser.parseColor(properties['color']) ?? const Color(0xFF5B4FCF);
+        final col = PropertyParser.parseColor(getStyle('color')) ?? const Color(0xFF5B4FCF);
         return IconButton(
           icon: Icon(_getIconByName(iconStr)),
           color: col,
@@ -591,8 +722,8 @@ class ComponentRenderer {
 
       case 'FloatingButton':
         final iconStr = properties['icon'] ?? 'add';
-        final bg = PropertyParser.parseColor(properties['backgroundColor']) ?? const Color(0xFF5B4FCF);
-        final fg = PropertyParser.parseColor(properties['textColor']) ?? Colors.white;
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? const Color(0xFF5B4FCF);
+        final fg = PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
 
         return FloatingActionButton(
           onPressed: () {},
@@ -604,9 +735,9 @@ class ComponentRenderer {
       // ================== DISPLAY ==================
       case 'Text':
         final text = properties['label'] ?? 'Sample Text';
-        final size = double.tryParse(properties['fontSize']?.toString() ?? '') ?? 14.0;
-        final weight = PropertyParser.parseFontWeight(properties['fontWeight']);
-        final col = PropertyParser.parseColor(properties['color']) ?? const Color(0xFF1A1A2E);
+        final size = double.tryParse(getStyle('fontSize')?.toString() ?? '') ?? 14.0;
+        final weight = PropertyParser.parseFontWeight(getStyle('fontWeight'));
+        final col = PropertyParser.parseColor(getStyle('color')) ?? const Color(0xFF1A1A2E);
 
         return Text(
           text,
@@ -618,11 +749,11 @@ class ComponentRenderer {
         );
 
       case 'Image':
-        final src = properties['src'] ?? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500';
-        final width = double.tryParse(properties['width']?.toString() ?? '');
-        final height = double.tryParse(properties['height']?.toString() ?? '200.0');
-        final fit = PropertyParser.parseBoxFit(properties['fit']);
-        final radius = double.tryParse(properties['borderRadius']?.toString() ?? '') ?? 8.0;
+        final src = getStyle('src') ?? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500';
+        final width = double.tryParse(getStyle('width')?.toString() ?? '');
+        final height = double.tryParse(getStyle('height')?.toString() ?? '200.0');
+        final fit = PropertyParser.parseBoxFit(getStyle('fit'));
+        final radius = double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 8.0;
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(radius),
@@ -644,8 +775,8 @@ class ComponentRenderer {
 
       case 'Icon':
         final iconStr = properties['icon'] ?? 'info';
-        final size = double.tryParse(properties['fontSize']?.toString() ?? '') ?? 24.0;
-        final col = PropertyParser.parseColor(properties['color']) ?? const Color(0xFF1A1A2E);
+        final size = double.tryParse(getStyle('fontSize')?.toString() ?? '') ?? 24.0;
+        final col = PropertyParser.parseColor(getStyle('color')) ?? const Color(0xFF1A1A2E);
         return Icon(
           _getIconByName(iconStr),
           size: size,
@@ -765,6 +896,272 @@ class ComponentRenderer {
               ],
             );
           }),
+        );
+
+      case 'Expanded':
+        return Expanded(
+          child: node.children.isEmpty
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
+              : render(
+                  node.children.first,
+                  isDesignMode: isDesignMode,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                ),
+        );
+
+      case 'Flexible':
+        return Flexible(
+          child: node.children.isEmpty
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
+              : render(
+                  node.children.first,
+                  isDesignMode: isDesignMode,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                ),
+        );
+
+      case 'SafeArea':
+        return SafeArea(
+          child: node.children.isEmpty
+              ? (isDesignMode ? _buildEmptyPlaceholder(node, onAddChild: onAddChild) : const SizedBox.shrink())
+              : render(
+                  node.children.first,
+                  isDesignMode: isDesignMode,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                ),
+        );
+
+      case 'FilePicker':
+        final fieldName = properties['fieldName'] ?? 'file';
+        final label = properties['label'] ?? 'Select File';
+        final val = formValues[fieldName]?.toString() ?? '';
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: InkWell(
+            onTap: isDesignMode ? null : () {},
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[400]!),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.attach_file, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      val.isNotEmpty ? val : label,
+                      style: TextStyle(color: val.isNotEmpty ? Colors.black : Colors.grey[600]),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: isDesignMode ? () {} : () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5B4FCF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                    child: const Text('Browse', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case 'OTP':
+        final label = properties['label'] ?? 'Enter OTP';
+        final length = int.tryParse(properties['length']?.toString() ?? '6') ?? 6;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(length, (i) {
+                  return Container(
+                    width: 40,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF5B4FCF)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '-',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+
+      case 'Search':
+        final fieldName = properties['fieldName'] ?? 'search';
+        final label = properties['label'] ?? 'Search';
+        final hint = properties['hint'] ?? 'Type keywords...';
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextField(
+            enabled: !isDesignMode,
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hint,
+              prefixIcon: const Icon(Icons.search),
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(24.0)),
+              ),
+            ),
+          ),
+        );
+
+      case 'Avatar':
+        final src = properties['src'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
+        final radius = double.tryParse(properties['radius']?.toString() ?? '24.0') ?? 24.0;
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: NetworkImage(src),
+        );
+
+      case 'Chip':
+        final label = properties['label'] ?? 'Tag';
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? const Color(0xFFE8E7FD);
+        final fg = PropertyParser.parseColor(getStyle('textColor')) ?? const Color(0xFF5B4FCF);
+        return Chip(
+          label: Text(label, style: TextStyle(color: fg, fontSize: 12)),
+          backgroundColor: bg,
+          padding: const EdgeInsets.all(4),
+        );
+
+      case 'Badge':
+        final label = properties['label'] ?? 'New';
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? const Color(0xFFFF3B30);
+        final fg = PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+        );
+
+      case 'Progress':
+        final col = PropertyParser.parseColor(getStyle('color')) ?? const Color(0xFF5B4FCF);
+        final isCircular = properties['isCircular'] != false;
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: isCircular
+              ? CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(col))
+              : LinearProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(col)),
+        );
+
+      case 'Tabs':
+        final List<String> tabs = List<String>.from(properties['tabs'] ?? ['Tab One', 'Tab Two']);
+        return DefaultTabController(
+          length: tabs.length,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TabBar(
+                labelColor: const Color(0xFF5B4FCF),
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: const Color(0xFF5B4FCF),
+                tabs: tabs.map((t) => Tab(text: t)).toList(),
+              ),
+              SizedBox(
+                height: 150,
+                child: TabBarView(
+                  children: tabs.map((t) {
+                    return Center(
+                      child: Text('$t Content Area', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'Drawer':
+        final title = properties['title'] ?? 'App Drawer';
+        return Container(
+          width: 240,
+          color: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DrawerHeader(
+                decoration: const BoxDecoration(color: Color(0xFF5B4FCF)),
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const ListTile(
+                leading: Icon(Icons.home),
+                title: Text('Home'),
+              ),
+              const ListTile(
+                leading: Icon(Icons.settings),
+                title: Text('Settings'),
+              ),
+            ],
+          ),
+        );
+
+      case 'NavigationBar':
+        final List<String> items = List<String>.from(properties['items'] ?? ['Home', 'Search', 'Profile']);
+        return BottomNavigationBar(
+          currentIndex: 0,
+          selectedItemColor: const Color(0xFF5B4FCF),
+          unselectedItemColor: Colors.grey,
+          items: items.map((item) {
+            IconData iconData = Icons.home;
+            if (item.toLowerCase() == 'search') iconData = Icons.search;
+            if (item.toLowerCase() == 'profile') iconData = Icons.person;
+            return BottomNavigationBarItem(
+              icon: Icon(iconData),
+              label: item,
+            );
+          }).toList(),
         );
 
       default:

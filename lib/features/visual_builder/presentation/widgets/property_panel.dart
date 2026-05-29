@@ -7,6 +7,7 @@ import '../../../../core/component_engine/models/component_node.dart';
 import '../../../../core/component_engine/models/component_action.dart';
 import '../../../../core/component_engine/registry/component_registry.dart';
 import '../../application/visual_builder_controller.dart';
+import '../../application/studio_providers.dart';
 
 class RevoPropertyPanel extends ConsumerStatefulWidget {
   const RevoPropertyPanel({super.key});
@@ -27,16 +28,18 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
 
     final meta = ComponentRegistry.getByType(selectedNode.type);
     final isForm = meta?.category == ComponentCategory.form;
-    final isLayout = meta?.category == ComponentCategory.layout;
 
     // Define active tabs based on category
     final tabs = [
       const Tab(text: "General"),
       const Tab(text: "Style"),
-      if (isLayout) const Tab(text: "Layout"),
+      const Tab(text: "Layout"),
+      const Tab(text: "Responsive"),
+      const Tab(text: "Data Binding"),
       if (isForm) const Tab(text: "Validation"),
       const Tab(text: "Actions"),
-      if (selectedNode.type == 'Dropdown') const Tab(text: "API"),
+      const Tab(text: "Animation"),
+      const Tab(text: "Permissions"),
     ];
 
     final controller = ref.read(visualBuilderProvider.notifier);
@@ -102,10 +105,13 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
                 children: [
                   _buildGeneralTab(selectedNode, controller),
                   _buildStyleTab(selectedNode, controller),
-                  if (isLayout) _buildLayoutTab(selectedNode, controller),
+                  _buildLayoutTab(selectedNode, controller),
+                  _buildResponsiveTab(selectedNode, controller),
+                  _buildDataBindingTab(selectedNode, controller),
                   if (isForm) _buildValidationTab(selectedNode, controller),
                   _buildActionsTab(selectedNode, controller),
-                  if (selectedNode.type == 'Dropdown') _buildApiTab(selectedNode, controller),
+                  _buildAnimationTab(selectedNode, controller),
+                  _buildPermissionsTab(selectedNode, controller),
                 ],
               ),
             ),
@@ -266,6 +272,26 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
             value: props['backgroundColor'] ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'backgroundColor': val}),
           ),
+        _buildColorFieldWithPresets(
+          label: "Gradient Start Color (Hex)",
+          value: props['gradientStart'] ?? '',
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientStart': val}),
+        ),
+        _buildColorFieldWithPresets(
+          label: "Gradient End Color (Hex)",
+          value: props['gradientEnd'] ?? '',
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientEnd': val}),
+        ),
+        _buildColorFieldWithPresets(
+          label: "Border Color (Hex)",
+          value: props['borderColor'] ?? '',
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'borderColor': val}),
+        ),
+        _buildPropertyTextField(
+          label: "Border Width (px)",
+          value: props['borderWidth']?.toString() ?? '',
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'borderWidth': double.tryParse(val)}),
+        ),
         if (props.containsKey('color'))
           _buildColorFieldWithPresets(
             label: "Theme Color (Hex)",
@@ -321,6 +347,11 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
             value: props['height']?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'height': double.tryParse(val)}),
           ),
+        _buildPropertyTextField(
+          label: "Elevation (Shadow)",
+          value: props['elevation']?.toString() ?? '',
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'elevation': double.tryParse(val)}),
+        ),
       ],
     );
   }
@@ -420,7 +451,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
                   onPressed: () {
                     final defaultAction = ComponentAction(
                       event: 'onTap',
-                      steps: [ActionStep(type: 'validate')],
+                      steps: [ActionStep(id: 'step_${DateTime.now().millisecondsSinceEpoch}', type: 'validate')],
                     );
                     controller.updateNodeActions(node.id, [defaultAction]);
                   },
@@ -506,7 +537,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
                         ),
                       ),
                       onSelected: (val) {
-                        final list = List<ActionStep>.from(act.steps)..add(ActionStep(type: val));
+                        final list = List<ActionStep>.from(act.steps)..add(ActionStep(id: 'step_${DateTime.now().millisecondsSinceEpoch}', type: val));
                         controller.updateNodeActions(node.id, [act.copyWith(steps: list)]);
                       },
                       itemBuilder: (context) => [
@@ -888,5 +919,116 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
       default:
         return Icons.category_outlined;
     }
+  }
+
+  Widget _buildResponsiveTab(ComponentNode node, VisualBuilderController controller) {
+    final responsive = node.responsive;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text("Responsive View Breakpoints", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 12),
+        _buildPropertySwitch(
+          label: "Visible on Mobile",
+          value: responsive['mobile'] != false,
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(responsive)..[ 'mobile' ] = val;
+            controller.updateNodeProperties(node.id, {'responsive': upd});
+          },
+        ),
+        _buildPropertySwitch(
+          label: "Visible on Tablet",
+          value: responsive['tablet'] != false,
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(responsive)..[ 'tablet' ] = val;
+            controller.updateNodeProperties(node.id, {'responsive': upd});
+          },
+        ),
+        _buildPropertySwitch(
+          label: "Visible on Desktop",
+          value: responsive['desktop'] != false,
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(responsive)..[ 'desktop' ] = val;
+            controller.updateNodeProperties(node.id, {'responsive': upd});
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDataBindingTab(ComponentNode node, VisualBuilderController controller) {
+    final bindings = node.bindings;
+    final variables = ref.watch(appVariablesProvider);
+    final varNames = variables.map((v) => v.name).toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text("Variable & API Bindings", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 12),
+        _buildPropertyDropdown(
+          label: "Bind to State Variable",
+          value: bindings['variable'] ?? 'None',
+          options: ['None', ...varNames],
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(bindings)..[ 'variable' ] = val;
+            controller.updateNodeProperties(node.id, {'bindings': upd});
+          },
+        ),
+        _buildPropertyTextField(
+          label: "Bind Response API Path",
+          value: bindings['apiPath'] ?? '',
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(bindings)..[ 'apiPath' ] = val;
+            controller.updateNodeProperties(node.id, {'bindings': upd});
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnimationTab(ComponentNode node, VisualBuilderController controller) {
+    final animations = node.animations;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text("Micro-Animations Setup", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 12),
+        _buildPropertyDropdown(
+          label: "Animation Type",
+          value: animations['type'] ?? 'none',
+          options: ['none', 'fade', 'slide', 'scale'],
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(animations)..[ 'type' ] = val;
+            controller.updateNodeProperties(node.id, {'animations': upd});
+          },
+        ),
+        _buildPropertyTextField(
+          label: "Animation Duration (ms)",
+          value: animations['duration']?.toString() ?? '300',
+          onChanged: (val) {
+            final upd = Map<String, dynamic>.from(animations)..[ 'duration' ] = int.tryParse(val) ?? 300;
+            controller.updateNodeProperties(node.id, {'animations': upd});
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPermissionsTab(ComponentNode node, VisualBuilderController controller) {
+    final props = node.properties;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text("Permissions & Roles", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 12),
+        _buildPropertyDropdown(
+          label: "Minimum Access Role",
+          value: props['role'] ?? 'guest',
+          options: ['guest', 'user', 'admin'],
+          onChanged: (val) => controller.updateNodeProperties(node.id, {'role': val}),
+        ),
+      ],
+    );
   }
 }

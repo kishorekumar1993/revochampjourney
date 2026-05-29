@@ -258,7 +258,25 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   void updateNodeProperties(String nodeId, Map<String, dynamic> props) {
     final updatedRoot = _updateNodeInTree(state.rootNode, nodeId, (node) {
-      return node.copyWith(properties: {...node.properties, ...props});
+      final newProps = {...node.properties};
+      final newStyles = {...node.styles};
+
+      const styleKeys = {
+        'width', 'height', 'backgroundColor', 'color', 'textColor',
+        'fontSize', 'fontWeight', 'padding', 'margin', 'borderRadius',
+        'elevation', 'src', 'fit', 'spacing', 'runSpacing',
+        'gradientStart', 'gradientEnd', 'borderColor', 'borderWidth'
+      };
+
+      props.forEach((key, val) {
+        if (styleKeys.contains(key)) {
+          newStyles[key] = val;
+        } else {
+          newProps[key] = val;
+        }
+      });
+
+      return node.copyWith(properties: newProps, styles: newStyles);
     });
     if (updatedRoot != null) {
       _pushHistory(updatedRoot);

@@ -242,7 +242,42 @@
         throw "showDirectoryPicker not supported";
       }
     };
+
+    window.downloadProjectZip = async function (jsonString) {
+      showLoader();
+      try {
+        console.log("🔄 downloadProjectZip called, parsing JSON...");
+        const files = JSON.parse(jsonString);
+        
+        const zip = new JSZip();
+        for (const { folderPath, fileName, textContent } of files) {
+          const cleanFolderPath = folderPath.replace(/\\/g, '/');
+          if (cleanFolderPath === '' || cleanFolderPath === '/') {
+            zip.file(fileName, textContent);
+          } else {
+            zip.folder(cleanFolderPath).file(fileName, textContent);
+          }
+        }
+        
+        const content = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        link.download = "revochamp_project.zip";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log("✅ ZIP downloaded successfully!");
+      } catch (err) {
+        console.error("❌ ZIP generation error:", err);
+        alert(`Error generating ZIP:\n${err.message}`);
+      } finally {
+        hideLoader();
+      }
+    };
   </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="js_functions.js"></script>
