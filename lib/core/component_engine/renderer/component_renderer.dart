@@ -412,6 +412,12 @@ class ComponentRenderer {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
             );
+            final flexVal = int.tryParse(
+              childNode.styles['flex']?.toString() ?? childNode.properties['flex']?.toString() ?? '',
+            );
+            if (flexVal != null) {
+              return Expanded(flex: flexVal, child: childWidget);
+            }
             return childWidget;
           }).toList(),
         );
@@ -1196,11 +1202,34 @@ class ComponentRenderer {
 
       case 'Scaffold':
         final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? Colors.white;
+        final bottomNavNode = node.children.where((c) => c.type == 'BottomNavigationBar').firstOrNull;
+        final bodyChildren = node.children.where((c) => c.type != 'BottomNavigationBar').toList();
+
+        Widget? bottomNavWidget;
+        if (bottomNavNode != null) {
+          bottomNavWidget = render(
+            bottomNavNode,
+            isDesignMode: isDesignMode,
+            parentNode: node,
+            selectedNode: selectedNode,
+            hoveredNode: hoveredNode,
+            onSelect: onSelect,
+            onHover: onHover,
+            onDelete: onDelete,
+            onDuplicate: onDuplicate,
+            onMoveChild: onMoveChild,
+            onAddChild: onAddChild,
+            formValues: formValues,
+            onFormValueChanged: onFormValueChanged,
+          );
+        }
+
         return Scaffold(
           backgroundColor: bg,
+          bottomNavigationBar: bottomNavWidget,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: node.children.map((childNode) {
+            children: bodyChildren.map((childNode) {
               final childWidget = render(
                 childNode,
                 isDesignMode: isDesignMode,
@@ -1294,6 +1323,43 @@ class ComponentRenderer {
             children: childrenWidgets,
           ),
         );
+
+      case 'BottomNavigationBar':
+        final currentIndex = int.tryParse(properties['currentIndex']?.toString() ?? '') ?? 0;
+        final bnbBg = PropertyParser.parseColor(getStyle('backgroundColor')) ?? Colors.white;
+        final bnbElevation = double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 8.0;
+
+        final bnbItems = node.children.map((childNode) {
+          final iconStr = childNode.properties['icon'] ?? 'home';
+          final activeIconStr = childNode.properties['activeIcon'] ?? iconStr;
+          final itemLabel = childNode.properties['label']?.toString() ?? 'Item';
+          return BottomNavigationBarItem(
+            icon: Icon(_getIconByName(iconStr)),
+            activeIcon: Icon(_getIconByName(activeIconStr)),
+            label: itemLabel,
+          );
+        }).toList();
+
+        if (bnbItems.length < 2) {
+          return const SizedBox.shrink();
+        }
+
+        return BottomNavigationBar(
+          currentIndex: currentIndex.clamp(0, bnbItems.length - 1),
+          backgroundColor: bnbBg,
+          elevation: bnbElevation,
+          selectedItemColor: PropertyParser.parseColor(
+                node.children.isNotEmpty ? node.children[currentIndex.clamp(0, node.children.length - 1)].styles['activeColor'] : null,
+              ) ??
+              const Color(0xFF5B4FCF),
+          unselectedItemColor: Colors.grey,
+          items: bnbItems,
+          onTap: (_) {},
+        );
+
+      case 'BottomNavigationBarItem':
+        // Rendered inline by BottomNavigationBar case; standalone fallback
+        return const SizedBox.shrink();
 
       default:
         return Container(

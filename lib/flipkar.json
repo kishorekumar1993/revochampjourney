@@ -1,13 +1,15 @@
 {
-  "id": "flipkart_dashboard",
+  "id": "food_delivery_dashboard",
   "type": "Scaffold",
   "isLocked": false,
   "isVisible": true,
   "isReusable": false,
   "properties": {
-    "backgroundColor": "#F5F5F5"
+    "backgroundColor": "#FEF9F5"
   },
-  "styles": {},
+  "styles": {
+    "backgroundColor": "#FEF9F5"
+  },
   "responsive": {
     "breakpoints": {
       "mobile": 0,
@@ -16,9 +18,14 @@
     }
   },
   "bindings": {
+    "userName": {
+      "type": "state",
+      "defaultValue": "Hungry User",
+      "source": "global.user.name"
+    },
     "cartCount": {
       "type": "state",
-      "defaultValue": 3,
+      "defaultValue": 2,
       "source": "global.cart.items.length"
     }
   },
@@ -32,14 +39,14 @@
       "isReusable": true,
       "properties": {},
       "styles": {
-        "backgroundColor": "#2874F0",
+        "backgroundColor": "#FEF9F5",
         "padding": {
           "left": 16,
           "right": 16,
           "top": 12,
-          "bottom": 12
+          "bottom": 8
         },
-        "elevation": 4
+        "width": "100%"
       },
       "responsive": {},
       "bindings": {},
@@ -55,84 +62,141 @@
             "mainAxisAlignment": "space_between",
             "crossAxisAlignment": "center"
           },
-          "styles": {},
+          "styles": {
+            "width": "100%"
+          },
           "responsive": {},
           "bindings": {},
           "animations": {},
           "children": [
             {
-              "id": "logo",
-              "type": "Text",
+              "id": "user_info",
+              "type": "Column",
               "isLocked": false,
               "isVisible": true,
               "isReusable": false,
               "properties": {
-                "label": "Flipkart"
+                "mainAxisAlignment": "start",
+                "crossAxisAlignment": "start"
               },
-              "styles": {
-                "fontSize": 22,
-                "fontWeight": "bold",
-                "color": "#FFFFFF",
-                "letterSpacing": 0.5
-              },
-              "responsive": {},
-              "bindings": {},
-              "animations": {},
-              "children": [],
-              "actions": []
-            },
-            {
-              "id": "search_box",
-              "type": "Container",
-              "isLocked": false,
-              "isVisible": true,
-              "isReusable": false,
-              "properties": {},
-              "styles": {
-                "flex": 1,
-                "margin": {
-                  "left": 16,
-                  "right": 16
-                }
-              },
+              "styles": {},
               "responsive": {},
               "bindings": {},
               "animations": {},
               "children": [
                 {
-                  "id": "search_field",
-                  "type": "TextField",
+                  "id": "greeting",
+                  "type": "Text",
                   "isLocked": false,
                   "isVisible": true,
                   "isReusable": false,
                   "properties": {
-                    "fieldName": "search",
-                    "hint": "Search for products, brands and more",
-                    "required": false
+                    "label": "Delivering to"
                   },
                   "styles": {
-                    "backgroundColor": "#FFFFFF",
-                    "borderRadius": 8,
-                    "padding": 10,
-                    "fontSize": 14
+                    "fontSize": 12,
+                    "color": "#FF7A45",
+                    "fontWeight": "500"
                   },
                   "responsive": {},
                   "bindings": {},
                   "animations": {},
                   "children": [],
                   "actions": []
+                },
+                {
+                  "id": "user_location",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "start",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {},
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "location_icon",
+                      "type": "Icon",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "icon": "location_on"
+                      },
+                      "styles": {
+                        "fontSize": 16,
+                        "color": "#FF7A45",
+                        "margin": {
+                          "right": 4
+                        }
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "location_text",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Home · 123 Main St"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "fontWeight": "bold",
+                        "color": "#2D2D2D"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "dropdown_icon",
+                      "type": "Icon",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "icon": "expand_more"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "color": "#FF7A45"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
                 }
               ],
               "actions": []
             },
             {
-              "id": "cart_icon_with_badge",
+              "id": "cart_icon_badge",
               "type": "Stack",
               "isLocked": false,
               "isVisible": true,
               "isReusable": false,
               "properties": {},
-              "styles": {},
+              "styles": {
+                "width": 40,
+                "height": 40
+              },
               "responsive": {},
               "bindings": {},
               "animations": {},
@@ -144,11 +208,11 @@
                   "isVisible": true,
                   "isReusable": false,
                   "properties": {
-                    "icon": "shopping_cart"
+                    "icon": "shopping_bag"
                   },
                   "styles": {
                     "fontSize": 28,
-                    "color": "#FFFFFF"
+                    "color": "#FF7A45"
                   },
                   "responsive": {},
                   "bindings": {},
@@ -159,14 +223,14 @@
                       "event": "onTap",
                       "steps": [
                         {
-                          "id": "go_to_cart",
+                          "id": "open_cart",
                           "type": "navigate",
-                          "pageId": "cart_page",
                           "enabled": true,
                           "conditions": [],
                           "successSteps": [],
                           "failureSteps": [],
-                          "nestedSteps": []
+                          "nestedSteps": [],
+                          "pageId": "cart_page"
                         }
                       ]
                     }
@@ -181,7 +245,7 @@
                   "properties": {},
                   "styles": {
                     "position": "topRight",
-                    "backgroundColor": "#FF6161",
+                    "backgroundColor": "#FF4D4F",
                     "borderRadius": 12,
                     "padding": {
                       "left": 4,
@@ -192,7 +256,9 @@
                     "margin": {
                       "top": -4,
                       "right": -4
-                    }
+                    },
+                    "minWidth": 18,
+                    "height": 18
                   },
                   "responsive": {},
                   "bindings": {
@@ -201,7 +267,7 @@
                   "animations": {},
                   "children": [
                     {
-                      "id": "cart_count_text",
+                      "id": "cart_count",
                       "type": "Text",
                       "isLocked": false,
                       "isVisible": true,
@@ -210,7 +276,8 @@
                       "styles": {
                         "fontSize": 10,
                         "fontWeight": "bold",
-                        "color": "#FFFFFF"
+                        "color": "#FFFFFF",
+                        "textAlign": "center"
                       },
                       "responsive": {},
                       "bindings": {
@@ -233,454 +300,276 @@
       "actions": []
     },
     {
-      "id": "main_content",
-      "type": "ListView",
+      "id": "main_scroll",
+      "type": "SingleChildScrollView",
       "isLocked": false,
       "isVisible": true,
       "isReusable": false,
       "properties": {
-        "shrinkWrap": true,
-        "padding": {
-          "bottom": 8
-        }
+        "scrollDirection": "vertical",
+        "physics": "always"
       },
-      "styles": {},
+      "styles": {
+        "width": "100%"
+      },
       "responsive": {},
       "bindings": {},
       "animations": {},
       "children": [
         {
-          "id": "offer_carousel",
-          "type": "Carousel",
-          "isLocked": false,
-          "isVisible": true,
-          "isReusable": false,
-          "properties": {
-            "autoPlay": true,
-            "height": 180,
-            "viewportFraction": 0.9
-          },
-          "styles": {
-            "margin": {
-              "top": 8,
-              "bottom": 8
-            }
-          },
-          "responsive": {},
-          "bindings": {},
-          "animations": {},
-          "children": [
-            {
-              "id": "offer_1",
-              "type": "Image",
-              "isLocked": false,
-              "isVisible": true,
-              "isReusable": false,
-              "properties": {
-                "label": "Big Billion Days"
-              },
-              "styles": {
-                "src": "https://rukminim2.flixcart.com/fk-p-flap/1600/270/image/ea7e2c0b9f7c9e2e.jpg",
-                "borderRadius": 12,
-                "fit": "cover"
-              },
-              "responsive": {},
-              "bindings": {},
-              "animations": {},
-              "children": [],
-              "actions": [
-                {
-                  "event": "onTap",
-                  "steps": [
-                    {
-                      "id": "open_offer",
-                      "type": "navigate",
-                      "pageId": "sale_page",
-                      "enabled": true,
-                      "conditions": [],
-                      "successSteps": [],
-                      "failureSteps": [],
-                      "nestedSteps": []
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "id": "offer_2",
-              "type": "Image",
-              "isLocked": false,
-              "isVisible": true,
-              "isReusable": false,
-              "properties": {
-                "label": "Bank Offer"
-              },
-              "styles": {
-                "src": "https://rukminim2.flixcart.com/fk-p-flap/1600/270/image/3c1b3c7b6b3c1b3c.jpg",
-                "borderRadius": 12,
-                "fit": "cover"
-              },
-              "responsive": {},
-              "bindings": {},
-              "animations": {},
-              "children": [],
-              "actions": []
-            }
-          ],
-          "actions": []
-        },
-        {
-          "id": "categories_section",
+          "id": "content_column",
           "type": "Column",
           "isLocked": false,
           "isVisible": true,
           "isReusable": false,
-          "properties": {},
+          "properties": {
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch"
+          },
           "styles": {
-            "margin": {
-              "bottom": 16
-            }
+            "padding": {
+              "left": 16,
+              "right": 16,
+              "top": 8,
+              "bottom": 80
+            },
+            "width": "100%"
           },
           "responsive": {},
           "bindings": {},
           "animations": {},
           "children": [
             {
-              "id": "categories_header",
-              "type": "Row",
+              "id": "search_bar",
+              "type": "TextField",
               "isLocked": false,
               "isVisible": true,
               "isReusable": false,
               "properties": {
-                "mainAxisAlignment": "space_between",
-                "crossAxisAlignment": "center"
+                "fieldName": "search_food",
+                "hint": "Search for restaurants or dishes...",
+                "required": false
               },
               "styles": {
-                "padding": {
-                  "left": 16,
-                  "right": 16,
-                  "top": 8,
-                  "bottom": 8
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 30,
+                "padding": 14,
+                "fontSize": 14,
+                "elevation": 2,
+                "width": "100%",
+                "height": 50,
+                "margin": {
+                  "bottom": 20
                 }
               },
               "responsive": {},
               "bindings": {},
               "animations": {},
-              "children": [
-                {
-                  "id": "categories_title",
-                  "type": "Text",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": false,
-                  "properties": {
-                    "label": "Top Categories"
-                  },
-                  "styles": {
-                    "fontSize": 18,
-                    "fontWeight": "bold",
-                    "color": "#212121"
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [],
-                  "actions": []
-                },
-                {
-                  "id": "categories_link",
-                  "type": "Text",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": false,
-                  "properties": {
-                    "label": "View All"
-                  },
-                  "styles": {
-                    "fontSize": 14,
-                    "color": "#2874F0"
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [],
-                  "actions": [
-                    {
-                      "event": "onTap",
-                      "steps": [
-                        {
-                          "id": "nav_all_cats",
-                          "type": "navigate",
-                          "pageId": "categories_page",
-                          "enabled": true,
-                          "conditions": [],
-                          "successSteps": [],
-                          "failureSteps": [],
-                          "nestedSteps": []
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ],
+              "children": [],
               "actions": []
             },
             {
-              "id": "categories_horizontal",
-              "type": "SingleChildScrollView",
+              "id": "categories_section",
+              "type": "Column",
               "isLocked": false,
               "isVisible": true,
               "isReusable": false,
               "properties": {
-                "scrollDirection": "horizontal"
+                "crossAxisAlignment": "stretch"
               },
-              "styles": {},
+              "styles": {
+                "margin": {
+                  "bottom": 24
+                },
+                "width": "100%"
+              },
               "responsive": {},
               "bindings": {},
               "animations": {},
               "children": [
                 {
-                  "id": "categories_row",
+                  "id": "section_header",
                   "type": "Row",
                   "isLocked": false,
                   "isVisible": true,
                   "isReusable": false,
                   "properties": {
-                    "mainAxisAlignment": "start",
+                    "mainAxisAlignment": "space_between",
                     "crossAxisAlignment": "center"
                   },
                   "styles": {
-                    "padding": {
-                      "left": 8,
-                      "right": 8
-                    }
+                    "margin": {
+                      "bottom": 12
+                    },
+                    "width": "100%"
                   },
                   "responsive": {},
                   "bindings": {},
                   "animations": {},
                   "children": [
                     {
-                      "id": "cat_electronics",
-                      "type": "Column",
+                      "id": "categories_title",
+                      "type": "Text",
                       "isLocked": false,
                       "isVisible": true,
                       "isReusable": false,
                       "properties": {
-                        "mainAxisAlignment": "center",
-                        "crossAxisAlignment": "center"
+                        "label": "Popular Categories"
                       },
                       "styles": {
-                        "margin": {
-                          "left": 8,
-                          "right": 8
-                        },
-                        "width": 72
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#2D2D2D"
                       },
                       "responsive": {},
                       "bindings": {},
                       "animations": {},
-                      "children": [
-                        {
-                          "id": "elec_icon",
-                          "type": "Container",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {},
-                          "styles": {
-                            "width": 48,
-                            "height": 48,
-                            "borderRadius": 24,
-                            "backgroundColor": "#E8EAF6"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
-                            {
-                              "id": "elec_icon_inner",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "laptop"
-                              },
-                              "styles": {
-                                "fontSize": 28,
-                                "color": "#2874F0"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            }
-                          ],
-                          "actions": []
-                        },
-                        {
-                          "id": "elec_label",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "Electronics"
-                          },
-                          "styles": {
-                            "fontSize": 12,
-                            "margin": {
-                              "top": 4
-                            },
-                            "color": "#212121",
-                            "textAlign": "center"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
+                      "children": [],
                       "actions": []
                     },
                     {
-                      "id": "cat_fashion",
-                      "type": "Column",
+                      "id": "see_all_cats",
+                      "type": "Text",
                       "isLocked": false,
                       "isVisible": true,
                       "isReusable": false,
                       "properties": {
-                        "mainAxisAlignment": "center",
-                        "crossAxisAlignment": "center"
+                        "label": "See All"
                       },
                       "styles": {
-                        "margin": {
-                          "left": 8,
-                          "right": 8
-                        },
-                        "width": 72
+                        "fontSize": 14,
+                        "color": "#FF7A45"
                       },
                       "responsive": {},
                       "bindings": {},
                       "animations": {},
-                      "children": [
+                      "children": [],
+                      "actions": [
                         {
-                          "id": "fashion_icon",
-                          "type": "Container",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {},
-                          "styles": {
-                            "width": 48,
-                            "height": 48,
-                            "borderRadius": 24,
-                            "backgroundColor": "#E8EAF6"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
+                          "event": "onTap",
+                          "steps": [
                             {
-                              "id": "fashion_icon_inner",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "checkroom"
-                              },
-                              "styles": {
-                                "fontSize": 28,
-                                "color": "#2874F0"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
+                              "id": "nav_all_categories",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "categories_page"
                             }
-                          ],
-                          "actions": []
-                        },
-                        {
-                          "id": "fashion_label",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "Fashion"
-                          },
-                          "styles": {
-                            "fontSize": 12,
-                            "margin": {
-                              "top": 4
-                            },
-                            "color": "#212121",
-                            "textAlign": "center"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
+                          ]
                         }
-                      ],
-                      "actions": []
-                    },
+                      ]
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "categories_horizontal",
+                  "type": "SingleChildScrollView",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "scrollDirection": "horizontal"
+                  },
+                  "styles": {
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
                     {
-                      "id": "cat_mobiles",
-                      "type": "Column",
+                      "id": "categories_row",
+                      "type": "Row",
                       "isLocked": false,
                       "isVisible": true,
                       "isReusable": false,
                       "properties": {
-                        "mainAxisAlignment": "center",
+                        "mainAxisAlignment": "start",
                         "crossAxisAlignment": "center"
                       },
-                      "styles": {
-                        "margin": {
-                          "left": 8,
-                          "right": 8
-                        },
-                        "width": 72
-                      },
+                      "styles": {},
                       "responsive": {},
                       "bindings": {},
                       "animations": {},
                       "children": [
                         {
-                          "id": "mobiles_icon",
-                          "type": "Container",
+                          "id": "cat_pizza",
+                          "type": "Column",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
-                          "properties": {},
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
                           "styles": {
-                            "width": 48,
-                            "height": 48,
-                            "borderRadius": 24,
-                            "backgroundColor": "#E8EAF6"
+                            "margin": {
+                              "right": 16
+                            },
+                            "width": 80
                           },
                           "responsive": {},
                           "bindings": {},
                           "animations": {},
                           "children": [
                             {
-                              "id": "mobiles_icon_inner",
-                              "type": "Icon",
+                              "id": "pizza_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#FFE8E0"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "pizza_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "local_pizza"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#FF7A45"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "pizza_label",
+                              "type": "Text",
                               "isLocked": false,
                               "isVisible": true,
                               "isReusable": false,
                               "properties": {
-                                "icon": "smartphone"
+                                "label": "Pizza"
                               },
                               "styles": {
-                                "fontSize": 28,
-                                "color": "#2874F0"
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
                               },
                               "responsive": {},
                               "bindings": {},
@@ -692,81 +581,79 @@
                           "actions": []
                         },
                         {
-                          "id": "mobiles_label",
-                          "type": "Text",
+                          "id": "cat_burger",
+                          "type": "Column",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
                           "properties": {
-                            "label": "Mobiles"
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
                           },
                           "styles": {
-                            "fontSize": 12,
                             "margin": {
-                              "top": 4
+                              "right": 16
                             },
-                            "color": "#212121",
-                            "textAlign": "center"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "cat_home",
-                      "type": "Column",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "mainAxisAlignment": "center",
-                        "crossAxisAlignment": "center"
-                      },
-                      "styles": {
-                        "margin": {
-                          "left": 8,
-                          "right": 8
-                        },
-                        "width": 72
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "home_icon",
-                          "type": "Container",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {},
-                          "styles": {
-                            "width": 48,
-                            "height": 48,
-                            "borderRadius": 24,
-                            "backgroundColor": "#E8EAF6"
+                            "width": 80
                           },
                           "responsive": {},
                           "bindings": {},
                           "animations": {},
                           "children": [
                             {
-                              "id": "home_icon_inner",
-                              "type": "Icon",
+                              "id": "burger_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E8F0FE"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "burger_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "restaurant"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#3B82F6"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "burger_label",
+                              "type": "Text",
                               "isLocked": false,
                               "isVisible": true,
                               "isReusable": false,
                               "properties": {
-                                "icon": "kitchen"
+                                "label": "Burger"
                               },
                               "styles": {
-                                "fontSize": 28,
-                                "color": "#2874F0"
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
                               },
                               "responsive": {},
                               "bindings": {},
@@ -778,81 +665,79 @@
                           "actions": []
                         },
                         {
-                          "id": "home_label",
-                          "type": "Text",
+                          "id": "cat_sushi",
+                          "type": "Column",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
                           "properties": {
-                            "label": "Home"
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
                           },
                           "styles": {
-                            "fontSize": 12,
                             "margin": {
-                              "top": 4
+                              "right": 16
                             },
-                            "color": "#212121",
-                            "textAlign": "center"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "cat_appliances",
-                      "type": "Column",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "mainAxisAlignment": "center",
-                        "crossAxisAlignment": "center"
-                      },
-                      "styles": {
-                        "margin": {
-                          "left": 8,
-                          "right": 8
-                        },
-                        "width": 72
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "appl_icon",
-                          "type": "Container",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {},
-                          "styles": {
-                            "width": 48,
-                            "height": 48,
-                            "borderRadius": 24,
-                            "backgroundColor": "#E8EAF6"
+                            "width": 80
                           },
                           "responsive": {},
                           "bindings": {},
                           "animations": {},
                           "children": [
                             {
-                              "id": "appl_icon_inner",
-                              "type": "Icon",
+                              "id": "sushi_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E6F7EC"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "sushi_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "set_meal"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "sushi_label",
+                              "type": "Text",
                               "isLocked": false,
                               "isVisible": true,
                               "isReusable": false,
                               "properties": {
-                                "icon": "microwave"
+                                "label": "Sushi"
                               },
                               "styles": {
-                                "fontSize": 28,
-                                "color": "#2874F0"
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
                               },
                               "responsive": {},
                               "bindings": {},
@@ -864,26 +749,255 @@
                           "actions": []
                         },
                         {
-                          "id": "appl_label",
-                          "type": "Text",
+                          "id": "cat_dessert",
+                          "type": "Column",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
                           "properties": {
-                            "label": "Appliances"
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
                           },
                           "styles": {
-                            "fontSize": 12,
                             "margin": {
-                              "top": 4
+                              "right": 16
                             },
-                            "color": "#212121",
-                            "textAlign": "center"
+                            "width": 80
                           },
                           "responsive": {},
                           "bindings": {},
                           "animations": {},
-                          "children": [],
+                          "children": [
+                            {
+                              "id": "dessert_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#FEF3C7"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "dessert_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "cake"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#F59E0B"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "dessert_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Dessert"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "cat_drinks",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": {
+                              "right": 16
+                            },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "drinks_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#E0E7FF"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "drinks_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "local_cafe"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#4F46E5"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "drinks_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Drinks"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        },
+                        {
+                          "id": "cat_vegan",
+                          "type": "Column",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "center",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {
+                            "margin": {
+                              "right": 16
+                            },
+                            "width": 80
+                          },
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "vegan_container",
+                              "type": "Container",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "width": 64,
+                                "height": 64,
+                                "borderRadius": 32,
+                                "backgroundColor": "#D1FAE5"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "vegan_icon",
+                                  "type": "Icon",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "icon": "eco"
+                                  },
+                                  "styles": {
+                                    "fontSize": 32,
+                                    "color": "#059669"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "vegan_label",
+                              "type": "Text",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "label": "Vegan"
+                              },
+                              "styles": {
+                                "fontSize": 12,
+                                "margin": {
+                                  "top": 6
+                                },
+                                "color": "#2D2D2D"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            }
+                          ],
                           "actions": []
                         }
                       ],
@@ -894,57 +1008,1314 @@
                 }
               ],
               "actions": []
-            }
-          ],
-          "actions": []
-        },
-        {
-          "id": "deal_section",
-          "type": "Column",
-          "isLocked": false,
-          "isVisible": true,
-          "isReusable": false,
-          "properties": {},
-          "styles": {
-            "margin": {
-              "bottom": 8
-            }
-          },
-          "responsive": {},
-          "bindings": {},
-          "animations": {},
-          "children": [
+            },
             {
-              "id": "deal_header",
-              "type": "Row",
+              "id": "nearby_restaurants",
+              "type": "Column",
               "isLocked": false,
               "isVisible": true,
               "isReusable": false,
               "properties": {
-                "mainAxisAlignment": "space_between",
-                "crossAxisAlignment": "center"
+                "crossAxisAlignment": "stretch"
               },
               "styles": {
-                "padding": {
-                  "left": 16,
-                  "right": 16,
-                  "top": 8,
-                  "bottom": 8
+                "margin": {
+                  "bottom": 24
                 },
-                "backgroundColor": "#FFFFFF"
+                "width": "100%"
               },
               "responsive": {},
               "bindings": {},
               "animations": {},
               "children": [
                 {
-                  "id": "deal_title",
+                  "id": "restaurants_header",
                   "type": "Row",
                   "isLocked": false,
                   "isVisible": true,
                   "isReusable": false,
                   "properties": {
-                    "mainAxisAlignment": "start",
+                    "mainAxisAlignment": "space_between",
+                    "crossAxisAlignment": "center"
+                  },
+                  "styles": {
+                    "margin": {
+                      "bottom": 12
+                    },
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "restaurants_title",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "Nearby Restaurants"
+                      },
+                      "styles": {
+                        "fontSize": 18,
+                        "fontWeight": "bold",
+                        "color": "#2D2D2D"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    },
+                    {
+                      "id": "see_all_rest",
+                      "type": "Text",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {
+                        "label": "See All"
+                      },
+                      "styles": {
+                        "fontSize": 14,
+                        "color": "#FF7A45"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [],
+                      "actions": []
+                    }
+                  ],
+                  "actions": []
+                },
+                {
+                  "id": "restaurant_list",
+                  "type": "Column",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "crossAxisAlignment": "stretch"
+                  },
+                  "styles": {
+                    "width": "100%"
+                  },
+                  "responsive": {},
+                  "bindings": {},
+                  "animations": {},
+                  "children": [
+                    {
+                      "id": "rest_card_1",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "rest_row_1",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "rest1_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest1_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest1_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "The Golden Spoon"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#2D2D2D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest1_cuisine",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Italian • Pizza • Pasta"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest1_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "rest1_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "rest1_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.5 (200+ ratings)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest1_time",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest1_time_text",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "25-35 min"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_rest1",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "restaurant_detail_1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "rest_card_2",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "rest_row_2",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "rest2_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=200",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest2_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest2_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Burger House"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#2D2D2D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest2_cuisine",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "American • Burgers • Fast Food"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest2_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "rest2_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "rest2_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.3 (150+ ratings)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest2_time",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest2_time_text",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "15-20 min"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "rest_card_3",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "rest_row_3",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "rest3_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest3_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest3_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Sushi Master"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#2D2D2D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest3_cuisine",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Japanese • Sushi • Ramen"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest3_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "rest3_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "rest3_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.8 (300+ ratings)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest3_time",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest3_time_text",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "30-40 min"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": []
+                    },
+                    {
+                      "id": "rest_card_4",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "margin": {
+                          "bottom": 12
+                        },
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "rest_row_4",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "rest4_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest4_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest4_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Taco Fiesta"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#2D2D2D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest4_cuisine",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Mexican • Tacos • Burritos"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest4_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "rest4_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "rest4_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.6 (120+ ratings)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest4_time",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest4_time_text",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "20-30 min"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_rest4",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "restaurant_detail_4"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "rest_card_5",
+                      "type": "Card",
+                      "isLocked": false,
+                      "isVisible": true,
+                      "isReusable": false,
+                      "properties": {},
+                      "styles": {
+                        "elevation": 2,
+                        "backgroundColor": "#FFFFFF",
+                        "borderRadius": 16,
+                        "width": "100%"
+                      },
+                      "responsive": {},
+                      "bindings": {},
+                      "animations": {},
+                      "children": [
+                        {
+                          "id": "rest_row_5",
+                          "type": "Row",
+                          "isLocked": false,
+                          "isVisible": true,
+                          "isReusable": false,
+                          "properties": {
+                            "mainAxisAlignment": "start",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": {},
+                          "responsive": {},
+                          "bindings": {},
+                          "animations": {},
+                          "children": [
+                            {
+                              "id": "rest5_img",
+                              "type": "Image",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {},
+                              "styles": {
+                                "src": "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=200",
+                                "width": 80,
+                                "height": 80,
+                                "borderRadius": 12,
+                                "margin": {
+                                  "right": 12
+                                },
+                                "fit": "cover"
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest5_details",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "start",
+                                "crossAxisAlignment": "start"
+                              },
+                              "styles": {
+                                "flex": 1
+                              },
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest5_name",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Salad Bar"
+                                  },
+                                  "styles": {
+                                    "fontSize": 16,
+                                    "fontWeight": "bold",
+                                    "color": "#2D2D2D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest5_cuisine",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "Healthy • Salads • Wraps"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "color": "#6C757D",
+                                    "margin": {
+                                      "bottom": 4
+                                    }
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                },
+                                {
+                                  "id": "rest5_rating_row",
+                                  "type": "Row",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "mainAxisAlignment": "start",
+                                    "crossAxisAlignment": "center"
+                                  },
+                                  "styles": {},
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [
+                                    {
+                                      "id": "rest5_star",
+                                      "type": "Icon",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "icon": "star"
+                                      },
+                                      "styles": {
+                                        "fontSize": 14,
+                                        "color": "#F59E0B",
+                                        "margin": {
+                                          "right": 4
+                                        }
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    },
+                                    {
+                                      "id": "rest5_rating",
+                                      "type": "Text",
+                                      "isLocked": false,
+                                      "isVisible": true,
+                                      "isReusable": false,
+                                      "properties": {
+                                        "label": "4.9 (80+ ratings)"
+                                      },
+                                      "styles": {
+                                        "fontSize": 12,
+                                        "color": "#6C757D"
+                                      },
+                                      "responsive": {},
+                                      "bindings": {},
+                                      "animations": {},
+                                      "children": [],
+                                      "actions": []
+                                    }
+                                  ],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            },
+                            {
+                              "id": "rest5_time",
+                              "type": "Column",
+                              "isLocked": false,
+                              "isVisible": true,
+                              "isReusable": false,
+                              "properties": {
+                                "mainAxisAlignment": "center",
+                                "crossAxisAlignment": "center"
+                              },
+                              "styles": {},
+                              "responsive": {},
+                              "bindings": {},
+                              "animations": {},
+                              "children": [
+                                {
+                                  "id": "rest5_time_text",
+                                  "type": "Text",
+                                  "isLocked": false,
+                                  "isVisible": true,
+                                  "isReusable": false,
+                                  "properties": {
+                                    "label": "10-20 min"
+                                  },
+                                  "styles": {
+                                    "fontSize": 12,
+                                    "fontWeight": "bold",
+                                    "color": "#10B981"
+                                  },
+                                  "responsive": {},
+                                  "bindings": {},
+                                  "animations": {},
+                                  "children": [],
+                                  "actions": []
+                                }
+                              ],
+                              "actions": []
+                            }
+                          ],
+                          "actions": []
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "event": "onTap",
+                          "steps": [
+                            {
+                              "id": "open_rest5",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "restaurant_detail_5"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": []
+                }
+              ],
+              "actions": []
+            },
+            {
+              "id": "offer_banner",
+              "type": "Container",
+              "isLocked": false,
+              "isVisible": true,
+              "isReusable": false,
+              "properties": {},
+              "styles": {
+                "backgroundColor": "#FF7A45",
+                "borderRadius": 16,
+                "padding": 16,
+                "margin": {
+                  "top": 8,
+                  "bottom": 16
+                },
+                "width": "100%"
+              },
+              "responsive": {},
+              "bindings": {},
+              "animations": {},
+              "children": [
+                {
+                  "id": "offer_row",
+                  "type": "Row",
+                  "isLocked": false,
+                  "isVisible": true,
+                  "isReusable": false,
+                  "properties": {
+                    "mainAxisAlignment": "space_between",
                     "crossAxisAlignment": "center"
                   },
                   "styles": {},
@@ -953,237 +2324,38 @@
                   "animations": {},
                   "children": [
                     {
-                      "id": "deal_icon",
-                      "type": "Icon",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "icon": "bolt"
-                      },
-                      "styles": {
-                        "fontSize": 20,
-                        "color": "#FF6161",
-                        "margin": {
-                          "right": 8
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "deal_label",
-                      "type": "Text",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "label": "Today's Deals"
-                      },
-                      "styles": {
-                        "fontSize": 18,
-                        "fontWeight": "bold",
-                        "color": "#212121"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    }
-                  ],
-                  "actions": []
-                },
-                {
-                  "id": "deal_link",
-                  "type": "Text",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": false,
-                  "properties": {
-                    "label": "View All"
-                  },
-                  "styles": {
-                    "fontSize": 14,
-                    "color": "#2874F0"
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [],
-                  "actions": []
-                }
-              ],
-              "actions": []
-            },
-            {
-              "id": "deal_grid",
-              "type": "GridView",
-              "isLocked": false,
-              "isVisible": true,
-              "isReusable": false,
-              "properties": {
-                "crossAxisCount": 2,
-                "childAspectRatio": 0.75,
-                "padding": {
-                  "left": 8,
-                  "right": 8,
-                  "top": 4,
-                  "bottom": 8
-                },
-                "mainAxisSpacing": 8,
-                "crossAxisSpacing": 8
-              },
-              "styles": {},
-              "responsive": {
-                "tablet": {
-                  "crossAxisCount": 3
-                },
-                "desktop": {
-                  "crossAxisCount": 4
-                }
-              },
-              "bindings": {},
-              "animations": {},
-              "children": [
-                {
-                  "id": "product_1",
-                  "type": "Card",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": true,
-                  "properties": {},
-                  "styles": {
-                    "elevation": 1,
-                    "backgroundColor": "#FFFFFF",
-                    "borderRadius": 12,
-                    "padding": 8
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [
-                    {
-                      "id": "p1_badge",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "position": "topLeft",
-                        "backgroundColor": "#FFE57F",
-                        "borderRadius": 4,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4,
-                          "left": 4
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p1_badge_text",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "-60%"
-                          },
-                          "styles": {
-                            "fontSize": 10,
-                            "fontWeight": "bold",
-                            "color": "#212121"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p1_img",
-                      "type": "Image",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "src": "https://rukminim2.flixcart.com/image/200/200/xif0q/mobile/u/o/z/-original-imaghc9fkzghzqgg.jpeg",
-                        "height": 140,
-                        "fit": "contain",
-                        "margin": {
-                          "bottom": 8
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p1_title",
-                      "type": "Text",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "label": "iPhone 15"
-                      },
-                      "styles": {
-                        "fontSize": 14,
-                        "fontWeight": "bold",
-                        "color": "#212121"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p1_price_row",
-                      "type": "Row",
+                      "id": "offer_text_col",
+                      "type": "Column",
                       "isLocked": false,
                       "isVisible": true,
                       "isReusable": false,
                       "properties": {
                         "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "center"
+                        "crossAxisAlignment": "start"
                       },
-                      "styles": {},
+                      "styles": {
+                        "flex": 1
+                      },
                       "responsive": {},
                       "bindings": {},
                       "animations": {},
                       "children": [
                         {
-                          "id": "p1_price",
+                          "id": "offer_title",
                           "type": "Text",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
                           "properties": {
-                            "label": "₹69,999"
+                            "label": "Free Delivery"
                           },
                           "styles": {
-                            "fontSize": 16,
+                            "fontSize": 18,
                             "fontWeight": "bold",
-                            "color": "#388E3C"
+                            "color": "#FFFFFF",
+                            "margin": {
+                              "bottom": 4
+                            }
                           },
                           "responsive": {},
                           "bindings": {},
@@ -1192,21 +2364,18 @@
                           "actions": []
                         },
                         {
-                          "id": "p1_mrp",
+                          "id": "offer_desc",
                           "type": "Text",
                           "isLocked": false,
                           "isVisible": true,
                           "isReusable": false,
                           "properties": {
-                            "label": "₹1,19,900"
+                            "label": "On orders above $20"
                           },
                           "styles": {
                             "fontSize": 12,
-                            "decoration": "lineThrough",
-                            "color": "#9E9E9E",
-                            "margin": {
-                              "left": 8
-                            }
+                            "color": "#FFFFFF",
+                            "opacity": 0.9
                           },
                           "responsive": {},
                           "bindings": {},
@@ -1218,881 +2387,48 @@
                       "actions": []
                     },
                     {
-                      "id": "p1_rating",
-                      "type": "Container",
+                      "id": "offer_button",
+                      "type": "Button",
                       "isLocked": false,
                       "isVisible": true,
                       "isReusable": false,
-                      "properties": {},
+                      "properties": {
+                        "label": "Order Now"
+                      },
                       "styles": {
-                        "backgroundColor": "#388E3C",
-                        "borderRadius": 12,
+                        "backgroundColor": "#FFFFFF",
+                        "textColor": "#FF7A45",
+                        "borderRadius": 30,
                         "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
+                          "left": 16,
+                          "right": 16,
+                          "top": 8,
+                          "bottom": 8
                         },
-                        "margin": {
-                          "top": 4
-                        },
-                        "width": "fit"
+                        "fontSize": 12,
+                        "fontWeight": "bold"
                       },
                       "responsive": {},
                       "bindings": {},
                       "animations": {},
-                      "children": [
+                      "children": [],
+                      "actions": [
                         {
-                          "id": "p1_rating_row",
-                          "type": "Row",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "mainAxisAlignment": "center",
-                            "crossAxisAlignment": "center"
-                          },
-                          "styles": {},
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
+                          "event": "onTap",
+                          "steps": [
                             {
-                              "id": "p1_rating_text",
-                              "type": "Text",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "label": "4.5"
-                              },
-                              "styles": {
-                                "fontSize": 11,
-                                "color": "#FFFFFF"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            },
-                            {
-                              "id": "p1_star",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "star"
-                              },
-                              "styles": {
-                                "fontSize": 12,
-                                "color": "#FFFFFF",
-                                "margin": {
-                                  "left": 2
-                                }
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
+                              "id": "navigate_offer",
+                              "type": "navigate",
+                              "enabled": true,
+                              "conditions": [],
+                              "successSteps": [],
+                              "failureSteps": [],
+                              "nestedSteps": [],
+                              "pageId": "offers_page"
                             }
-                          ],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    }
-                  ],
-                  "actions": [
-                    {
-                      "event": "onTap",
-                      "steps": [
-                        {
-                          "id": "to_product",
-                          "type": "navigate",
-                          "pageId": "product_detail_1",
-                          "enabled": true,
-                          "conditions": [],
-                          "successSteps": [],
-                          "failureSteps": [],
-                          "nestedSteps": []
+                          ]
                         }
                       ]
-                    }
-                  ]
-                },
-                {
-                  "id": "product_2",
-                  "type": "Card",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": true,
-                  "properties": {},
-                  "styles": {
-                    "elevation": 1,
-                    "backgroundColor": "#FFFFFF",
-                    "borderRadius": 12,
-                    "padding": 8
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [
-                    {
-                      "id": "p2_badge",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "position": "topLeft",
-                        "backgroundColor": "#FFE57F",
-                        "borderRadius": 4,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4,
-                          "left": 4
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p2_badge_text",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "-40%"
-                          },
-                          "styles": {
-                            "fontSize": 10,
-                            "fontWeight": "bold",
-                            "color": "#212121"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p2_img",
-                      "type": "Image",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "src": "https://rukminim2.flixcart.com/image/200/200/kp5e3m80/smartwatch/t/k/a/-original-imag3h5kzfwzhfyh.jpeg",
-                        "height": 140,
-                        "fit": "contain",
-                        "margin": {
-                          "bottom": 8
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p2_title",
-                      "type": "Text",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "label": "Noise Smartwatch"
-                      },
-                      "styles": {
-                        "fontSize": 14,
-                        "fontWeight": "bold",
-                        "color": "#212121"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p2_price_row",
-                      "type": "Row",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "center"
-                      },
-                      "styles": {},
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p2_price",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹2,999"
-                          },
-                          "styles": {
-                            "fontSize": 16,
-                            "fontWeight": "bold",
-                            "color": "#388E3C"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        },
-                        {
-                          "id": "p2_mrp",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹4,999"
-                          },
-                          "styles": {
-                            "fontSize": 12,
-                            "decoration": "lineThrough",
-                            "color": "#9E9E9E",
-                            "margin": {
-                              "left": 8
-                            }
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p2_rating",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "backgroundColor": "#388E3C",
-                        "borderRadius": 12,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4
-                        },
-                        "width": "fit"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p2_rating_row",
-                          "type": "Row",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "mainAxisAlignment": "center",
-                            "crossAxisAlignment": "center"
-                          },
-                          "styles": {},
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
-                            {
-                              "id": "p2_rating_text",
-                              "type": "Text",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "label": "4.2"
-                              },
-                              "styles": {
-                                "fontSize": 11,
-                                "color": "#FFFFFF"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            },
-                            {
-                              "id": "p2_star",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "star"
-                              },
-                              "styles": {
-                                "fontSize": 12,
-                                "color": "#FFFFFF",
-                                "margin": {
-                                  "left": 2
-                                }
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            }
-                          ],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    }
-                  ],
-                  "actions": []
-                },
-                {
-                  "id": "product_3",
-                  "type": "Card",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": true,
-                  "properties": {},
-                  "styles": {
-                    "elevation": 1,
-                    "backgroundColor": "#FFFFFF",
-                    "borderRadius": 12,
-                    "padding": 8
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [
-                    {
-                      "id": "p3_badge",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "position": "topLeft",
-                        "backgroundColor": "#FFE57F",
-                        "borderRadius": 4,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4,
-                          "left": 4
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p3_badge_text",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "-50%"
-                          },
-                          "styles": {
-                            "fontSize": 10,
-                            "fontWeight": "bold",
-                            "color": "#212121"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p3_img",
-                      "type": "Image",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "src": "https://rukminim2.flixcart.com/image/200/200/kqj8qrk0/t-shirt/f/s/q/m-black-str-original-imag4khkvgzbbhzm.jpeg",
-                        "height": 140,
-                        "fit": "contain",
-                        "margin": {
-                          "bottom": 8
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p3_title",
-                      "type": "Text",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "label": "Men's T-Shirt"
-                      },
-                      "styles": {
-                        "fontSize": 14,
-                        "fontWeight": "bold",
-                        "color": "#212121"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p3_price_row",
-                      "type": "Row",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "center"
-                      },
-                      "styles": {},
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p3_price",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹599"
-                          },
-                          "styles": {
-                            "fontSize": 16,
-                            "fontWeight": "bold",
-                            "color": "#388E3C"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        },
-                        {
-                          "id": "p3_mrp",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹1,199"
-                          },
-                          "styles": {
-                            "fontSize": 12,
-                            "decoration": "lineThrough",
-                            "color": "#9E9E9E",
-                            "margin": {
-                              "left": 8
-                            }
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p3_rating",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "backgroundColor": "#388E3C",
-                        "borderRadius": 12,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4
-                        },
-                        "width": "fit"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p3_rating_row",
-                          "type": "Row",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "mainAxisAlignment": "center",
-                            "crossAxisAlignment": "center"
-                          },
-                          "styles": {},
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
-                            {
-                              "id": "p3_rating_text",
-                              "type": "Text",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "label": "4.0"
-                              },
-                              "styles": {
-                                "fontSize": 11,
-                                "color": "#FFFFFF"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            },
-                            {
-                              "id": "p3_star",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "star"
-                              },
-                              "styles": {
-                                "fontSize": 12,
-                                "color": "#FFFFFF",
-                                "margin": {
-                                  "left": 2
-                                }
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            }
-                          ],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    }
-                  ],
-                  "actions": []
-                },
-                {
-                  "id": "product_4",
-                  "type": "Card",
-                  "isLocked": false,
-                  "isVisible": true,
-                  "isReusable": true,
-                  "properties": {},
-                  "styles": {
-                    "elevation": 1,
-                    "backgroundColor": "#FFFFFF",
-                    "borderRadius": 12,
-                    "padding": 8
-                  },
-                  "responsive": {},
-                  "bindings": {},
-                  "animations": {},
-                  "children": [
-                    {
-                      "id": "p4_badge",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "position": "topLeft",
-                        "backgroundColor": "#FFE57F",
-                        "borderRadius": 4,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4,
-                          "left": 4
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p4_badge_text",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "-65%"
-                          },
-                          "styles": {
-                            "fontSize": 10,
-                            "fontWeight": "bold",
-                            "color": "#212121"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p4_img",
-                      "type": "Image",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "src": "https://rukminim2.flixcart.com/image/200/200/kx50djk0/headphone/z/x/m/-original-imag9y2hfzqhrhgz.jpeg",
-                        "height": 140,
-                        "fit": "contain",
-                        "margin": {
-                          "bottom": 8
-                        }
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p4_title",
-                      "type": "Text",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "label": "Boat Headphones"
-                      },
-                      "styles": {
-                        "fontSize": 14,
-                        "fontWeight": "bold",
-                        "color": "#212121"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [],
-                      "actions": []
-                    },
-                    {
-                      "id": "p4_price_row",
-                      "type": "Row",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {
-                        "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "center"
-                      },
-                      "styles": {},
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p4_price",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹1,299"
-                          },
-                          "styles": {
-                            "fontSize": 16,
-                            "fontWeight": "bold",
-                            "color": "#388E3C"
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        },
-                        {
-                          "id": "p4_mrp",
-                          "type": "Text",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "label": "₹3,990"
-                          },
-                          "styles": {
-                            "fontSize": 12,
-                            "decoration": "lineThrough",
-                            "color": "#9E9E9E",
-                            "margin": {
-                              "left": 8
-                            }
-                          },
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
-                    },
-                    {
-                      "id": "p4_rating",
-                      "type": "Container",
-                      "isLocked": false,
-                      "isVisible": true,
-                      "isReusable": false,
-                      "properties": {},
-                      "styles": {
-                        "backgroundColor": "#388E3C",
-                        "borderRadius": 12,
-                        "padding": {
-                          "left": 6,
-                          "right": 6,
-                          "top": 2,
-                          "bottom": 2
-                        },
-                        "margin": {
-                          "top": 4
-                        },
-                        "width": "fit"
-                      },
-                      "responsive": {},
-                      "bindings": {},
-                      "animations": {},
-                      "children": [
-                        {
-                          "id": "p4_rating_row",
-                          "type": "Row",
-                          "isLocked": false,
-                          "isVisible": true,
-                          "isReusable": false,
-                          "properties": {
-                            "mainAxisAlignment": "center",
-                            "crossAxisAlignment": "center"
-                          },
-                          "styles": {},
-                          "responsive": {},
-                          "bindings": {},
-                          "animations": {},
-                          "children": [
-                            {
-                              "id": "p4_rating_text",
-                              "type": "Text",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "label": "4.3"
-                              },
-                              "styles": {
-                                "fontSize": 11,
-                                "color": "#FFFFFF"
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            },
-                            {
-                              "id": "p4_star",
-                              "type": "Icon",
-                              "isLocked": false,
-                              "isVisible": true,
-                              "isReusable": false,
-                              "properties": {
-                                "icon": "star"
-                              },
-                              "styles": {
-                                "fontSize": 12,
-                                "color": "#FFFFFF",
-                                "margin": {
-                                  "left": 2
-                                }
-                              },
-                              "responsive": {},
-                              "bindings": {},
-                              "animations": {},
-                              "children": [],
-                              "actions": []
-                            }
-                          ],
-                          "actions": []
-                        }
-                      ],
-                      "actions": []
                     }
                   ],
                   "actions": []
@@ -2107,7 +2443,7 @@
       "actions": []
     },
     {
-      "id": "bottom_navigation",
+      "id": "bottom_nav",
       "type": "BottomNavigationBar",
       "isLocked": false,
       "isVisible": true,
@@ -2119,7 +2455,9 @@
       },
       "styles": {
         "backgroundColor": "#FFFFFF",
-        "elevation": 8
+        "elevation": 8,
+        "height": 56,
+        "width": "100%"
       },
       "responsive": {},
       "bindings": {},
@@ -2137,8 +2475,8 @@
             "activeIcon": "home_filled"
           },
           "styles": {
-            "activeColor": "#2874F0",
-            "inactiveColor": "#757575"
+            "activeColor": "#FF7A45",
+            "inactiveColor": "#ADB5BD"
           },
           "responsive": {},
           "bindings": {},
@@ -2151,32 +2489,32 @@
                 {
                   "id": "set_home",
                   "type": "state",
+                  "enabled": true,
+                  "conditions": [],
+                  "successSteps": [],
+                  "failureSteps": [],
+                  "nestedSteps": [],
                   "target": "currentIndex",
-                  "value": 0,
-                  "enabled": true,
-                  "conditions": [],
-                  "successSteps": [],
-                  "failureSteps": [],
-                  "nestedSteps": []
+                  "value": 0
                 }
               ]
             }
           ]
         },
         {
-          "id": "nav_categories",
+          "id": "nav_search",
           "type": "BottomNavigationBarItem",
           "isLocked": false,
           "isVisible": true,
           "isReusable": false,
           "properties": {
-            "label": "Categories",
-            "icon": "category",
-            "activeIcon": "category_filled"
+            "label": "Search",
+            "icon": "search",
+            "activeIcon": "search"
           },
           "styles": {
-            "activeColor": "#2874F0",
-            "inactiveColor": "#757575"
+            "activeColor": "#FF7A45",
+            "inactiveColor": "#ADB5BD"
           },
           "responsive": {},
           "bindings": {},
@@ -2187,33 +2525,33 @@
               "event": "onTap",
               "steps": [
                 {
-                  "id": "nav_to_cats",
+                  "id": "nav_to_search",
                   "type": "navigate",
-                  "pageId": "categories_page",
                   "enabled": true,
                   "conditions": [],
                   "successSteps": [],
                   "failureSteps": [],
-                  "nestedSteps": []
+                  "nestedSteps": [],
+                  "pageId": "search_page"
                 }
               ]
             }
           ]
         },
         {
-          "id": "nav_cart",
+          "id": "nav_orders",
           "type": "BottomNavigationBarItem",
           "isLocked": false,
           "isVisible": true,
           "isReusable": false,
           "properties": {
-            "label": "Cart",
-            "icon": "shopping_cart",
-            "activeIcon": "shopping_cart_filled"
+            "label": "Orders",
+            "icon": "receipt",
+            "activeIcon": "receipt_filled"
           },
           "styles": {
-            "activeColor": "#2874F0",
-            "inactiveColor": "#757575"
+            "activeColor": "#FF7A45",
+            "inactiveColor": "#ADB5BD"
           },
           "responsive": {},
           "bindings": {},
@@ -2224,33 +2562,33 @@
               "event": "onTap",
               "steps": [
                 {
-                  "id": "nav_to_cart",
+                  "id": "nav_to_orders",
                   "type": "navigate",
-                  "pageId": "cart_page",
                   "enabled": true,
                   "conditions": [],
                   "successSteps": [],
                   "failureSteps": [],
-                  "nestedSteps": []
+                  "nestedSteps": [],
+                  "pageId": "orders_page"
                 }
               ]
             }
           ]
         },
         {
-          "id": "nav_account",
+          "id": "nav_profile",
           "type": "BottomNavigationBarItem",
           "isLocked": false,
           "isVisible": true,
           "isReusable": false,
           "properties": {
-            "label": "Account",
+            "label": "Profile",
             "icon": "person",
             "activeIcon": "person_filled"
           },
           "styles": {
-            "activeColor": "#2874F0",
-            "inactiveColor": "#757575"
+            "activeColor": "#FF7A45",
+            "inactiveColor": "#ADB5BD"
           },
           "responsive": {},
           "bindings": {},
@@ -2261,14 +2599,14 @@
               "event": "onTap",
               "steps": [
                 {
-                  "id": "nav_to_account",
+                  "id": "nav_to_profile",
                   "type": "navigate",
-                  "pageId": "account_page",
                   "enabled": true,
                   "conditions": [],
                   "successSteps": [],
                   "failureSteps": [],
-                  "nestedSteps": []
+                  "nestedSteps": [],
+                  "pageId": "profile_page"
                 }
               ]
             }
