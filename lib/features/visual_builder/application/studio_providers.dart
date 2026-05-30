@@ -87,6 +87,61 @@ final apiConfigsProvider = StateNotifierProvider<ApiConfigsNotifier, List<ApiCon
   return ApiConfigsNotifier();
 });
 
+class EnvVariablesNotifier extends StateNotifier<Map<String, Map<String, String>>> {
+  EnvVariablesNotifier() : super({
+    'DEV': {
+      'baseUrl': 'https://api-dev.revochamp.com',
+      'accessToken': 'dev_token_abc123',
+      'tenantId': 'tenant_dev_99',
+    },
+    'UAT': {
+      'baseUrl': 'https://api-uat.revochamp.com',
+      'accessToken': 'uat_token_xyz789',
+      'tenantId': 'tenant_uat_44',
+    },
+    'PROD': {
+      'baseUrl': 'https://api.revochamp.com',
+      'accessToken': 'prod_token_sec007',
+      'tenantId': 'tenant_prod_11',
+    },
+    'LOCAL': {
+      'baseUrl': 'http://localhost:8080',
+      'accessToken': 'local_token_debug',
+      'tenantId': 'tenant_local_00',
+    },
+  });
+
+  void updateVariable(String env, String key, String value) {
+    final envMap = Map<String, String>.from(state[env] ?? {});
+    envMap[key] = value;
+    state = {
+      ...state,
+      env: envMap,
+    };
+  }
+
+  void addVariable(String key) {
+    state = state.map((env, vars) {
+      final newVars = Map<String, String>.from(vars);
+      newVars[key] = 'value';
+      return MapEntry(env, newVars);
+    });
+  }
+
+  void removeVariable(String key) {
+    state = state.map((env, vars) {
+      final newVars = Map<String, String>.from(vars);
+      newVars.remove(key);
+      return MapEntry(env, newVars);
+    });
+  }
+}
+
+final activeEnvironmentProvider = StateProvider<String>((ref) => 'DEV');
+final envVariablesProvider = StateNotifierProvider<EnvVariablesNotifier, Map<String, Map<String, String>>>((ref) {
+  return EnvVariablesNotifier();
+});
+
 // Database Config notifier
 class DatabaseConfigNotifier extends StateNotifier<DatabaseConfig> {
   DatabaseConfigNotifier() : super(DatabaseConfig(
