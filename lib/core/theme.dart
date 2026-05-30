@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 
 class RevoTheme {
-  // TODO(arch): Replace with a Riverpod provider — global mutable state prevents
   // multiple theme instances and causes hot-reload inconsistencies.
   // Use: ref.watch(themeModeProvider) == ThemeMode.dark
   static bool isDark = true;

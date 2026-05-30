@@ -241,7 +241,7 @@ class _RunnerRepeaterWidgetState extends ConsumerState<RunnerRepeaterWidget> {
       case 'dropdown':
         final opts = cf.getResolvedOptions();
         return DropdownButtonFormField<String>(
-          value: opts.contains(cur) ? cur : null,
+          initialValue: opts.contains(cur) ? cur : null,
           decoration: buildRunnerInputDecoration(label: cf.label, dense: true),
           dropdownColor: RunnerTheme.white,
           items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),

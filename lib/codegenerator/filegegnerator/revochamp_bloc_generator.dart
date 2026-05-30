@@ -10,7 +10,10 @@
 // ║  Shared core files (runtime, network, widgets) generated ONCE.          ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
+// ignore_for_file: deprecated_member_use
+
 import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
 
 import 'package:flutter/foundation.dart';

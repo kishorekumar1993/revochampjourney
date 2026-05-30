@@ -5,11 +5,8 @@ import '../../../journey_builder/data/models.dart';
 
 class _T {
   static const brand        = Color(0xFF5B4FCF);
-  static const brandLight   = Color(0xFF7C72E0);
   static const success      = Color(0xFF4CAF50);
-  static const bg           = Color(0xFFF0F0FF);
   static const white        = Color(0xFFFFFFFF);
-  static const textDark     = Color(0xFF1A1A2E);
   static const textMid      = Color(0xFF6B7280);
   static const textLight    = Color(0xFFB0B4C8);
   static const border       = Color(0xFFE4E6F0);
@@ -118,7 +115,7 @@ class _JourneyTimelineState extends State<JourneyTimeline> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${widget.steps[active].title}',
+                  widget.steps[active].title,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

@@ -33,7 +33,7 @@ String generateEquatableEntityClass(
   // Process fields: generate constructor parameters and nested classes.
   json.forEach((key, value) {
     final fieldName = _camelCase(key);
-    final fieldType = _getEquatableEntityType(value, key);
+    _getEquatableEntityType(value, key);
 
     // For nested objects/lists, generate the nested class code.
     if (value is Map<String, dynamic>) {

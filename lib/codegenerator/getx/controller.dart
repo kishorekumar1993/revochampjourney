@@ -165,7 +165,7 @@ String generatecontrollerClass(
   final hasRadio = flatFields.any(
     (f) => (f['type'] ?? '').toString().toLowerCase().startsWith('radio'),
   );
-  final hasDropdown = flatFields.any((f) {
+  flatFields.any((f) {
     final t = (f['type'] ?? '').toString().toLowerCase();
     return t == 'dropdown' || t == 'api_dropdown';
   });
@@ -303,8 +303,8 @@ String generatecontrollerClass(
         listenerLines.add("_workerManager.add(ever(selected$pascalName, (_) => _markDirty()));");
       } else if (isApiDropdown) {
         final modelClass = resolveGetxModelClassName(item);
-        final valueF = dropdownValueField(item); // e.g., 'id'
-        final labelF = dropdownLabelField(item); // e.g., 'name'
+        // final valueF = dropdownValueField(item); // e.g., 'id'
+        // final labelF = dropdownLabelField(item); // e.g., 'name'
         buffer.writeln("  var ${name}Options = <$modelClass>[].obs;");
         buffer.writeln("  var selected$pascalName = Rxn<$modelClass>();");
         buffer.writeln("  var isLoading$pascalName = false.obs;");

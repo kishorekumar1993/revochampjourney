@@ -10,7 +10,6 @@ class _IT {
   static const textMid = Color(0xFF6B7280);
   static const border = Color(0xFFE4E6F0);
   static const success = Color(0xFF22C55E);
-  static const error = Color(0xFFEF4444);
   static const bg = Color(0xFFF0F0FF);
   static const textLight = Color(0xFFB0B4C8);
 }

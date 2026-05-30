@@ -112,7 +112,9 @@ class JourneyUseCaseGenerator {
   void _extractDropdowns(dynamic source, List<_DropdownInfo> out) {
     if (source == null) return;
     if (source is List) {
-      for (final item in source) _extractDropdowns(item, out);
+      for (final item in source) {
+        _extractDropdowns(item, out);
+      }
       return;
     }
     if (source is! Map<String, dynamic>) return;

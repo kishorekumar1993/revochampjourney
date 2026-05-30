@@ -10,7 +10,9 @@ List<Map<String, dynamic>> flattenBlocFields(dynamic source) {
   void traverse(dynamic node) {
     if (node == null) return;
     if (node is List) {
-      for (final item in node) traverse(item);
+      for (final item in node) {
+        traverse(item);
+      }
       return;
     }
     if (node is! Map<String, dynamic>) return;

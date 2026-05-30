@@ -146,7 +146,7 @@ class _ApiDropdownState extends ConsumerState<ApiDropdownWidget> {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: _opts.contains(widget.initialValue) ? widget.initialValue : null,
+      initialValue: _opts.contains(widget.initialValue) ? widget.initialValue : null,
       decoration: buildRunnerInputDecoration(
         label: widget.field.label,
         hint: widget.field.placeholder ?? "Select option",

@@ -99,7 +99,7 @@ class _RevoCodePreviewPanelState extends ConsumerState<RevoCodePreviewPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = GoogleFonts.inter(color: RevoTheme.textPrimary);
+    // final textStyle = GoogleFonts.inter(color: RevoTheme.textPrimary);
 
     return Scaffold(
       backgroundColor: RevoTheme.background,
@@ -286,7 +286,7 @@ decoration: BoxDecoration(                            color: RevoTheme.sidebarBa
                                                 filePath,
                                                 style: GoogleFonts.sourceCodePro(
                                                   fontSize: 9,
-                                                  color: RevoTheme.textSecondary.withOpacity(0.7),
+                                                  color: RevoTheme.textSecondary.withValues(alpha: 0.7),
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),

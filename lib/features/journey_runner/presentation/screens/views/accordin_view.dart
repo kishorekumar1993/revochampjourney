@@ -3,7 +3,6 @@ import '../../../../journey_builder/data/models.dart';
 
 class _IT {
   static const brand = Color(0xFF5B4FCF);
-  static const brandSurface = Color(0xFFEEECFD);
   static const white = Color(0xFFFFFFFF);
   static const textDark = Color(0xFF1A1A2E);
   static const textMid = Color(0xFF6B7280);

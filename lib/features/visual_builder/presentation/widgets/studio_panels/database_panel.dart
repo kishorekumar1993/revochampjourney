@@ -480,7 +480,6 @@ class $repoName implements I$repoName {
                   options: const ['String', 'int', 'double', 'bool', 'DateTime', 'UUID', 'JSON', 'text'],
                   onChanged: (val) => onUpdate(field.copyWith(type: val)),
                 ),
-                // FIXME: Add `defaultValue` to FieldConfig model to enable this.
                 // _buildTextField(
                 //   label: "Default Value",
                 //   value: field.defaultValue?.toString() ?? '',

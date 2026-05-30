@@ -249,7 +249,7 @@ class RevoAuthManager extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           DropdownButtonFormField<String>(
-            value: options.contains(value) ? value : options.first,
+            initialValue: options.contains(value) ? value : options.first,
             onChanged: onChanged,
             isDense: true,
             style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textPrimary),

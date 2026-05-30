@@ -4,14 +4,11 @@ import '../../../../journey_builder/data/models.dart';
 
 class _IT {
   static const brand = Color(0xFF5B4FCF);
-  static const brandSurface = Color(0xFFEEECFD);
-  static const white = Color(0xFFFFFFFF);
   static const textDark = Color(0xFF1A1A2E);
   static const textMid = Color(0xFF6B7280);
   static const border = Color(0xFFE4E6F0);
   static const bg = Color(0xFFF7F6FB);
   static const success = Color(0xFF22C55E);
-  static const leftBubble = Color(0xFFF0EFFC);
   static const rightBubble = Color(0xFFEEECFD);
 }
 

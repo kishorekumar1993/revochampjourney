@@ -105,7 +105,7 @@ class _RevoSettingsScreenState extends State<RevoSettingsScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: GoogleFonts.inter(fontSize: 13)),
-        Switch(value: value, activeColor: RevoTheme.primaryLight, onChanged: onChanged),
+        Switch(value: value, activeThumbColor: RevoTheme.primaryLight, onChanged: onChanged),
       ],
     );
   }

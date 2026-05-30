@@ -375,7 +375,7 @@ class VariableEditPane extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: options.contains(value) ? value : options.first,
+            initialValue: options.contains(value) ? value : options.first,
             onChanged: onChanged,
             isDense: true,
             style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),

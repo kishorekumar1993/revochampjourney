@@ -11,7 +11,7 @@ List<Map<String, String>> generateGetXRouterFromSteps(
   String journeyNamespace,
 ) {
   // Cast to Map<String, dynamic> safely
-  final typedSteps = steps.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  steps.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   
   final files = <Map<String, String>>[];
   final bufferPages = StringBuffer();

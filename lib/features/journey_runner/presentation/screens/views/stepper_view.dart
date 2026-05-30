@@ -37,7 +37,7 @@ class StepperRunnerView extends StatelessWidget {
         colorScheme: const ColorScheme.light(
           primary: _IT.brand,
           secondary: _IT.brand,
-          background: Colors.white,
+          surface: Colors.white,
         ),
       ),
       child: Column(

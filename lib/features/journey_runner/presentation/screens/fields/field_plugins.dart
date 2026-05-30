@@ -106,7 +106,7 @@ class DropdownFieldPlugin extends RunnerFieldPlugin {
     final disp = opts.isEmpty ? ["Select"] : opts;
     final cur = ctx.currentValue?.toString();
     return DropdownButtonFormField<String>(
-      value: disp.contains(cur) ? cur : null,
+      initialValue: disp.contains(cur) ? cur : null,
       decoration: ctx.fd(
         label: ctx.field.label,
         hint: ctx.field.placeholder ?? ctx.field.hintText,
@@ -301,7 +301,7 @@ class SwitchFieldPlugin extends RunnerFieldPlugin {
             ),
             Switch(
               value: active,
-              activeColor: const Color(0xFF5B4FCF),
+              activeThumbColor : const Color(0xFF5B4FCF),
               activeTrackColor: const Color(0xFFEEECFD),
               inactiveThumbColor: Colors.grey[400],
               inactiveTrackColor: Colors.grey[200],

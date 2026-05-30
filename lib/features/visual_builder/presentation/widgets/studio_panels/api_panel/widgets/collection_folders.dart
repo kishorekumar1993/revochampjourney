@@ -119,7 +119,7 @@ class _RevoCollectionFoldersState extends ConsumerState<RevoCollectionFolders> {
         Text("Inherited Authentication", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: collection.authentication,
+          initialValue: collection.authentication,
           isDense: true,
           style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textPrimary),
           decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
