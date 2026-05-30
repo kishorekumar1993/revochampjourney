@@ -1,677 +1,307 @@
 {
-  "id": "root_crm",
-  "type": "Container",
-  "displayName": "CRM Dashboard",
-  "properties": {},
+  "id": "root_crm_pro",
+  "type": "Column",
+  "displayName": "CRM Pro Dashboard",
+  "properties": {
+    "crossAxisAlignment": "stretch",
+    "mainAxisAlignment": "start",
+    "mainAxisSize": "min"
+  },
   "styles": {
-    "backgroundColor": "#F4F5FA",
-    "padding": "20"
+    "backgroundColor": "#F1F5F9"
   },
   "children": [
+
     {
-      "id": "crm_scroll",
-      "type": "SingleChildScrollView",
-      "displayName": "Scroll View",
-      "properties": {
-        "scrollDirection": "vertical"
+      "id": "topbar",
+      "type": "Container",
+      "displayName": "Top Bar",
+      "styles": {
+        "backgroundColor": "#1E1B4B",
+        "padding": "14"
       },
-      "styles": {},
       "children": [
         {
-          "id": "main_layout",
-          "type": "Column",
-          "displayName": "Main Column",
+          "id": "topbar_row",
+          "type": "Row",
           "properties": {
-            "crossAxisAlignment": "stretch",
-            "mainAxisAlignment": "start",
-            "mainAxisSize": "min"
+            "mainAxisAlignment": "spaceBetween",
+            "crossAxisAlignment": "center"
           },
-          "styles": {
-            "spacing": "16"
-          },
+          "styles": {},
           "children": [
             {
-              "id": "header_row",
+              "id": "logo_area",
               "type": "Row",
-              "displayName": "Header Bar",
-              "properties": {
-                "mainAxisAlignment": "spaceBetween",
-                "crossAxisAlignment": "center"
-              },
-              "styles": {},
+              "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "center" },
+              "styles": { "spacing": "8" },
               "children": [
                 {
-                  "id": "header_title_col",
-                  "type": "Column",
-                  "properties": {
-                    "crossAxisAlignment": "start",
-                    "mainAxisSize": "min"
-                  },
-                  "styles": {
-                    "flex": "1"
-                  },
-                  "children": [
-                    {
-                      "id": "header_title",
-                      "type": "Text",
-                      "properties": {
-                        "text": "CRM Dashboard"
-                      },
-                      "styles": {
-                        "fontSize": "22",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
-                    {
-                      "id": "header_subtitle",
-                      "type": "Text",
-                      "properties": {
-                        "text": "Welcome back, Admin! Manage your leads and deals."
-                      },
-                      "styles": {
-                        "fontSize": "12",
-                        "color": "#6B7280"
-                      }
-                    }
-                  ]
+                  "id": "logo_icon",
+                  "type": "Icon",
+                  "properties": { "icon": "bolt" },
+                  "styles": { "color": "#818CF8", "size": "22" }
                 },
                 {
-                  "id": "spacer_header",
-                  "type": "SizedBox",
-                  "properties": {},
-                  "styles": {
-                    "width": "16"
-                  }
-                },
-                {
-                  "id": "new_lead_btn",
-                  "type": "Button",
-                  "properties": {
-                    "label": "Create Lead",
-                    "icon": "add"
-                  },
-                  "styles": {
-                    "backgroundColor": "#5B4FCF",
-                    "textColor": "#FFFFFF",
-                    "borderRadius": "8"
-                  }
+                  "id": "logo_text",
+                  "type": "Text",
+                  "properties": { "text": "RevoChamp CRM" },
+                  "styles": { "fontSize": "15", "fontWeight": "bold", "color": "#FFFFFF" }
                 }
               ]
             },
             {
-              "id": "divider_header",
-              "type": "Divider",
-              "properties": {},
-              "styles": {
-                "height": "1",
-                "color": "#E5E7EB"
-              }
-            },
-            {
-              "id": "stats_grid",
+              "id": "nav_links_row",
               "type": "Row",
-              "displayName": "Stats Row",
-              "properties": {
-                "mainAxisAlignment": "spaceEvenly",
-                "crossAxisAlignment": "start"
-              },
-              "styles": {
-                "spacing": "12"
-              },
+              "properties": { "mainAxisAlignment": "center", "crossAxisAlignment": "center" },
+              "styles": { "spacing": "4" },
               "children": [
                 {
-                  "id": "card_leads",
-                  "type": "Card",
-                  "displayName": "Total Leads",
-                  "styles": {
-                    "flex": "1",
-                    "backgroundColor": "#FFFFFF",
-                    "padding": "16",
-                    "borderRadius": "12",
-                    "elevation": "2"
-                  },
+                  "id": "nav_dashboard",
+                  "type": "Container",
+                  "styles": { "backgroundColor": "#4338CA", "borderRadius": "6", "padding": "8" },
                   "children": [
                     {
-                      "id": "leads_title",
-                      "type": "Text",
-                      "properties": {
-                        "text": "TOTAL LEADS"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#9CA3AF",
-                        "fontWeight": "bold"
-                      }
-                    },
-                    {
-                      "id": "leads_spacer",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "leads_val",
-                      "type": "Text",
-                      "properties": {
-                        "text": "1,482"
-                      },
-                      "styles": {
-                        "fontSize": "24",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
-                    {
-                      "id": "leads_spacer2",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "leads_growth",
-                      "type": "Text",
-                      "properties": {
-                        "text": "+12.4% this week"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#10B981"
-                      }
+                      "id": "nav_dashboard_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nd_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "dashboard" },
+                          "styles": { "color": "#FFFFFF", "size": "14" }
+                        },
+                        {
+                          "id": "nd_text",
+                          "type": "Text",
+                          "properties": { "text": "Dashboard" },
+                          "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                        }
+                      ]
                     }
                   ]
                 },
                 {
-                  "id": "card_deals",
-                  "type": "Card",
-                  "displayName": "Active Deals",
-                  "styles": {
-                    "flex": "1",
-                    "backgroundColor": "#FFFFFF",
-                    "padding": "16",
-                    "borderRadius": "12",
-                    "elevation": "2"
-                  },
+                  "id": "nav_leads",
+                  "type": "Container",
+                  "styles": { "borderRadius": "6", "padding": "8" },
                   "children": [
                     {
-                      "id": "deals_title",
-                      "type": "Text",
-                      "properties": {
-                        "text": "ACTIVE DEALS"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#9CA3AF",
-                        "fontWeight": "bold"
-                      }
-                    },
-                    {
-                      "id": "deals_spacer",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "deals_val",
-                      "type": "Text",
-                      "properties": {
-                        "text": "85"
-                      },
-                      "styles": {
-                        "fontSize": "24",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
-                    {
-                      "id": "deals_spacer2",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "deals_growth",
-                      "type": "Text",
-                      "properties": {
-                        "text": "+8.2% this week"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#10B981"
-                      }
+                      "id": "nav_leads_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nl_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "account" },
+                          "styles": { "color": "#A5B4FC", "size": "14" }
+                        },
+                        {
+                          "id": "nl_text",
+                          "type": "Text",
+                          "properties": { "text": "Leads" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
                     }
                   ]
                 },
                 {
-                  "id": "card_conversion",
-                  "type": "Card",
-                  "displayName": "Conversion",
-                  "styles": {
-                    "flex": "1",
-                    "backgroundColor": "#FFFFFF",
-                    "padding": "16",
-                    "borderRadius": "12",
-                    "elevation": "2"
-                  },
+                  "id": "nav_deals",
+                  "type": "Container",
+                  "styles": { "borderRadius": "6", "padding": "8" },
                   "children": [
                     {
-                      "id": "conv_title",
-                      "type": "Text",
-                      "properties": {
-                        "text": "CONVERSION"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#9CA3AF",
-                        "fontWeight": "bold"
-                      }
-                    },
-                    {
-                      "id": "conv_spacer",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "conv_val",
-                      "type": "Text",
-                      "properties": {
-                        "text": "24.6%"
-                      },
-                      "styles": {
-                        "fontSize": "24",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
-                    {
-                      "id": "conv_spacer2",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "conv_growth",
-                      "type": "Text",
-                      "properties": {
-                        "text": "-1.5% this week"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#EF4444"
-                      }
+                      "id": "nav_deals_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nde_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "credit_card" },
+                          "styles": { "color": "#A5B4FC", "size": "14" }
+                        },
+                        {
+                          "id": "nde_text",
+                          "type": "Text",
+                          "properties": { "text": "Deals" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
                     }
                   ]
                 },
                 {
-                  "id": "card_revenue",
-                  "type": "Card",
-                  "displayName": "Revenue",
-                  "styles": {
-                    "flex": "1",
-                    "backgroundColor": "#5B4FCF",
-                    "padding": "16",
-                    "borderRadius": "12",
-                    "elevation": "4"
-                  },
+                  "id": "nav_analytics",
+                  "type": "Container",
+                  "styles": { "borderRadius": "6", "padding": "8" },
                   "children": [
                     {
-                      "id": "rev_title",
-                      "type": "Text",
-                      "properties": {
-                        "text": "REVENUE"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#C4BBF8",
-                        "fontWeight": "bold"
-                      }
-                    },
+                      "id": "nav_analytics_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nan_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "chart" },
+                          "styles": { "color": "#A5B4FC", "size": "14" }
+                        },
+                        {
+                          "id": "nan_text",
+                          "type": "Text",
+                          "properties": { "text": "Analytics" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "nav_tasks",
+                  "type": "Container",
+                  "styles": { "borderRadius": "6", "padding": "8" },
+                  "children": [
                     {
-                      "id": "rev_spacer",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
+                      "id": "nav_tasks_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nta_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "done_all" },
+                          "styles": { "color": "#A5B4FC", "size": "14" }
+                        },
+                        {
+                          "id": "nta_text",
+                          "type": "Text",
+                          "properties": { "text": "Tasks" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "nav_settings",
+                  "type": "Container",
+                  "styles": { "borderRadius": "6", "padding": "8" },
+                  "children": [
                     {
-                      "id": "rev_val",
-                      "type": "Text",
-                      "properties": {
-                        "text": "$48,920"
-                      },
-                      "styles": {
-                        "fontSize": "24",
-                        "fontWeight": "bold",
-                        "color": "#FFFFFF"
-                      }
-                    },
-                    {
-                      "id": "rev_spacer2",
-                      "type": "SizedBox",
-                      "styles": { "height": "4" }
-                    },
-                    {
-                      "id": "rev_growth",
-                      "type": "Text",
-                      "properties": {
-                        "text": "+23.1% this week"
-                      },
-                      "styles": {
-                        "fontSize": "10",
-                        "color": "#A7F3D0"
-                      }
+                      "id": "nav_settings_row",
+                      "type": "Row",
+                      "properties": { "mainAxisSize": "min", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "6" },
+                      "children": [
+                        {
+                          "id": "nse_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "tune" },
+                          "styles": { "color": "#A5B4FC", "size": "14" }
+                        },
+                        {
+                          "id": "nse_text",
+                          "type": "Text",
+                          "properties": { "text": "Settings" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
                     }
                   ]
                 }
               ]
             },
             {
-              "id": "content_col",
-              "type": "Column",
-              "displayName": "Form + Activity",
-              "properties": {
-                "crossAxisAlignment": "stretch",
-                "mainAxisSize": "min"
-              },
-              "styles": {
-                "spacing": "16"
-              },
+              "id": "topbar_right_group",
+              "type": "Row",
+              "properties": { "mainAxisAlignment": "end", "crossAxisAlignment": "center" },
+              "styles": { "spacing": "10" },
               "children": [
                 {
-                  "id": "leads_form_card",
-                  "type": "Card",
-                  "displayName": "Add New Lead",
+                  "id": "notif_wrap",
+                  "type": "Container",
                   "styles": {
-                    "backgroundColor": "#FFFFFF",
-                    "padding": "20",
-                    "borderRadius": "12",
-                    "elevation": "2"
+                    "backgroundColor": "#2D2A6E",
+                    "borderRadius": "8",
+                    "padding": "8"
                   },
                   "children": [
                     {
-                      "id": "form_header",
-                      "type": "Text",
-                      "properties": {
-                        "text": "Quick Lead Registration"
-                      },
-                      "styles": {
-                        "fontSize": "15",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
-                    {
-                      "id": "form_divider",
-                      "type": "Divider",
-                      "properties": {},
-                      "styles": {
-                        "height": "1"
-                      }
-                    },
-                    {
-                      "id": "form_row_1",
-                      "type": "Row",
-                      "properties": {
-                        "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "start"
-                      },
-                      "styles": { "spacing": "12" },
-                      "children": [
-                        {
-                          "id": "form_field_name_wrap",
-                          "type": "Container",
-                          "styles": { "flex": "1" },
-                          "children": [
-                            {
-                              "id": "form_field_name",
-                              "type": "TextField",
-                              "properties": {
-                                "fieldName": "lead_name",
-                                "label": "Full Name",
-                                "required": true
-                              }
-                            }
-                          ]
-                        },
-                        {
-                          "id": "form_field_email_wrap",
-                          "type": "Container",
-                          "styles": { "flex": "1" },
-                          "children": [
-                            {
-                              "id": "form_field_email",
-                              "type": "TextField",
-                              "properties": {
-                                "fieldName": "lead_email",
-                                "label": "Email Address",
-                                "required": true
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "id": "form_spacer_1",
-                      "type": "SizedBox",
-                      "styles": { "height": "12" }
-                    },
-                    {
-                      "id": "form_row_2",
-                      "type": "Row",
-                      "properties": {
-                        "mainAxisAlignment": "start",
-                        "crossAxisAlignment": "start"
-                      },
-                      "styles": { "spacing": "12" },
-                      "children": [
-                        {
-                          "id": "form_field_stage_wrap",
-                          "type": "Container",
-                          "styles": { "flex": "1" },
-                          "children": [
-                            {
-                              "id": "form_field_stage",
-                              "type": "Dropdown",
-                              "properties": {
-                                "fieldName": "lead_stage",
-                                "label": "Lead Stage",
-                                "options": [
-                                  "Prospect",
-                                  "Contacted",
-                                  "Qualified",
-                                  "Proposal Sent",
-                                  "Negotiating"
-                                ]
-                              }
-                            }
-                          ]
-                        },
-                        {
-                          "id": "form_field_date_wrap",
-                          "type": "Container",
-                          "styles": { "flex": "1" },
-                          "children": [
-                            {
-                              "id": "form_field_date",
-                              "type": "DatePicker",
-                              "properties": {
-                                "fieldName": "follow_up_date",
-                                "label": "Follow-up Date"
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "id": "form_spacer_2",
-                      "type": "SizedBox",
-                      "styles": { "height": "12" }
-                    },
-                    {
-                      "id": "form_field_active",
-                      "type": "Switch",
-                      "properties": {
-                        "fieldName": "is_priority_lead",
-                        "label": "Mark as Priority Lead"
-                      }
-                    },
-                    {
-                      "id": "form_spacer_3",
-                      "type": "SizedBox",
-                      "styles": { "height": "16" }
-                    },
-                    {
-                      "id": "submit_form_btn",
-                      "type": "Button",
-                      "properties": {
-                        "label": "Register Lead",
-                        "icon": "add"
-                      },
-                      "styles": {
-                        "backgroundColor": "#5B4FCF",
-                        "textColor": "#FFFFFF",
-                        "borderRadius": "8"
-                      }
+                      "id": "notif_icon",
+                      "type": "Icon",
+                      "properties": { "icon": "notifications" },
+                      "styles": { "color": "#A5B4FC", "size": "18" }
                     }
                   ]
                 },
                 {
-                  "id": "activity_card",
-                  "type": "Card",
-                  "displayName": "Recent Activity",
+                  "id": "msg_wrap",
+                  "type": "Container",
                   "styles": {
-                    "backgroundColor": "#FFFFFF",
-                    "padding": "20",
-                    "borderRadius": "12",
-                    "elevation": "2"
+                    "backgroundColor": "#2D2A6E",
+                    "borderRadius": "8",
+                    "padding": "8"
                   },
                   "children": [
                     {
-                      "id": "activity_header",
-                      "type": "Text",
-                      "properties": {
-                        "text": "Recent Activity Feed"
-                      },
-                      "styles": {
-                        "fontSize": "15",
-                        "fontWeight": "bold",
-                        "color": "#1E1E2F"
-                      }
-                    },
+                      "id": "msg_icon",
+                      "type": "Icon",
+                      "properties": { "icon": "chat" },
+                      "styles": { "color": "#A5B4FC", "size": "18" }
+                    }
+                  ]
+                },
+                {
+                  "id": "profile_wrap",
+                  "type": "Container",
+                  "styles": {
+                    "backgroundColor": "#4338CA",
+                    "borderRadius": "8",
+                    "padding": "8"
+                  },
+                  "children": [
                     {
-                      "id": "activity_divider",
-                      "type": "Divider",
-                      "properties": {},
-                      "styles": { "height": "1" }
-                    },
-                    {
-                      "id": "activity_item_1",
-                      "type": "Container",
-                      "styles": {
-                        "padding": "12",
-                        "borderRadius": "8",
-                        "backgroundColor": "#F9FAFB",
-                        "borderColor": "#E5E7EB",
-                        "borderWidth": "1"
-                      },
+                      "id": "profile_inner",
+                      "type": "Row",
+                      "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "center" },
+                      "styles": { "spacing": "8" },
                       "children": [
                         {
-                          "id": "activity_text_1",
-                          "type": "Text",
+                          "id": "profile_avatar",
+                          "type": "Avatar",
                           "properties": {
-                            "text": "Deal 'Cloud Migration' won by John Doe"
-                          },
-                          "styles": {
-                            "fontSize": "12",
-                            "color": "#374151",
-                            "fontWeight": "bold"
+                            "src": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
+                            "radius": "14"
                           }
                         },
                         {
-                          "id": "activity_time_1",
-                          "type": "Text",
-                          "properties": {
-                            "text": "10 minutes ago"
-                          },
-                          "styles": {
-                            "fontSize": "10",
-                            "color": "#9CA3AF"
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "id": "activity_spacer_1",
-                      "type": "SizedBox",
-                      "styles": { "height": "8" }
-                    },
-                    {
-                      "id": "activity_item_2",
-                      "type": "Container",
-                      "styles": {
-                        "padding": "12",
-                        "borderRadius": "8",
-                        "backgroundColor": "#F9FAFB",
-                        "borderColor": "#E5E7EB",
-                        "borderWidth": "1"
-                      },
-                      "children": [
-                        {
-                          "id": "activity_text_2",
-                          "type": "Text",
-                          "properties": {
-                            "text": "New lead 'Jane Smith' registered by Admin"
-                          },
-                          "styles": {
-                            "fontSize": "12",
-                            "color": "#374151"
-                          }
-                        },
-                        {
-                          "id": "activity_time_2",
-                          "type": "Text",
-                          "properties": {
-                            "text": "2 hours ago"
-                          },
-                          "styles": {
-                            "fontSize": "10",
-                            "color": "#9CA3AF"
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "id": "activity_spacer_2",
-                      "type": "SizedBox",
-                      "styles": { "height": "8" }
-                    },
-                    {
-                      "id": "activity_item_3",
-                      "type": "Container",
-                      "styles": {
-                        "padding": "12",
-                        "borderRadius": "8",
-                        "backgroundColor": "#EEF2FF",
-                        "borderColor": "#C7D2FE",
-                        "borderWidth": "1"
-                      },
-                      "children": [
-                        {
-                          "id": "activity_text_3",
-                          "type": "Text",
-                          "properties": {
-                            "text": "Follow-up email sent to 'Robert Downey'"
-                          },
-                          "styles": {
-                            "fontSize": "12",
-                            "color": "#374151"
-                          }
-                        },
-                        {
-                          "id": "activity_time_3",
-                          "type": "Text",
-                          "properties": {
-                            "text": "Yesterday"
-                          },
-                          "styles": {
-                            "fontSize": "10",
-                            "color": "#9CA3AF"
-                          }
+                          "id": "profile_col",
+                          "type": "Column",
+                          "properties": { "crossAxisAlignment": "start", "mainAxisSize": "min" },
+                          "styles": {},
+                          "children": [
+                            {
+                              "id": "profile_name",
+                              "type": "Text",
+                              "properties": { "text": "Admin User" },
+                              "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                            },
+                            {
+                              "id": "profile_role",
+                              "type": "Text",
+                              "properties": { "text": "CRM Manager" },
+                              "styles": { "fontSize": "10", "color": "#C7D2FE" }
+                            }
+                          ]
                         }
                       ]
                     }
@@ -682,6 +312,890 @@
           ]
         }
       ]
+    },
+
+    {
+      "id": "quick_actions_bar",
+      "type": "Container",
+      "displayName": "Quick Actions Bar",
+      "styles": {
+        "backgroundColor": "#FFFFFF",
+        "padding": "12",
+        "borderColor": "#E2E8F0",
+        "borderWidth": "1"
+      },
+      "children": [
+        {
+          "id": "qa_row",
+          "type": "Row",
+          "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "center" },
+          "styles": { "spacing": "8" },
+          "children": [
+            {
+              "id": "qa_label",
+              "type": "Text",
+              "properties": { "text": "Quick Actions:" },
+              "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#64748B" }
+            },
+            {
+              "id": "qa_new_lead",
+              "type": "Button",
+              "properties": { "label": "New Lead", "icon": "add" },
+              "styles": { "backgroundColor": "#4F46E5", "textColor": "#FFFFFF", "borderRadius": "6" }
+            },
+            {
+              "id": "qa_new_deal",
+              "type": "Button",
+              "properties": { "label": "New Deal", "icon": "credit_card" },
+              "styles": { "backgroundColor": "#0EA5E9", "textColor": "#FFFFFF", "borderRadius": "6" }
+            },
+            {
+              "id": "qa_schedule",
+              "type": "Button",
+              "properties": { "label": "Schedule Call", "icon": "calendar" },
+              "styles": { "backgroundColor": "#10B981", "textColor": "#FFFFFF", "borderRadius": "6" }
+            },
+            {
+              "id": "qa_email",
+              "type": "Button",
+              "properties": { "label": "Send Email", "icon": "send" },
+              "styles": { "backgroundColor": "#F59E0B", "textColor": "#FFFFFF", "borderRadius": "6" }
+            },
+            {
+              "id": "qa_task",
+              "type": "Button",
+              "properties": { "label": "Create Task", "icon": "done_all" },
+              "styles": { "backgroundColor": "#8B5CF6", "textColor": "#FFFFFF", "borderRadius": "6" }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "page_header",
+      "type": "Container",
+      "displayName": "Page Title Row",
+      "styles": {
+        "backgroundColor": "#F8FAFC",
+        "padding": "16",
+        "borderColor": "#E2E8F0",
+        "borderWidth": "1"
+      },
+      "children": [
+        {
+          "id": "page_header_row",
+          "type": "Row",
+          "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "center" },
+          "styles": {},
+          "children": [
+            {
+              "id": "page_title_col",
+              "type": "Column",
+              "properties": { "crossAxisAlignment": "start", "mainAxisSize": "min" },
+              "styles": {},
+              "children": [
+                {
+                  "id": "page_title",
+                  "type": "Text",
+                  "properties": { "text": "Dashboard Overview" },
+                  "styles": { "fontSize": "18", "fontWeight": "bold", "color": "#1E293B" }
+                },
+                {
+                  "id": "page_subtitle",
+                  "type": "Text",
+                  "properties": { "text": "Q2 2025  •  May 30, 2025  •  All Regions" },
+                  "styles": { "fontSize": "11", "color": "#94A3B8" }
+                }
+              ]
+            },
+            {
+              "id": "page_search_wrap",
+              "type": "Container",
+              "styles": { "flex": "1", "padding": "0 16 0 16" },
+              "children": [
+                {
+                  "id": "page_search",
+                  "type": "Search",
+                  "properties": {
+                    "label": "",
+                    "hint": "Search leads, deals, contacts..."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "page_date_badge",
+              "type": "Badge",
+              "properties": { "label": "Live Data" },
+              "styles": { "backgroundColor": "#DCFCE7", "textColor": "#166534" }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "kpi_container",
+      "type": "Container",
+      "displayName": "KPI Cards Section",
+      "styles": { "backgroundColor": "#F1F5F9", "padding": "16" },
+      "children": [
+        {
+          "id": "kpi_row",
+          "type": "Row",
+          "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+          "styles": { "spacing": "12" },
+          "children": [
+            {
+              "id": "kpi_leads",
+              "type": "Card",
+              "displayName": "Leads KPI",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "kpi_leads_icon_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "start" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "kpi_leads_label",
+                      "type": "Text",
+                      "properties": { "text": "Total Leads" },
+                      "styles": { "fontSize": "11", "color": "#64748B" }
+                    },
+                    {
+                      "id": "kpi_leads_icon_bg",
+                      "type": "Container",
+                      "styles": { "backgroundColor": "#EEF2FF", "borderRadius": "8", "padding": "6" },
+                      "children": [
+                        {
+                          "id": "kpi_leads_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "account" },
+                          "styles": { "color": "#4F46E5", "size": "18" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "kpi_l_sp1", "type": "SizedBox", "styles": { "height": "6" } },
+                {
+                  "id": "kpi_leads_val",
+                  "type": "Text",
+                  "properties": { "text": "1,482" },
+                  "styles": { "fontSize": "24", "fontWeight": "bold", "color": "#1E293B" }
+                },
+                { "id": "kpi_l_sp2", "type": "SizedBox", "styles": { "height": "8" } },
+                {
+                  "id": "kpi_leads_chip",
+                  "type": "Chip",
+                  "properties": { "label": "↑ +12.4% this week" },
+                  "styles": { "backgroundColor": "#DCFCE7", "textColor": "#166534" }
+                }
+              ]
+            },
+            {
+              "id": "kpi_deals",
+              "type": "Card",
+              "displayName": "Deals KPI",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "kpi_deals_icon_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "start" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "kpi_deals_label",
+                      "type": "Text",
+                      "properties": { "text": "Active Deals" },
+                      "styles": { "fontSize": "11", "color": "#64748B" }
+                    },
+                    {
+                      "id": "kpi_deals_icon_bg",
+                      "type": "Container",
+                      "styles": { "backgroundColor": "#F0FDF4", "borderRadius": "8", "padding": "6" },
+                      "children": [
+                        {
+                          "id": "kpi_deals_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "credit_card" },
+                          "styles": { "color": "#16A34A", "size": "18" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "kpi_d_sp1", "type": "SizedBox", "styles": { "height": "6" } },
+                {
+                  "id": "kpi_deals_val",
+                  "type": "Text",
+                  "properties": { "text": "85" },
+                  "styles": { "fontSize": "24", "fontWeight": "bold", "color": "#1E293B" }
+                },
+                { "id": "kpi_d_sp2", "type": "SizedBox", "styles": { "height": "8" } },
+                {
+                  "id": "kpi_deals_chip",
+                  "type": "Chip",
+                  "properties": { "label": "↑ +8.2% this week" },
+                  "styles": { "backgroundColor": "#DCFCE7", "textColor": "#166534" }
+                }
+              ]
+            },
+            {
+              "id": "kpi_conversion",
+              "type": "Card",
+              "displayName": "Conversion KPI",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "kpi_conv_icon_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "start" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "kpi_conv_label",
+                      "type": "Text",
+                      "properties": { "text": "Conversion Rate" },
+                      "styles": { "fontSize": "11", "color": "#64748B" }
+                    },
+                    {
+                      "id": "kpi_conv_icon_bg",
+                      "type": "Container",
+                      "styles": { "backgroundColor": "#FFF7ED", "borderRadius": "8", "padding": "6" },
+                      "children": [
+                        {
+                          "id": "kpi_conv_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "trending_up" },
+                          "styles": { "color": "#EA580C", "size": "18" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "kpi_c_sp1", "type": "SizedBox", "styles": { "height": "6" } },
+                {
+                  "id": "kpi_conv_val",
+                  "type": "Text",
+                  "properties": { "text": "24.6%" },
+                  "styles": { "fontSize": "24", "fontWeight": "bold", "color": "#1E293B" }
+                },
+                { "id": "kpi_c_sp2", "type": "SizedBox", "styles": { "height": "8" } },
+                {
+                  "id": "kpi_conv_chip",
+                  "type": "Chip",
+                  "properties": { "label": "↓ -1.5% this week" },
+                  "styles": { "backgroundColor": "#FEE2E2", "textColor": "#991B1B" }
+                }
+              ]
+            },
+            {
+              "id": "kpi_revenue",
+              "type": "Card",
+              "displayName": "Revenue KPI",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#4F46E5",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "4"
+              },
+              "children": [
+                {
+                  "id": "kpi_rev_icon_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "start" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "kpi_rev_label",
+                      "type": "Text",
+                      "properties": { "text": "Total Revenue" },
+                      "styles": { "fontSize": "11", "color": "#A5B4FC" }
+                    },
+                    {
+                      "id": "kpi_rev_icon_bg",
+                      "type": "Container",
+                      "styles": { "backgroundColor": "#6366F1", "borderRadius": "8", "padding": "6" },
+                      "children": [
+                        {
+                          "id": "kpi_rev_icon",
+                          "type": "Icon",
+                          "properties": { "icon": "payments" },
+                          "styles": { "color": "#FFFFFF", "size": "18" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "kpi_r_sp1", "type": "SizedBox", "styles": { "height": "6" } },
+                {
+                  "id": "kpi_rev_val",
+                  "type": "Text",
+                  "properties": { "text": "$48,920" },
+                  "styles": { "fontSize": "24", "fontWeight": "bold", "color": "#FFFFFF" }
+                },
+                { "id": "kpi_r_sp2", "type": "SizedBox", "styles": { "height": "8" } },
+                {
+                  "id": "kpi_rev_chip",
+                  "type": "Chip",
+                  "properties": { "label": "↑ +23.1% this week" },
+                  "styles": { "backgroundColor": "#6366F1", "textColor": "#C7D2FE" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "charts_container",
+      "type": "Container",
+      "displayName": "Charts Section",
+      "styles": { "backgroundColor": "#F1F5F9", "padding": "0 16 16 16" },
+      "children": [
+        {
+          "id": "charts_row",
+          "type": "Row",
+          "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+          "styles": { "spacing": "12" },
+          "children": [
+            {
+              "id": "revenue_chart_card",
+              "type": "Card",
+              "displayName": "Revenue Chart",
+              "styles": {
+                "flex": "2",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "rev_header_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "center" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "rev_title_col",
+                      "type": "Column",
+                      "properties": { "crossAxisAlignment": "start", "mainAxisSize": "min" },
+                      "styles": {},
+                      "children": [
+                        {
+                          "id": "rev_title",
+                          "type": "Text",
+                          "properties": { "text": "Revenue Trend" },
+                          "styles": { "fontSize": "14", "fontWeight": "bold", "color": "#1E293B" }
+                        },
+                        {
+                          "id": "rev_subtitle",
+                          "type": "Text",
+                          "properties": { "text": "Monthly revenue — Q2 2025" },
+                          "styles": { "fontSize": "11", "color": "#94A3B8" }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "rev_badge",
+                      "type": "Badge",
+                      "properties": { "label": "Q2 2025" },
+                      "styles": { "backgroundColor": "#EEF2FF", "textColor": "#4F46E5" }
+                    }
+                  ]
+                },
+                { "id": "rev_chart_sp", "type": "SizedBox", "styles": { "height": "12" } },
+                {
+                  "id": "revenue_chart",
+                  "type": "Chart",
+                  "properties": { "title": "Monthly Revenue ($K)", "chartType": "bar" }
+                }
+              ]
+            },
+            {
+              "id": "funnel_card",
+              "type": "Card",
+              "displayName": "Lead Funnel",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "funnel_title",
+                  "type": "Text",
+                  "properties": { "text": "Conversion Funnel" },
+                  "styles": { "fontSize": "14", "fontWeight": "bold", "color": "#1E293B" }
+                },
+                {
+                  "id": "funnel_sub",
+                  "type": "Text",
+                  "properties": { "text": "Q2 pipeline flow" },
+                  "styles": { "fontSize": "11", "color": "#94A3B8" }
+                },
+                { "id": "fn_sp", "type": "SizedBox", "styles": { "height": "12" } },
+                {
+                  "id": "fs1",
+                  "type": "Container",
+                  "styles": { "backgroundColor": "#4F46E5", "borderRadius": "6", "padding": "10", "margin": "2" },
+                  "children": [
+                    {
+                      "id": "fs1_row",
+                      "type": "Row",
+                      "properties": { "mainAxisAlignment": "spaceBetween" },
+                      "styles": {},
+                      "children": [
+                        {
+                          "id": "fs1_l",
+                          "type": "Text",
+                          "properties": { "text": "New Leads" },
+                          "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                        },
+                        {
+                          "id": "fs1_v",
+                          "type": "Text",
+                          "properties": { "text": "1,482" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "fs2",
+                  "type": "Container",
+                  "styles": { "backgroundColor": "#6366F1", "borderRadius": "6", "padding": "10", "margin": "2" },
+                  "children": [
+                    {
+                      "id": "fs2_row",
+                      "type": "Row",
+                      "properties": { "mainAxisAlignment": "spaceBetween" },
+                      "styles": {},
+                      "children": [
+                        {
+                          "id": "fs2_l",
+                          "type": "Text",
+                          "properties": { "text": "Contacted" },
+                          "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                        },
+                        {
+                          "id": "fs2_v",
+                          "type": "Text",
+                          "properties": { "text": "896" },
+                          "styles": { "fontSize": "12", "color": "#C7D2FE" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "fs3",
+                  "type": "Container",
+                  "styles": { "backgroundColor": "#818CF8", "borderRadius": "6", "padding": "10", "margin": "2" },
+                  "children": [
+                    {
+                      "id": "fs3_row",
+                      "type": "Row",
+                      "properties": { "mainAxisAlignment": "spaceBetween" },
+                      "styles": {},
+                      "children": [
+                        {
+                          "id": "fs3_l",
+                          "type": "Text",
+                          "properties": { "text": "Qualified" },
+                          "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                        },
+                        {
+                          "id": "fs3_v",
+                          "type": "Text",
+                          "properties": { "text": "412" },
+                          "styles": { "fontSize": "12", "color": "#EEF2FF" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "fs4",
+                  "type": "Container",
+                  "styles": { "backgroundColor": "#10B981", "borderRadius": "6", "padding": "10", "margin": "2" },
+                  "children": [
+                    {
+                      "id": "fs4_row",
+                      "type": "Row",
+                      "properties": { "mainAxisAlignment": "spaceBetween" },
+                      "styles": {},
+                      "children": [
+                        {
+                          "id": "fs4_l",
+                          "type": "Text",
+                          "properties": { "text": "Won Deals" },
+                          "styles": { "fontSize": "12", "fontWeight": "bold", "color": "#FFFFFF" }
+                        },
+                        {
+                          "id": "fs4_v",
+                          "type": "Text",
+                          "properties": { "text": "85" },
+                          "styles": { "fontSize": "12", "color": "#D1FAE5" }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "table_container",
+      "type": "Container",
+      "displayName": "Leads Table",
+      "styles": { "backgroundColor": "#F1F5F9", "padding": "0 16 16 16" },
+      "children": [
+        {
+          "id": "leads_table_card",
+          "type": "Card",
+          "displayName": "Recent Leads",
+          "styles": {
+            "backgroundColor": "#FFFFFF",
+            "padding": "16",
+            "borderRadius": "14",
+            "elevation": "2"
+          },
+          "children": [
+            {
+              "id": "table_hdr_row",
+              "type": "Row",
+              "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "center" },
+              "styles": {},
+              "children": [
+                {
+                  "id": "table_title_col",
+                  "type": "Column",
+                  "properties": { "crossAxisAlignment": "start", "mainAxisSize": "min" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "table_title",
+                      "type": "Text",
+                      "properties": { "text": "Recent Leads" },
+                      "styles": { "fontSize": "14", "fontWeight": "bold", "color": "#1E293B" }
+                    },
+                    {
+                      "id": "table_sub",
+                      "type": "Text",
+                      "properties": { "text": "Latest 5 leads — this week" },
+                      "styles": { "fontSize": "11", "color": "#94A3B8" }
+                    }
+                  ]
+                },
+                {
+                  "id": "table_view_btn",
+                  "type": "Button",
+                  "properties": { "label": "View All" },
+                  "styles": { "backgroundColor": "#EEF2FF", "textColor": "#4F46E5", "borderRadius": "8" }
+                }
+              ]
+            },
+            { "id": "tbl_sp", "type": "SizedBox", "styles": { "height": "12" } },
+            {
+              "id": "leads_table",
+              "type": "Table",
+              "properties": {
+                "columns": [
+                  { "id": "name", "label": "Lead Name" },
+                  { "id": "company", "label": "Company" },
+                  { "id": "stage", "label": "Stage" },
+                  { "id": "value", "label": "Deal Value" },
+                  { "id": "owner", "label": "Owner" },
+                  { "id": "date", "label": "Created" }
+                ],
+                "rows": [
+                  { "name": "John Anderson", "company": "Google LLC", "stage": "Won", "value": "$12,500", "owner": "Sarah K.", "date": "May 28" },
+                  { "name": "Emily Chen", "company": "Amazon Inc.", "stage": "Negotiating", "value": "$8,200", "owner": "John D.", "date": "May 27" },
+                  { "name": "Robert Zhao", "company": "Tesla Corp", "stage": "Qualified", "value": "$5,800", "owner": "Mike T.", "date": "May 26" },
+                  { "name": "Priya Sharma", "company": "Microsoft", "stage": "Contacted", "value": "$3,200", "owner": "Sarah K.", "date": "May 25" },
+                  { "name": "James Wilson", "company": "Meta Inc.", "stage": "Prospect", "value": "$9,600", "owner": "John D.", "date": "May 24" }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "bottom_section",
+      "type": "Container",
+      "displayName": "Form and Activity",
+      "styles": { "backgroundColor": "#F1F5F9", "padding": "0 16 16 16" },
+      "children": [
+        {
+          "id": "bottom_row",
+          "type": "Row",
+          "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+          "styles": { "spacing": "12" },
+          "children": [
+            {
+              "id": "lead_form_card",
+              "type": "Card",
+              "displayName": "Lead Creation Form",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "form_title_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "center" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "form_title",
+                      "type": "Text",
+                      "properties": { "text": "Quick Lead Creation" },
+                      "styles": { "fontSize": "14", "fontWeight": "bold", "color": "#1E293B" }
+                    },
+                    {
+                      "id": "form_req_badge",
+                      "type": "Badge",
+                      "properties": { "label": "Required: *" },
+                      "styles": { "backgroundColor": "#FEF3C7", "textColor": "#92400E" }
+                    }
+                  ]
+                },
+                {
+                  "id": "form_divider",
+                  "type": "Divider",
+                  "styles": { "height": "1", "color": "#F1F5F9" }
+                },
+                {
+                  "id": "form_r1",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+                  "styles": { "spacing": "10" },
+                  "children": [
+                    {
+                      "id": "fn_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_name",
+                          "type": "TextField",
+                          "properties": { "fieldName": "lead_name", "label": "Full Name", "required": true }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "fe_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_email",
+                          "type": "TextField",
+                          "properties": { "fieldName": "lead_email", "label": "Email", "required": true }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "fr1_sp", "type": "SizedBox", "styles": { "height": "10" } },
+                {
+                  "id": "form_r2",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+                  "styles": { "spacing": "10" },
+                  "children": [
+                    {
+                      "id": "fp_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_phone",
+                          "type": "TextField",
+                          "properties": { "fieldName": "lead_phone", "label": "Phone Number" }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "fc_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_company",
+                          "type": "TextField",
+                          "properties": { "fieldName": "lead_company", "label": "Company" }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "fr2_sp", "type": "SizedBox", "styles": { "height": "10" } },
+                {
+                  "id": "form_r3",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "start", "crossAxisAlignment": "start" },
+                  "styles": { "spacing": "10" },
+                  "children": [
+                    {
+                      "id": "fst_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_stage",
+                          "type": "Dropdown",
+                          "properties": {
+                            "fieldName": "lead_stage",
+                            "label": "Lead Stage",
+                            "options": ["Prospect", "Contacted", "Qualified", "Proposal Sent", "Negotiating"]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "fso_wrap",
+                      "type": "Container",
+                      "styles": { "flex": "1" },
+                      "children": [
+                        {
+                          "id": "f_source",
+                          "type": "Dropdown",
+                          "properties": {
+                            "fieldName": "lead_source",
+                            "label": "Lead Source",
+                            "options": ["Website", "Referral", "LinkedIn", "Cold Call", "Email Campaign", "Event"]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { "id": "fr3_sp", "type": "SizedBox", "styles": { "height": "10" } },
+                {
+                  "id": "f_date",
+                  "type": "DatePicker",
+                  "properties": { "fieldName": "follow_up_date", "label": "Follow-up Date" }
+                },
+                { "id": "fr4_sp", "type": "SizedBox", "styles": { "height": "10" } },
+                {
+                  "id": "f_priority",
+                  "type": "Switch",
+                  "properties": { "fieldName": "is_priority", "label": "Mark as High Priority Lead" }
+                },
+                { "id": "fr5_sp", "type": "SizedBox", "styles": { "height": "14" } },
+                {
+                  "id": "f_submit",
+                  "type": "Button",
+                  "properties": { "label": "Register Lead", "icon": "add" },
+                  "styles": { "backgroundColor": "#4F46E5", "textColor": "#FFFFFF", "borderRadius": "10" }
+                }
+              ]
+            },
+            {
+              "id": "activity_card",
+              "type": "Card",
+              "displayName": "Activity Timeline",
+              "styles": {
+                "flex": "1",
+                "backgroundColor": "#FFFFFF",
+                "padding": "16",
+                "borderRadius": "14",
+                "elevation": "2"
+              },
+              "children": [
+                {
+                  "id": "act_header_row",
+                  "type": "Row",
+                  "properties": { "mainAxisAlignment": "spaceBetween", "crossAxisAlignment": "center" },
+                  "styles": {},
+                  "children": [
+                    {
+                      "id": "act_title",
+                      "type": "Text",
+                      "properties": { "text": "Activity Timeline" },
+                      "styles": { "fontSize": "14", "fontWeight": "bold", "color": "#1E293B" }
+                    },
+                    {
+                      "id": "act_live_chip",
+                      "type": "Chip",
+                      "properties": { "label": "● Live" },
+                      "styles": { "backgroundColor": "#DCFCE7", "textColor": "#166534" }
+                    }
+                  ]
+                },
+                {
+                  "id": "act_divider",
+                  "type": "Divider",
+                  "styles": { "height": "1", "color": "#F1F5F9" }
+                },
+                {
+                  "id": "timeline_widget",
+                  "type": "Timeline",
+                  "properties": {
+                    "items": [
+                      { "label": "Deal 'Cloud Migration' WON — $12,500 by John Doe", "title": "10 min ago" },
+                      { "label": "New lead 'Emily Chen' registered from LinkedIn", "title": "45 min ago" },
+                      { "label": "Follow-up email sent to Robert Zhao at Tesla", "title": "2 hrs ago" },
+                      { "label": "Proposal submitted to Priya Sharma — Microsoft", "title": "4 hrs ago" },
+                      { "label": "Call scheduled with James Wilson — Meta Inc.", "title": "Yesterday" },
+                      { "label": "Lead stage updated: Prospect → Qualified (Robert Z.)", "title": "Yesterday" }
+                    ]
+                  }
+                },
+                { "id": "act_sp", "type": "SizedBox", "styles": { "height": "12" } },
+                {
+                  "id": "act_view_btn",
+                  "type": "Button",
+                  "properties": { "label": "View Full History" },
+                  "styles": { "backgroundColor": "#F8FAFC", "textColor": "#4F46E5", "borderRadius": "8" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
+
   ]
 }
