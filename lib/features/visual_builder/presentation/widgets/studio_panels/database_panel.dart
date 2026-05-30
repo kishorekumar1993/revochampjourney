@@ -276,12 +276,12 @@ class $repoName implements I$repoName {
     buffer.write(lines.join(',\n'));
     buffer.writeln('\n);');
 
-    for (final field in tc.fields) {
-      // FIXME: Add `isIndexed` to FieldConfig model to enable this.
-      // if (field.isIndexed) {
-      //   buffer.writeln('\nCREATE INDEX "idx_${tc.name}_${field.name}" ON "${tc.name}" ("${field.name}");');
-      // }
-    }
+    // for (final field in tc.fields) {
+    //   // FIXME: Add `isIndexed` to FieldConfig model to enable this.
+    //   // if (field.isIndexed) {
+    //   //   buffer.writeln('\nCREATE INDEX "idx_${tc.name}_${field.name}" ON "${tc.name}" ("${field.name}");');
+    //   // }
+    // }
 
     return buffer.toString();
   }

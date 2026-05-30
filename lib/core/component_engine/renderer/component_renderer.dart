@@ -43,7 +43,7 @@ class ComponentRendererWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isDesignMode = overrideIsDesignMode ?? ref.watch(builderDesignModeProvider);
-    final themeTokens = ref.watch(themeTokensProvider);
+    final themeTokens = ref.watch(themeTokensProvider).tokens;
     
     // Select selection and hovered state for this specific node to prevent full-canvas rebuilds
     final isSelected = ref.watch(visualBuilderProvider.select((s) => s.selectedNode?.id == node.id));

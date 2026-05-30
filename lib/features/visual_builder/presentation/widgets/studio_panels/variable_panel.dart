@@ -167,36 +167,7 @@ final appStateProvider = StateNotifierProvider<AppStateController, Map<String, d
   }
 }
 
-// --- Common UI helper widgets ---
 
-Widget _buildTextField({
-  required String label,
-  required String value,
-  required ValueChanged<String> onChanged,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          initialValue: value,
-          onChanged: onChanged,
-          style: GoogleFonts.inter(fontSize: 12),
-          decoration: const InputDecoration(
-            isDense: true,
-            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
 Widget _buildDropdown({
   required String label,
