@@ -1,0 +1,54 @@
+name: Flutter Web CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout Source
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Setup Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.1"
+          channel: stable
+
+      # Get Dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # Format Check
+      - name: Dart Format
+        run: dart format --set-exit-if-changed .
+
+      # Static Analysis
+      - name: Analyze Project
+        run: flutter analyze
+
+      # Run Tests
+      - name: Run Tests
+        run: flutter test
+
+      # Build Web
+      - name: Build Flutter Web
+        run: flutter build web --release
+
+      # Upload Build Artifact
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-build
+          path: build/web
