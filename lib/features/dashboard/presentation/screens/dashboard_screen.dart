@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:revojourneytryone/features/visual_builder/application/studio_providers.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -26,10 +27,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  String _activeMenu = 'dashboard';
-  String _environment = 'Production';
-  bool _isEditingJourney = false;
-  bool _isSidebarCollapsed = false;
 
   void _exportJson(BuildContext context, Map<String, dynamic> jsonMap) {
     // Mock export by printing and showing dialog
@@ -442,6 +439,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                       : () async {
                           // Lazy-load the (large) generator code only when needed.
                           await bloc_gen.loadLibrary();
+                          if (!dialogContext.mounted) return;
                           Navigator.pop(dialogContext);
                           final architectures = {
                             if (blocSelected) bloc_gen.Architecture.bloc,
@@ -457,12 +455,14 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                             );
                             
                             if (files.isEmpty) {
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("No files generated!"), backgroundColor: Colors.orange),
                               );
                               return;
                             }
 
+                            if (!context.mounted) return;
                             showDialog(
                               context: context,
                               builder: (context) => CodePreviewDialog(files: files),
@@ -488,6 +488,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                       ? null
                       : () async {
                           await bloc_gen.loadLibrary();
+                          if (!dialogContext.mounted) return;
                           Navigator.pop(dialogContext);
                           final architectures = {
                             if (blocSelected) bloc_gen.Architecture.bloc,
@@ -538,6 +539,9 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
   @override
   Widget build(BuildContext context) {
     final journeyConfig = ref.watch(journeyConfigProvider);
+    final activeMenu = ref.watch(dashboardActiveMenuProvider);
+    final isEditingJourney = ref.watch(dashboardIsEditingJourneyProvider);
+    final isSidebarCollapsed = ref.watch(dashboardIsSidebarCollapsedProvider);
 
     return Scaffold(
       backgroundColor: RevoTheme.background,
@@ -545,13 +549,11 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
         children: [
           // 1. Sidebar Menu (Leftmost)
           RevoSidebar(
-            activeMenu: _activeMenu,
-            isCollapsed: _isSidebarCollapsed,
+            activeMenu: activeMenu,
+            isCollapsed: isSidebarCollapsed,
             onMenuChanged: (menu) {
-              setState(() {
-                _activeMenu = menu;
-                _isEditingJourney = false;
-              });
+              ref.read(dashboardActiveMenuProvider.notifier).state = menu;
+              ref.read(dashboardIsEditingJourneyProvider.notifier).state = false;
             },
           ),
 
@@ -564,82 +566,66 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                 
                 // 3. Lower Content Panels (3 columns layout or Templates Screen)
                 Expanded(
-                  child: _activeMenu == 'templates'
+                  child: activeMenu == 'templates'
                       ? RevoTemplatesScreen(
                           onTemplateLoaded: () {
-                            setState(() {
-                              _activeMenu = 'journeys';
-                              _isEditingJourney = true;
-                              _isSidebarCollapsed = true;
-                            });
+                            ref.read(dashboardActiveMenuProvider.notifier).state = 'journeys';
+                            ref.read(dashboardIsEditingJourneyProvider.notifier).state = true;
+                            ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = true;
                           },
                         )
-                      : _activeMenu == 'runs'
+                      : activeMenu == 'runs'
                           ? RevoRunsScreen()
-                          : _activeMenu == 'dashboard'
+                          : activeMenu == 'dashboard'
                               ? RevoDashboardOverviewScreen(
                                   onCreateNew: () {
                                     final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
                                     ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
-                                    setState(() {
-                                      _activeMenu = 'journeys';
-                                      _isEditingJourney = true;
-                                      _isSidebarCollapsed = true;
-                                    });
+                                    ref.read(dashboardActiveMenuProvider.notifier).state = 'journeys';
+                                    ref.read(dashboardIsEditingJourneyProvider.notifier).state = true;
+                                    ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = true;
                                   },
                                   onEditJourney: (journey) {
                                     ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
-                                    setState(() {
-                                      _activeMenu = 'journeys';
-                                      _isEditingJourney = true;
-                                      _isSidebarCollapsed = true;
-                                    });
+                                    ref.read(dashboardActiveMenuProvider.notifier).state = 'journeys';
+                                    ref.read(dashboardIsEditingJourneyProvider.notifier).state = true;
+                                    ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = true;
                                   },
                                   onViewCatalog: () {
-                                    setState(() {
-                                      _activeMenu = 'journeys';
-                                      _isEditingJourney = false;
-                                    });
+                                    ref.read(dashboardActiveMenuProvider.notifier).state = 'journeys';
+                                    ref.read(dashboardIsEditingJourneyProvider.notifier).state = false;
                                   },
                                   onViewTemplates: () {
-                                    setState(() {
-                                      _activeMenu = 'templates';
-                                    });
+                                    ref.read(dashboardActiveMenuProvider.notifier).state = 'templates';
                                   },
                                   onViewRuns: () {
-                                    setState(() {
-                                      _activeMenu = 'runs';
-                                    });
+                                    ref.read(dashboardActiveMenuProvider.notifier).state = 'runs';
                                   },
                                 )
-                              : _activeMenu == 'analytics'
+                              : activeMenu == 'analytics'
                                   ? RevoAnalyticsScreen()
-                                  : _activeMenu == 'approvals'
+                                  : activeMenu == 'approvals'
                                       ? RevoApprovalsScreen()
-                                      : _activeMenu == 'users'
+                                      : activeMenu == 'users'
                                           ? RevoUsersScreen()
-                                          : _activeMenu == 'settings'
+                                          : activeMenu == 'settings'
                                               ? RevoSettingsScreen()
-                                              : _activeMenu == 'api_hub'
+                                              : activeMenu == 'api_hub'
                                                   ? RevoApiHubScreen()
-                                                  : _activeMenu == 'audit_logs'
+                                                  : activeMenu == 'audit_logs'
                                                       ? RevoAuditLogsScreen()
-                                                      : _activeMenu == 'journeys' && !_isEditingJourney
+                                                      : activeMenu == 'journeys' && !isEditingJourney
                                                           ? RevoJourneysScreen(
                                                               onEditJourney: (journey) {
                                                                 ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(journey.toJson()));
-                                                                setState(() {
-                                                                  _isEditingJourney = true;
-                                                                  _isSidebarCollapsed = true;
-                                                                });
+                                                                ref.read(dashboardIsEditingJourneyProvider.notifier).state = true;
+                                                                ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = true;
                                                               },
                                                               onCreateNew: () {
                                                                 final blank = JourneyConfig(journeyName: "New Journey", version: "1.0.0", steps: []);
                                                                 ref.read(journeyConfigProvider.notifier).updateFromJson(json.encode(blank.toJson()));
-                                                                setState(() {
-                                                                  _isEditingJourney = true;
-                                                                  _isSidebarCollapsed = true;
-                                                                });
+                                                                ref.read(dashboardIsEditingJourneyProvider.notifier).state = true;
+                                                                ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = true;
                                                               },
                                                             )
                                                           : const BuilderWorkspaceScreen(),
@@ -657,6 +643,10 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
     final isCompact = screenWidth < 1350;
     final showSteps = ref.watch(showStepsPanelProvider);
     final showProps = ref.watch(showPropertiesPanelProvider);
+    final isSidebarCollapsed = ref.watch(dashboardIsSidebarCollapsedProvider);
+    final activeMenu = ref.watch(dashboardActiveMenuProvider);
+    final isEditingJourney = ref.watch(dashboardIsEditingJourneyProvider);
+    final environment = ref.watch(dashboardEnvironmentProvider);
 
     return Container(
       height: 70,
@@ -677,27 +667,23 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
               children: [
                 IconButton(
                   icon: Icon(
-                    _isSidebarCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded,
+                    isSidebarCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded,
                     color: RevoTheme.textPrimary,
                     size: 20,
                   ),
-                  tooltip: _isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
+                  tooltip: isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
                   onPressed: () {
-                    setState(() {
-                      _isSidebarCollapsed = !_isSidebarCollapsed;
-                    });
+                    ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = !isSidebarCollapsed;
                   },
                 ),
                 const SizedBox(width: 8),
-                if (_activeMenu == 'journeys' && _isEditingJourney) ...[
+                if (activeMenu == 'journeys' && isEditingJourney) ...[
                   IconButton(
                     icon: Icon(Icons.arrow_back_rounded, color: RevoTheme.textPrimary, size: 20),
                     tooltip: "Back to Catalog",
                     onPressed: () {
-                      setState(() {
-                        _isEditingJourney = false;
-                        _isSidebarCollapsed = false;
-                      });
+                      ref.read(dashboardIsEditingJourneyProvider.notifier).state = false;
+                      ref.read(dashboardIsSidebarCollapsedProvider.notifier).state = false;
                     },
                   ),
                   const SizedBox(width: 8),
@@ -725,7 +711,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        isCompact ? "Prod" : "Environment: $_environment",
+                        isCompact ? "Prod" : "Environment: $environment",
                         style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(width: 8),
@@ -745,7 +731,7 @@ void _generateBlocCode(BuildContext context, dynamic journeyConfig) {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_isEditingJourney) ...[
+                  if (isEditingJourney) ...[
                     if (isCompact) ...[
                       IconButton(
                         icon: Icon(

@@ -16,8 +16,6 @@ class RevoVariablesPanel extends ConsumerStatefulWidget {
 }
 
 class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
-  AppVariable? _selectedVar;
-  String _searchQuery = '';
   final List<Map<String, dynamic>> _changeLogs = [];
   bool _showSecrets = false;
 
@@ -455,15 +453,17 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
   Widget build(BuildContext context) {
     final list = ref.watch(appVariablesProvider);
     final notifier = ref.read(appVariablesProvider.notifier);
+    final selectedVar = ref.watch(selectedVariableProvider);
+    final searchQuery = ref.watch(variableSearchQueryProvider);
 
     final filteredList = list.where((v) {
-      if (_searchQuery.trim().isEmpty) return true;
-      return v.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          v.type.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (searchQuery.trim().isEmpty) return true;
+      return v.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          v.type.toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
 
-    if (_selectedVar != null) {
-      final v = _selectedVar!;
+    if (selectedVar != null) {
+      final v = selectedVar;
       return SizedBox(
         width: 300,
         child: RevoStudioPanelWrapper(
@@ -473,9 +473,7 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
             IconButton(
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
               onPressed: () {
-                setState(() {
-                  _selectedVar = null;
-                });
+                ref.read(selectedVariableIdProvider.notifier).state = null;
               },
             ),
           ],
@@ -487,7 +485,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 value: v.name,
                 onChanged: (val) {
                   final upd = v.copyWith(name: val);
-                  setState(() => _selectedVar = upd);
                   notifier.updateVariable(v.id, upd);
                 },
               ),
@@ -500,7 +497,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                       options: const ['String', 'int', 'double', 'bool', 'List', 'Map'],
                       onChanged: (val) {
                         final upd = v.copyWith(type: val ?? 'String');
-                        setState(() => _selectedVar = upd);
                         notifier.updateVariable(v.id, upd);
                       },
                     ),
@@ -514,7 +510,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                       onChanged: (val) {
                         final sc = VariableScope.values.firstWhere((e) => e.toString().split('.').last == val);
                         final upd = v.copyWith(scope: sc);
-                        setState(() => _selectedVar = upd);
                         notifier.updateVariable(v.id, upd);
                       },
                     ),
@@ -530,7 +525,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 onChanged: (val) {
                   final dynamic typedVal = _parseTypedValue(val, v.type);
                   final upd = v.copyWith(defaultValue: typedVal);
-                  setState(() => _selectedVar = upd);
                   notifier.updateVariable(v.id, upd);
                 },
               ),
@@ -541,7 +535,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                   final dynamic typedVal = _parseTypedValue(val, v.type);
                   _logChange(v.name, v.currentValue, typedVal);
                   final upd = v.copyWith(currentValue: typedVal);
-                  setState(() => _selectedVar = upd);
                   notifier.updateVariable(v.id, upd);
                 },
               ),
@@ -552,7 +545,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 contentPadding: EdgeInsets.zero,
                 onChanged: (val) {
                   final upd = v.copyWith(isSecret: val);
-                  setState(() => _selectedVar = upd);
                   notifier.updateVariable(v.id, upd);
                 },
               ),
@@ -562,7 +554,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 contentPadding: EdgeInsets.zero,
                 onChanged: (val) {
                   final upd = v.copyWith(isComputed: val);
-                  setState(() => _selectedVar = upd);
                   notifier.updateVariable(v.id, upd);
                 },
               ),
@@ -572,7 +563,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                   value: v.computedExpression,
                   onChanged: (val) {
                     final upd = v.copyWith(computedExpression: val);
-                    setState(() => _selectedVar = upd);
                     notifier.updateVariable(v.id, upd);
                   },
                 ),
@@ -588,7 +578,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) {
                       final upd = v.copyWith(validationRequired: val);
-                      setState(() => _selectedVar = upd);
                       notifier.updateVariable(v.id, upd);
                     },
                   ),
@@ -602,7 +591,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                             onChanged: (val) {
                               final double? minVal = double.tryParse(val);
                               final upd = v.copyWith(validationMin: minVal);
-                              setState(() => _selectedVar = upd);
                               notifier.updateVariable(v.id, upd);
                             },
                           ),
@@ -615,7 +603,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                             onChanged: (val) {
                               final double? maxVal = double.tryParse(val);
                               final upd = v.copyWith(validationMax: maxVal);
-                              setState(() => _selectedVar = upd);
                               notifier.updateVariable(v.id, upd);
                             },
                           ),
@@ -636,7 +623,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) {
                       final upd = v.copyWith(isPersistent: val);
-                      setState(() => _selectedVar = upd);
                       notifier.updateVariable(v.id, upd);
                     },
                   ),
@@ -647,7 +633,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                       options: const ['none', 'shared_preferences', 'hive', 'secure_storage'],
                       onChanged: (val) {
                         final upd = v.copyWith(persistenceType: val ?? 'none');
-                        setState(() => _selectedVar = upd);
                         notifier.updateVariable(v.id, upd);
                       },
                     ),
@@ -665,7 +650,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                     options: const ['None', 'username_input', 'password_input', 'submit_button', 'profile_header', 'amount_field'],
                     onChanged: (val) {
                       final upd = v.copyWith(boundWidgetId: val == 'None' ? null : val);
-                      setState(() => _selectedVar = upd);
                       notifier.updateVariable(v.id, upd);
                     },
                   ),
@@ -676,7 +660,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                       options: const ['text', 'value', 'visibility', 'isEnabled', 'color'],
                       onChanged: (val) {
                         final upd = v.copyWith(boundProperty: val);
-                        setState(() => _selectedVar = upd);
                         notifier.updateVariable(v.id, upd);
                       },
                     ),
@@ -687,7 +670,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                     options: const ['None', 'User Login API', 'Get User Profile'],
                     onChanged: (val) {
                       final upd = v.copyWith(boundApiId: val == 'None' ? null : val);
-                      setState(() => _selectedVar = upd);
                       notifier.updateVariable(v.id, upd);
                     },
                   ),
@@ -697,7 +679,6 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                       value: v.boundApiField ?? '',
                       onChanged: (val) {
                         final upd = v.copyWith(boundApiField: val.trim().isEmpty ? null : val.trim());
-                        setState(() => _selectedVar = upd);
                         notifier.updateVariable(v.id, upd);
                       },
                     ),
@@ -786,7 +767,7 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 scope: VariableScope.app,
               );
               notifier.addVariable(newVar);
-              setState(() => _selectedVar = newVar);
+              ref.read(selectedVariableIdProvider.notifier).state = id;
             },
           ),
         ],
@@ -804,9 +785,7 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                 ),
                 onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val;
-                  });
+                  ref.read(variableSearchQueryProvider.notifier).state = val;
                 },
               ),
             ),
@@ -816,7 +795,7 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                 children: groupedVars.entries.map((group) {
                   final scopeName = group.key.toString().split('.').last.toUpperCase();
                   final groupList = group.value;
-                  if (groupList.isEmpty && _searchQuery.isNotEmpty) {
+                  if (groupList.isEmpty && searchQuery.isNotEmpty) {
                     return const SizedBox();
                   }
 
@@ -843,7 +822,7 @@ class _RevoVariablesPanelState extends ConsumerState<RevoVariablesPanel> {
                               child: ListTile(
                                 dense: true,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                onTap: () => setState(() => _selectedVar = v),
+                                onTap: () => ref.read(selectedVariableIdProvider.notifier).state = v.id,
                                 title: Row(
                                   children: [
                                     Expanded(

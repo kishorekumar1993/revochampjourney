@@ -24,11 +24,6 @@ class RevoApiStudioPanel extends ConsumerStatefulWidget {
 }
 
 class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
-  ApiConfig? _selectedConfig;
-  bool _isTesting = false;
-  int? _responseStatus;
-  String? _responseBody;
-  String? _testError;
 
   // Environment and folder defaults substitution helper
   String _substituteVariables(String input, ApiConfig config) {
@@ -115,32 +110,32 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
   }
 
   Future<void> _testApi(ApiConfig config) async {
-    setState(() {
-      _isTesting = true;
-      _responseStatus = null;
-      _responseBody = null;
-      _testError = null;
-    });
+    ref.read(apiTestStateProvider.notifier).state = const ApiTestState(
+      isTesting: true,
+      responseStatus: null,
+      responseBody: null,
+      testError: null,
+    );
 
     // Mock testing response bypass
     if (config.isMockEnabled) {
       await Future.delayed(Duration(seconds: config.mockDelay));
       if (config.mockError.isNotEmpty) {
-        setState(() {
-          _isTesting = false;
-          _testError = "MOCK SERVER ERROR: ${config.mockError}";
-        });
+        ref.read(apiTestStateProvider.notifier).state = ApiTestState(
+          isTesting: false,
+          testError: "MOCK SERVER ERROR: ${config.mockError}",
+        );
       } else {
         String mockResponsePretty = config.mockResponse;
         try {
           final parsed = json.decode(config.mockResponse);
           mockResponsePretty = const JsonEncoder.withIndent('  ').convert(parsed);
         } catch (_) {}
-        setState(() {
-          _isTesting = false;
-          _responseStatus = 200;
-          _responseBody = mockResponsePretty;
-        });
+        ref.read(apiTestStateProvider.notifier).state = ApiTestState(
+          isTesting: false,
+          responseStatus: 200,
+          responseBody: mockResponsePretty,
+        );
       }
       return;
     }
@@ -227,25 +222,25 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
         formattedBody = const JsonEncoder.withIndent('  ').convert(parsed);
       } catch (_) {}
 
-      setState(() {
-        _isTesting = false;
-        _responseStatus = response.statusCode;
-        _responseBody = formattedBody;
-      });
+      ref.read(apiTestStateProvider.notifier).state = ApiTestState(
+        isTesting: false,
+        responseStatus: response.statusCode,
+        responseBody: formattedBody,
+      );
     } catch (e) {
-      setState(() {
-        _isTesting = false;
-        _testError = e.toString();
-      });
+      ref.read(apiTestStateProvider.notifier).state = ApiTestState(
+        isTesting: false,
+        testError: e.toString(),
+      );
     }
   }
 
-  void _showCodeGenDialog(ApiConfig config) {
+  void _showCodeGenDialog(ApiConfig config, String? lastResponseBody) {
     showDialog(
       context: context,
       builder: (ctx) => RevoCodeGenDialog(
         config: config,
-        lastResponseBody: _responseBody,
+        lastResponseBody: lastResponseBody,
         substituteEnvVars: (input) => _substituteVariables(input, config),
       ),
     );
@@ -255,11 +250,14 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
   Widget build(BuildContext context) {
     final list = ref.watch(apiConfigsProvider);
     final notifier = ref.read(apiConfigsProvider.notifier);
+    final selectedConfigId = ref.watch(selectedApiConfigIdProvider);
+    final testState = ref.watch(apiTestStateProvider);
 
-    if (_selectedConfig != null) {
-      // Find current config from state to keep it updated on hot rebuilds
-      final config = list.firstWhere((c) => c.id == _selectedConfig!.id, orElse: () => _selectedConfig!);
+    final config = selectedConfigId == null
+        ? null
+        : list.firstWhere((c) => c.id == selectedConfigId, orElse: () => list.first);
 
+    if (selectedConfigId != null && config != null) {
       return RevoStudioPanelWrapper(
         title: "Edit Request",
         subtitle: config.name,
@@ -267,18 +265,14 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
           IconButton(
             icon: const Icon(Icons.code_rounded, size: 16),
             tooltip: "Developer Tools (Code Gen)",
-            onPressed: () => _showCodeGenDialog(config),
+            onPressed: () => _showCodeGenDialog(config, testState.responseBody),
           ),
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, size: 16),
             tooltip: "Back to Collections",
             onPressed: () {
-              setState(() {
-                _selectedConfig = null;
-                _responseStatus = null;
-                _responseBody = null;
-                _testError = null;
-              });
+              ref.read(selectedApiConfigIdProvider.notifier).state = null;
+              ref.read(apiTestStateProvider.notifier).state = const ApiTestState();
             },
           ),
         ],
@@ -316,7 +310,6 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
                         onChanged: (val) {
                           final upd = config.copyWith(inheritParentSettings: val);
                           notifier.updateConfig(config.id, upd);
-                          setState(() {});
                         },
                       ),
                     ],
@@ -341,7 +334,7 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
                   const SizedBox(height: 12),
                   RevoApiAddressBar(
                     config: config,
-                    isTesting: _isTesting,
+                    isTesting: testState.isTesting,
                     onConfigUpdated: (upd) {
                       notifier.updateConfig(config.id, upd);
                     },
@@ -391,10 +384,10 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
                   ),
                   const Divider(height: 24),
                   RevoResponsePreview(
-                    isTesting: _isTesting,
-                    testError: _testError,
-                    responseStatus: _responseStatus,
-                    responseBody: _responseBody,
+                    isTesting: testState.isTesting,
+                    testError: testState.testError,
+                    responseStatus: testState.responseStatus,
+                    responseBody: testState.responseBody,
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -415,14 +408,10 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
               title: "API Studio",
               subtitle: "Configure REST collections & endpoints",
               child: RevoCollectionFolders(
-                selectedConfig: _selectedConfig,
-                onSelectedConfigChanged: (config) {
-                  setState(() {
-                    _selectedConfig = config;
-                    _responseStatus = null;
-                    _responseBody = null;
-                    _testError = null;
-                  });
+                selectedConfig: config,
+                onSelectedConfigChanged: (cfg) {
+                  ref.read(selectedApiConfigIdProvider.notifier).state = cfg?.id;
+                  ref.read(apiTestStateProvider.notifier).state = const ApiTestState();
                 },
               ),
             ),

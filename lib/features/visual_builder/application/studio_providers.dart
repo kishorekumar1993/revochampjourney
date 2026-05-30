@@ -707,3 +707,61 @@ final themeVersionsProvider = StateNotifierProvider<ThemeVersionsNotifier, List<
 
 final geminiApiKeyProvider = StateProvider<String>((ref) => "");
 
+// ─── Dashboard & Visual Builder Selection Providers ───────────────────────────
+
+final dashboardActiveMenuProvider = StateProvider<String>((ref) => 'dashboard');
+final dashboardEnvironmentProvider = StateProvider<String>((ref) => 'Production');
+final dashboardIsEditingJourneyProvider = StateProvider<bool>((ref) => false);
+final dashboardIsSidebarCollapsedProvider = StateProvider<bool>((ref) => false);
+
+final activeSidebarTabProvider = StateProvider<String>((ref) => 'Journey Flow');
+
+final selectedVariableIdProvider = StateProvider<String?>((ref) => null);
+
+final selectedVariableProvider = Provider<AppVariable?>((ref) {
+  final selectedId = ref.watch(selectedVariableIdProvider);
+  if (selectedId == null) return null;
+  final vars = ref.watch(appVariablesProvider);
+  for (final v in vars) {
+    if (v.id == selectedId) return v;
+  }
+  return null;
+});
+
+final variableSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final selectedTableNameProvider = StateProvider<String?>((ref) => null);
+
+final selectedApiConfigIdProvider = StateProvider<String?>((ref) => null);
+
+class ApiTestState {
+  final bool isTesting;
+  final int? responseStatus;
+  final String? responseBody;
+  final String? testError;
+
+  const ApiTestState({
+    this.isTesting = false,
+    this.responseStatus,
+    this.responseBody,
+    this.testError,
+  });
+
+  ApiTestState copyWith({
+    bool? isTesting,
+    int? responseStatus,
+    String? responseBody,
+    String? testError,
+  }) {
+    return ApiTestState(
+      isTesting: isTesting ?? this.isTesting,
+      responseStatus: responseStatus ?? this.responseStatus,
+      responseBody: responseBody ?? this.responseBody,
+      testError: testError ?? this.testError,
+    );
+  }
+}
+
+final apiTestStateProvider = StateProvider<ApiTestState>((ref) => const ApiTestState());
+
+

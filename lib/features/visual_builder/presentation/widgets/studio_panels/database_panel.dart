@@ -16,7 +16,6 @@ class RevoDatabaseStudioPanel extends ConsumerStatefulWidget {
 }
 
 class _RevoDatabaseStudioPanelState extends ConsumerState<RevoDatabaseStudioPanel> {
-  TableConfig? _selectedTable;
 
   void _showGeneratedCodeDialog(BuildContext context, TableConfig table) {
     showDialog(
@@ -299,16 +298,20 @@ class $repoName implements I$repoName {
   Widget build(BuildContext context) {
     final dbConfig = ref.watch(databaseConfigProvider);
     final notifier = ref.read(databaseConfigProvider.notifier);
+    final selectedTableName = ref.watch(selectedTableNameProvider);
+    
+    final table = selectedTableName == null 
+        ? null 
+        : dbConfig.tables.firstWhere((t) => t.name == selectedTableName, orElse: () => dbConfig.tables.first);
 
-    if (_selectedTable != null) {
-      final table = _selectedTable!;
+    if (selectedTableName != null && table != null) {
       return RevoStudioPanelWrapper(
         title: "Edit Table Scheme",
         subtitle: table.name,
         actions: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            onPressed: () => setState(() => _selectedTable = null),
+            onPressed: () => ref.read(selectedTableNameProvider.notifier).state = null,
           ),
         ],
         child: Column(
@@ -322,7 +325,7 @@ class $repoName implements I$repoName {
                     value: table.name,
                     onChanged: (val) {
                       final upd = table.copyWith(name: val);
-                      setState(() => _selectedTable = upd);
+                      ref.read(selectedTableNameProvider.notifier).state = val;
                       notifier.updateTable(table.name, upd);
                     },
                   ),
@@ -339,7 +342,6 @@ class $repoName implements I$repoName {
                             type: 'String',
                           );
                           final upd = table.copyWith(fields: [...table.fields, newField]);
-                          setState(() => _selectedTable = upd);
                           notifier.updateTable(table.name, upd);
                         },
                       ),
@@ -382,7 +384,7 @@ class $repoName implements I$repoName {
               ],
             );
             notifier.addTable(table);
-            setState(() => _selectedTable = table);
+            ref.read(selectedTableNameProvider.notifier).state = table.name;
           },
         ),
       ],
@@ -411,7 +413,7 @@ class $repoName implements I$repoName {
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Card(
                     child: ListTile(
-                      onTap: () => setState(() => _selectedTable = table),
+                      onTap: () => ref.read(selectedTableNameProvider.notifier).state = table.name,
                       leading: const Icon(Icons.table_rows_rounded, color: Color(0xFF5B4FCF), size: 20),
                       title: Text(
                         table.name,
@@ -444,7 +446,6 @@ class $repoName implements I$repoName {
       updatedFields[index] = updatedField;
       final originalTableName = table.name;
       final updatedTable = table.copyWith(fields: updatedFields);
-      setState(() => _selectedTable = updatedTable);
       notifier.updateTable(originalTableName, updatedTable);
     }
 
@@ -460,7 +461,6 @@ class $repoName implements I$repoName {
             final upd = table.copyWith(
               fields: table.fields.where((f) => f.name != field.name).toList(),
             );
-            setState(() => _selectedTable = upd);
             notifier.updateTable(table.name, upd);
           },
         ),

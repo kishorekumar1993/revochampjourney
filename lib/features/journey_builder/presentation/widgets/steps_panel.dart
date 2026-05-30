@@ -5,6 +5,7 @@ import '../../../../core/theme.dart';
 import '../../application/controllers/journey_history_manager.dart';
 import '../../domain/entities/journey_models.dart';
 import '../../application/controllers/journey_controller.dart';
+import 'package:revojourneytryone/features/visual_builder/application/studio_providers.dart';
 
 class BuildAuditResult {
   final List<String> errors;
@@ -105,8 +106,6 @@ class RevoStepsPanel extends ConsumerStatefulWidget {
 }
 
 class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
-  String _activeSidebarTab = 'Journey Flow';
-  
   // Local state for Build compilation mockup
   bool _compiling = false;
   bool _buildRan = false;
@@ -115,9 +114,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
   late TextEditingController _nameController;
   late TextEditingController _versionController;
   late TextEditingController _descriptionController;
-  String _selectedCategory = 'Onboarding';
-  String _selectedLocale = 'English (US)';
-  String _selectedPlatform = 'All Devices';
   
   late FocusNode _nameFocus;
   late FocusNode _versionFocus;
@@ -132,9 +128,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
     _nameController = TextEditingController(text: config.journeyName);
     _versionController = TextEditingController(text: config.version);
     _descriptionController = TextEditingController(text: config.description);
-    _selectedCategory = config.category;
-    _selectedLocale = config.locale;
-    _selectedPlatform = config.platform;
     
     _nameFocus = FocusNode();
     _versionFocus = FocusNode();
@@ -151,15 +144,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
       }
       if (!_descriptionFocus.hasFocus && _descriptionController.text != next.description) {
         _descriptionController.text = next.description;
-      }
-      if (_selectedCategory != next.category) {
-        setState(() => _selectedCategory = next.category);
-      }
-      if (_selectedLocale != next.locale) {
-        setState(() => _selectedLocale = next.locale);
-      }
-      if (_selectedPlatform != next.platform) {
-        setState(() => _selectedPlatform = next.platform);
       }
     });
   }
@@ -372,17 +356,17 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _buildTabItem("Journey Flow", _activeSidebarTab == 'Journey Flow', () {
-                  setState(() => _activeSidebarTab = 'Journey Flow');
+                _buildTabItem("Journey Flow", ref.watch(activeSidebarTabProvider) == 'Journey Flow', () {
+                  ref.read(activeSidebarTabProvider.notifier).state = 'Journey Flow';
                 }),
-                _buildTabItem("Build", _activeSidebarTab == 'Build', () {
-                  setState(() => _activeSidebarTab = 'Build');
+                _buildTabItem("Build", ref.watch(activeSidebarTabProvider) == 'Build', () {
+                  ref.read(activeSidebarTabProvider.notifier).state = 'Build';
                 }),
-                _buildTabItem("Settings", _activeSidebarTab == 'Settings', () {
-                  setState(() => _activeSidebarTab = 'Settings');
+                _buildTabItem("Settings", ref.watch(activeSidebarTabProvider) == 'Settings', () {
+                  ref.read(activeSidebarTabProvider.notifier).state = 'Settings';
                 }),
-                _buildTabItem("History", _activeSidebarTab == 'History', () {
-                  setState(() => _activeSidebarTab = 'History');
+                _buildTabItem("History", ref.watch(activeSidebarTabProvider) == 'History', () {
+                  ref.read(activeSidebarTabProvider.notifier).state = 'History';
                 }),
               ],
             ),
@@ -426,7 +410,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
   }
 
   Widget _buildTabContent(JourneyConfig config, String activeStepId) {
-    switch (_activeSidebarTab) {
+    switch (ref.watch(activeSidebarTabProvider)) {
       case 'Build':
         return _buildBuildTabContent(config);
       case 'Settings':
@@ -984,7 +968,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedCategory,
+                value: config.category,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
                 style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
@@ -993,7 +977,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => _selectedCategory = val);
                     ref.read(journeyConfigProvider.notifier).updateJourneyCategory(val);
                   }
                 },
@@ -1014,7 +997,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedLocale,
+                value: config.locale,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
                 style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
@@ -1023,7 +1006,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => _selectedLocale = val);
                     ref.read(journeyConfigProvider.notifier).updateJourneyLocale(val);
                   }
                 },
@@ -1044,7 +1026,7 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedPlatform,
+                value: config.platform,
                 isExpanded: true,
                 dropdownColor: RevoTheme.cardBg,
                 style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: RevoTheme.textPrimary),
@@ -1053,7 +1035,6 @@ class _RevoStepsPanelState extends ConsumerState<RevoStepsPanel> {
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => _selectedPlatform = val);
                     ref.read(journeyConfigProvider.notifier).updateJourneyPlatform(val);
                   }
                 },
