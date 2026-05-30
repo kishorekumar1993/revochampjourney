@@ -976,9 +976,18 @@ class ComponentRenderer {
         final label = properties['label'] ?? 'Dropdown Option';
         final hint = properties['hint'] ?? 'Select option';
         final isRequired = properties['required'] == true;
-        final List<String> options = List<String>.from(
-          properties['options'] ?? [],
-        );
+        
+        final rawOptions = properties['options'] ?? [];
+        final List<String> options = [];
+        if (rawOptions is List) {
+          for (final opt in rawOptions) {
+            if (opt is Map) {
+              options.add(opt['label']?.toString() ?? opt['value']?.toString() ?? 'Option');
+            } else if (opt != null) {
+              options.add(opt.toString());
+            }
+          }
+        }
 
         final currentValue = formValues[fieldName]?.toString();
         final selectedVal =
@@ -1007,9 +1016,17 @@ class ComponentRenderer {
       case 'Radio':
         final fieldName = properties['fieldName'] ?? 'radio';
         final label = properties['label'] ?? 'Select Value';
-        final List<String> options = List<String>.from(
-          properties['options'] ?? [],
-        );
+        final rawOptions = properties['options'] ?? [];
+        final List<String> options = [];
+        if (rawOptions is List) {
+          for (final opt in rawOptions) {
+            if (opt is Map) {
+              options.add(opt['label']?.toString() ?? opt['value']?.toString() ?? 'Option');
+            } else if (opt != null) {
+              options.add(opt.toString());
+            }
+          }
+        }
         final currentValue = formValues[fieldName]?.toString() ?? '';
 
         return Column(
@@ -1365,46 +1382,101 @@ class ComponentRenderer {
         );
 
       case 'Table':
-        final List<String> columns = List<String>.from(
-          properties['columns'] ?? ['Col 1', 'Col 2'],
+        final rawCols = properties['columns'] ?? ['Col 1', 'Col 2'];
+        final List<Map<String, dynamic>> parsedCols = [];
+        final List<String> colLabels = [];
+        
+        if (rawCols is List) {
+          for (final col in rawCols) {
+            if (col is Map) {
+              final colMap = Map<String, dynamic>.from(col);
+              parsedCols.add(colMap);
+              colLabels.add(colMap['label']?.toString() ?? colMap['id']?.toString() ?? 'Column');
+            } else if (col != null) {
+              colLabels.add(col.toString());
+              parsedCols.add({'id': col.toString(), 'label': col.toString()});
+            }
+          }
+        } else {
+          colLabels.addAll(['Col 1', 'Col 2']);
+          parsedCols.addAll([{'id': 'Col 1', 'label': 'Col 1'}, {'id': 'Col 2', 'label': 'Col 2'}]);
+        }
+
+        final List<Map<String, dynamic>> parsedRows = [];
+        if (properties['rows'] is List) {
+          for (final r in properties['rows']) {
+            if (r is Map) {
+              parsedRows.add(Map<String, dynamic>.from(r));
+            }
+          }
+        }
+
+        final List<TableRow> tableRows = [];
+        // 1. Header row
+        tableRows.add(
+          TableRow(
+            decoration: BoxDecoration(color: Colors.grey[100]),
+            children: colLabels.map((col) => Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                col,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            )).toList(),
+          ),
         );
+
+        // 2. Data rows
+        if (parsedRows.isEmpty) {
+          // Fallback row
+          tableRows.add(
+            TableRow(
+              children: colLabels.map((col) => const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text('Data Value', style: TextStyle(fontSize: 11)),
+              )).toList(),
+            ),
+          );
+        } else {
+          for (final row in parsedRows) {
+            final List<Widget> cells = [];
+            for (final col in parsedCols) {
+              final colId = col['id']?.toString() ?? col['fieldId']?.toString() ?? col['label']?.toString() ?? '';
+              final cellVal = row[colId]?.toString() ?? row[colId.toLowerCase()]?.toString() ?? '';
+              cells.add(Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  cellVal,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ));
+            }
+            tableRows.add(TableRow(children: cells));
+          }
+        }
+
         return Table(
           border: TableBorder.all(color: Colors.grey[300]!),
-          children: [
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey[100]),
-              children: columns
-                  .map(
-                    (col) => Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        col,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-            TableRow(
-              children: columns
-                  .map(
-                    (col) => const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text('Data Value', style: TextStyle(fontSize: 11)),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
+          children: tableRows,
         );
 
       case 'Stepper':
-        final List<String> steps = List<String>.from(
-          properties['steps'] ?? ['Step A', 'Step B'],
-        );
+        final rawSteps = properties['steps'] ?? ['Step A', 'Step B'];
+        final List<String> steps = [];
+        if (rawSteps is List) {
+          for (final step in rawSteps) {
+            if (step is Map) {
+              steps.add(step['label']?.toString() ?? step['title']?.toString() ?? 'Step');
+            } else if (step != null) {
+              steps.add(step.toString());
+            }
+          }
+        } else {
+          steps.addAll(['Step A', 'Step B']);
+        }
         return Row(
           children: List.generate(steps.length, (i) {
             return Expanded(
@@ -1444,9 +1516,19 @@ class ComponentRenderer {
         );
 
       case 'Timeline':
-        final List<String> items = List<String>.from(
-          properties['items'] ?? ['Registered', 'Active'],
-        );
+        final rawItems = properties['items'] ?? ['Registered', 'Active'];
+        final List<String> items = [];
+        if (rawItems is List) {
+          for (final item in rawItems) {
+            if (item is Map) {
+              items.add(item['label']?.toString() ?? item['title']?.toString() ?? 'Event');
+            } else if (item != null) {
+              items.add(item.toString());
+            }
+          }
+        } else {
+          items.addAll(['Registered', 'Active']);
+        }
         return Column(
           children: List.generate(items.length, (i) {
             return Row(
@@ -1500,6 +1582,7 @@ class ComponentRenderer {
                   onAddChild: onAddChild,
                   formValues: formValues,
                   onFormValueChanged: onFormValueChanged,
+                  insideScrollable: insideScrollable,
                 );
 
       // case 'Flexible':
@@ -1544,6 +1627,7 @@ class ComponentRenderer {
                   onAddChild: onAddChild,
                   formValues: formValues,
                   onFormValueChanged: onFormValueChanged,
+                  insideScrollable: insideScrollable,
                 ),
         );
 
@@ -1814,34 +1898,28 @@ class ComponentRenderer {
         return Scaffold(
           backgroundColor: bg,
           bottomNavigationBar: bottomNavWidget,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: bodyChildren.map((childNode) {
-              final childWidget = render(
-                childNode,
-                isDesignMode: isDesignMode,
-                parentNode: node,
-                selectedNode: selectedNode,
-                hoveredNode: hoveredNode,
-                onSelect: onSelect,
-                onHover: onHover,
-                onDelete: onDelete,
-                onDuplicate: onDuplicate,
-                onMoveChild: onMoveChild,
-                onAddChild: onAddChild,
-                formValues: formValues,
-                onFormValueChanged: onFormValueChanged,
-              );
-              // Wrap scrollable children in Expanded so they scroll within the Scaffold height
-              final isScrollable =
-                  childNode.type == 'ListView' ||
-                  childNode.type == 'SingleChildScrollView' ||
-                  childNode.type == 'GridView';
-              if (isScrollable) {
-                return Expanded(child: childWidget);
-              }
-              return childWidget;
-            }).toList(),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: bodyChildren.map((childNode) {
+                return render(
+                  childNode,
+                  isDesignMode: isDesignMode,
+                  parentNode: node,
+                  selectedNode: selectedNode,
+                  hoveredNode: hoveredNode,
+                  onSelect: onSelect,
+                  onHover: onHover,
+                  onDelete: onDelete,
+                  onDuplicate: onDuplicate,
+                  onMoveChild: onMoveChild,
+                  onAddChild: onAddChild,
+                  formValues: formValues,
+                  onFormValueChanged: onFormValueChanged,
+                  insideScrollable: true,
+                );
+              }).toList(),
+            ),
           ),
         );
 

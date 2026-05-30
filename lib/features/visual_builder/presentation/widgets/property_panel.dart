@@ -786,6 +786,41 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
                     ],
                   ),
                 ),
+                // Action Buttons: Duplicate & Delete
+                IconButton(
+                  tooltip: "Duplicate Component",
+                  icon: const Icon(Icons.copy_all_rounded, size: 16, color: Color(0xFF5B4FCF)),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    controller.duplicateNode(selectedNode.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Component duplicated!"),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                ),
+                if (selectedNode.id != ref.read(visualBuilderProvider).rootNode.id) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: "Delete Component",
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                    padding: const EdgeInsets.all(6),
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      controller.deleteNode(selectedNode.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Component deleted"),
+                          backgroundColor: Colors.redAccent,
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -951,7 +986,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
         ] else if (node.type == 'Image') ...[
           _buildPropertyTextField(
             label: "Image Source URL",
-            value: props['src'] ?? '',
+            value: _getStyleValue('src', node, meta)?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'src': val}),
           ),
         ] else if (node.type == 'Icon' || node.type == 'IconButton' || node.type == 'FloatingButton') ...[
@@ -961,128 +996,204 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
     );
   }
 
+  // --- Style & Layout Helpers ---
+  bool _shouldShowStyleProperty(String key, ComponentNode node, ComponentMetadata? meta) {
+    if (node.properties.containsKey(key) || node.styles.containsKey(key)) {
+      return true;
+    }
+    if (meta != null && meta.defaultProperties.containsKey(key)) {
+      return true;
+    }
+    final type = node.type;
+    switch (key) {
+      case 'width':
+      case 'height':
+        return type == 'Container' || type == 'SizedBox' || type == 'Image' || type == 'Card';
+      case 'backgroundColor':
+        return type == 'Container' || type == 'Card' || type == 'Button' || type == 'FloatingButton' || type == 'Chip' || type == 'Badge';
+      case 'gradientStart':
+      case 'gradientEnd':
+        return type == 'Container' || type == 'Card';
+      case 'padding':
+      case 'margin':
+        return type == 'Container' || type == 'Card' || type == 'Row' || type == 'Column' || type == 'ListView' || type == 'GridView' || type == 'Wrap';
+      case 'borderRadius':
+        return type == 'Container' || type == 'Card' || type == 'Button' || type == 'Image';
+      case 'borderColor':
+      case 'borderWidth':
+        return type == 'Container' || type == 'Card';
+      case 'color':
+        return type == 'Icon' || type == 'IconButton' || type == 'Progress';
+      case 'textColor':
+        return type == 'Text' || type == 'Button' || type == 'Chip' || type == 'Badge';
+      case 'fontSize':
+        return type == 'Text' || type == 'Icon' || type == 'IconButton';
+      case 'fontWeight':
+        return type == 'Text';
+      case 'elevation':
+        return type == 'Card' || type == 'Container' || type == 'Button';
+    }
+    return false;
+  }
+
+  bool _shouldShowLayoutProperty(String key, ComponentNode node, ComponentMetadata? meta) {
+    if (node.properties.containsKey(key) || node.styles.containsKey(key)) {
+      return true;
+    }
+    if (meta != null && meta.defaultProperties.containsKey(key)) {
+      return true;
+    }
+    final type = node.type;
+    switch (key) {
+      case 'mainAxisAlignment':
+      case 'crossAxisAlignment':
+        return type == 'Row' || type == 'Column';
+      case 'spacing':
+        return type == 'Row' || type == 'Column' || type == 'Wrap' || type == 'GridView' || type == 'ListView';
+    }
+    return false;
+  }
+
+  dynamic _getStyleValue(String key, ComponentNode node, ComponentMetadata? meta, {dynamic fallback = ''}) {
+    if (node.styles.containsKey(key)) {
+      return node.styles[key] ?? fallback;
+    }
+    if (node.properties.containsKey(key)) {
+      return node.properties[key] ?? fallback;
+    }
+    if (meta != null && meta.defaultProperties.containsKey(key)) {
+      return meta.defaultProperties[key] ?? fallback;
+    }
+    return fallback;
+  }
+
   // --- Tab 2: Styles Properties ---
   Widget _buildStyleTab(ComponentNode node, VisualBuilderController controller) {
-    final props = node.properties;
+    final meta = ComponentRegistry.getByType(node.type);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (props.containsKey('backgroundColor'))
+        if (_shouldShowStyleProperty('backgroundColor', node, meta))
           _buildColorFieldWithPresets(
             label: "Background Color (Hex)",
-            value: props['backgroundColor'] ?? '',
+            value: _getStyleValue('backgroundColor', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'backgroundColor': val}),
           ),
-        _buildColorFieldWithPresets(
-          label: "Gradient Start Color (Hex)",
-          value: props['gradientStart'] ?? '',
-          onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientStart': val}),
-        ),
-        _buildColorFieldWithPresets(
-          label: "Gradient End Color (Hex)",
-          value: props['gradientEnd'] ?? '',
-          onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientEnd': val}),
-        ),
-        _buildColorFieldWithPresets(
-          label: "Border Color (Hex)",
-          value: props['borderColor'] ?? '',
-          onChanged: (val) => controller.updateNodeProperties(node.id, {'borderColor': val}),
-        ),
-        _buildPropertyTextField(
-          label: "Border Width (px)",
-          value: props['borderWidth']?.toString() ?? '',
-          onChanged: (val) => controller.updateNodeProperties(node.id, {'borderWidth': double.tryParse(val)}),
-        ),
-        if (props.containsKey('color'))
+        if (_shouldShowStyleProperty('gradientStart', node, meta))
+          _buildColorFieldWithPresets(
+            label: "Gradient Start Color (Hex)",
+            value: _getStyleValue('gradientStart', node, meta, fallback: '')?.toString() ?? '',
+            onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientStart': val}),
+          ),
+        if (_shouldShowStyleProperty('gradientEnd', node, meta))
+          _buildColorFieldWithPresets(
+            label: "Gradient End Color (Hex)",
+            value: _getStyleValue('gradientEnd', node, meta, fallback: '')?.toString() ?? '',
+            onChanged: (val) => controller.updateNodeProperties(node.id, {'gradientEnd': val}),
+          ),
+        if (_shouldShowStyleProperty('borderColor', node, meta))
+          _buildColorFieldWithPresets(
+            label: "Border Color (Hex)",
+            value: _getStyleValue('borderColor', node, meta, fallback: '')?.toString() ?? '',
+            onChanged: (val) => controller.updateNodeProperties(node.id, {'borderColor': val}),
+          ),
+        if (_shouldShowStyleProperty('borderWidth', node, meta))
+          _buildPropertyTextField(
+            label: "Border Width (px)",
+            value: _getStyleValue('borderWidth', node, meta, fallback: '')?.toString() ?? '',
+            onChanged: (val) => controller.updateNodeProperties(node.id, {'borderWidth': double.tryParse(val)}),
+          ),
+        if (_shouldShowStyleProperty('color', node, meta))
           _buildColorFieldWithPresets(
             label: "Theme Color (Hex)",
-            value: props['color'] ?? '',
+            value: _getStyleValue('color', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'color': val}),
           ),
-        if (props.containsKey('textColor'))
+        if (_shouldShowStyleProperty('textColor', node, meta))
           _buildColorFieldWithPresets(
             label: "Text Color (Hex)",
-            value: props['textColor'] ?? '',
+            value: _getStyleValue('textColor', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'textColor': val}),
           ),
-        if (props.containsKey('fontSize'))
+        if (_shouldShowStyleProperty('fontSize', node, meta))
           _buildPropertyTextField(
             label: "Font Size (pt)",
-            value: props['fontSize']?.toString() ?? '',
+            value: _getStyleValue('fontSize', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'fontSize': double.tryParse(val)}),
           ),
-        if (props.containsKey('fontWeight'))
+        if (_shouldShowStyleProperty('fontWeight', node, meta))
           _buildPropertyDropdown(
             label: "Font Weight",
-            value: props['fontWeight'] ?? 'normal',
-            options: ['normal', 'bold', 'w100', 'w300', 'w500', 'w700'],
+            value: _getStyleValue('fontWeight', node, meta, fallback: 'normal')?.toString() ?? 'normal',
+            options: const ['normal', 'bold', 'w100', 'w300', 'w500', 'w700'],
             onChanged: (val) => controller.updateNodeProperties(node.id, {'fontWeight': val}),
           ),
-        if (props.containsKey('padding'))
+        if (_shouldShowStyleProperty('padding', node, meta))
           _buildPropertyTextField(
             label: "Padding (All)",
-            value: props['padding']?.toString() ?? '',
+            value: _getStyleValue('padding', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'padding': double.tryParse(val)}),
           ),
-        if (props.containsKey('margin'))
+        if (_shouldShowStyleProperty('margin', node, meta))
           _buildPropertyTextField(
             label: "Margin (All)",
-            value: props['margin']?.toString() ?? '',
+            value: _getStyleValue('margin', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'margin': double.tryParse(val)}),
           ),
-        if (props.containsKey('borderRadius'))
+        if (_shouldShowStyleProperty('borderRadius', node, meta))
           _buildPropertyTextField(
             label: "Border Radius (px)",
-            value: props['borderRadius']?.toString() ?? '',
+            value: _getStyleValue('borderRadius', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'borderRadius': double.tryParse(val)}),
           ),
-        if (props.containsKey('width'))
+        if (_shouldShowStyleProperty('width', node, meta))
           _buildPropertyTextField(
             label: "Width (px)",
-            value: props['width']?.toString() ?? '',
+            value: _getStyleValue('width', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'width': double.tryParse(val)}),
           ),
-        if (props.containsKey('height'))
+        if (_shouldShowStyleProperty('height', node, meta))
           _buildPropertyTextField(
             label: "Height (px)",
-            value: props['height']?.toString() ?? '',
+            value: _getStyleValue('height', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'height': double.tryParse(val)}),
           ),
-        _buildPropertyTextField(
-          label: "Elevation (Shadow)",
-          value: props['elevation']?.toString() ?? '',
-          onChanged: (val) => controller.updateNodeProperties(node.id, {'elevation': double.tryParse(val)}),
-        ),
+        if (_shouldShowStyleProperty('elevation', node, meta))
+          _buildPropertyTextField(
+            label: "Elevation (Shadow)",
+            value: _getStyleValue('elevation', node, meta, fallback: '')?.toString() ?? '',
+            onChanged: (val) => controller.updateNodeProperties(node.id, {'elevation': double.tryParse(val)}),
+          ),
       ],
     );
   }
 
   // --- Tab 3: Layout Properties (Layout Containers only) ---
   Widget _buildLayoutTab(ComponentNode node, VisualBuilderController controller) {
-    final props = node.properties;
+    final meta = ComponentRegistry.getByType(node.type);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (props.containsKey('mainAxisAlignment'))
+        if (_shouldShowLayoutProperty('mainAxisAlignment', node, meta))
           _buildPropertyDropdown(
             label: "Main Axis Alignment",
-            value: props['mainAxisAlignment'] ?? 'start',
-            options: ['start', 'center', 'end', 'space_between', 'space_around', 'space_evenly'],
+            value: _getStyleValue('mainAxisAlignment', node, meta, fallback: 'start')?.toString() ?? 'start',
+            options: const ['start', 'center', 'end', 'space_between', 'space_around', 'space_evenly'],
             onChanged: (val) => controller.updateNodeProperties(node.id, {'mainAxisAlignment': val}),
           ),
-        if (props.containsKey('crossAxisAlignment'))
+        if (_shouldShowLayoutProperty('crossAxisAlignment', node, meta))
           _buildPropertyDropdown(
             label: "Cross Axis Alignment",
-            value: props['crossAxisAlignment'] ?? 'center',
-            options: ['start', 'center', 'end', 'stretch'],
+            value: _getStyleValue('crossAxisAlignment', node, meta, fallback: 'center')?.toString() ?? 'center',
+            options: const ['start', 'center', 'end', 'stretch'],
             onChanged: (val) => controller.updateNodeProperties(node.id, {'crossAxisAlignment': val}),
           ),
-        if (props.containsKey('spacing'))
+        if (_shouldShowLayoutProperty('spacing', node, meta))
           _buildPropertyTextField(
             label: "Spacing (Gap)",
-            value: props['spacing']?.toString() ?? '',
+            value: _getStyleValue('spacing', node, meta, fallback: '')?.toString() ?? '',
             onChanged: (val) => controller.updateNodeProperties(node.id, {'spacing': double.tryParse(val)}),
           ),
       ],
