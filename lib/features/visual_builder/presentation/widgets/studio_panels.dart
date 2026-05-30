@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -143,6 +145,54 @@ class RevoThemeStudioPanel extends ConsumerWidget {
     final tokens = ref.watch(themeTokensProvider);
     final notifier = ref.read(themeTokensProvider.notifier);
 
+    final presets = [
+      {
+        'name': 'Midnight Indigo',
+        'primary': '#5B4FCF',
+        'secondary': '#9E95F5',
+        'bg': '#F4F9FF',
+        'card': '#FFFFFF',
+        'text': '#1A1A2E',
+        'dark': false,
+      },
+      {
+        'name': 'Forest Mint',
+        'primary': '#009688',
+        'secondary': '#00BCD4',
+        'bg': '#E0F2F1',
+        'card': '#FFFFFF',
+        'text': '#004D40',
+        'dark': false,
+      },
+      {
+        'name': 'Sunset Amber',
+        'primary': '#FF9800',
+        'secondary': '#FF5722',
+        'bg': '#FFF3E0',
+        'card': '#FFFFFF',
+        'text': '#E65100',
+        'dark': false,
+      },
+      {
+        'name': 'Slate (Dark)',
+        'primary': '#607D8B',
+        'secondary': '#90A4AE',
+        'bg': '#1E293B',
+        'card': '#334155',
+        'text': '#F8FAFC',
+        'dark': true,
+      },
+      {
+        'name': 'Cyber Neon',
+        'primary': '#E91E63',
+        'secondary': '#9C27B0',
+        'bg': '#121212',
+        'card': '#1E1E1E',
+        'text': '#FFFFFF',
+        'dark': true,
+      },
+    ];
+
     void showGeneratedCode(BuildContext context, String code) {
       showDialog(
         context: context,
@@ -182,31 +232,268 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class GeneratedAppTheme {
-  static const primaryColor = Color(0xFF${tk.primaryColor.replaceAll('#', '')});
-  static const secondaryColor = Color(0xFF${tk.secondaryColor.replaceAll('#', '')});
-  static const backgroundColor = Color(0xFF${tk.backgroundColor.replaceAll('#', '')});
+  static const primaryColor = Color(0xFF\${tk.primaryColor.replaceAll('#', '')});
+  static const secondaryColor = Color(0xFF\${tk.secondaryColor.replaceAll('#', '')});
+  static const backgroundColor = Color(0xFF\${tk.backgroundColor.replaceAll('#', '')});
+  static const cardColor = Color(0xFF\${tk.cardColor.replaceAll('#', '')});
+  static const textPrimaryColor = Color(0xFF\${tk.textPrimaryColor.replaceAll('#', '')});
 
   static ThemeData get themeData {
+    final brightness = ${tk.isDarkMode} ? Brightness.dark : Brightness.light;
     return ThemeData(
-      brightness: Brightness.light,
+      brightness: brightness,
       primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
-      textTheme: GoogleFonts.${tk.fontFamily.toLowerCase()}TextTheme(),
+      cardColor: cardColor,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryColor,
+        brightness: brightness,
+        primary: primaryColor,
+        secondary: secondaryColor,
+        background: backgroundColor,
+        surface: cardColor,
+      ),
+      textTheme: GoogleFonts.\${tk.fontFamily.toLowerCase()}TextTheme(
+        ThemeData(brightness: brightness).textTheme.copyWith(
+          bodyLarge: TextStyle(color: textPrimaryColor),
+          bodyMedium: TextStyle(color: textPrimaryColor),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(${tk.borderRadius}),
+            borderRadius: BorderRadius.circular(\${tk.borderRadius}),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        border: ${tk.inputStyle == 'outline' ? 'OutlineInputBorder(borderRadius: BorderRadius.circular(${tk.borderRadius}))' : 'UnderlineInputBorder()'},
+        border: \${tk.inputStyle == 'outline' ? 'OutlineInputBorder(borderRadius: BorderRadius.circular(\${tk.borderRadius}))' : tk.inputStyle == 'underline' ? 'UnderlineInputBorder()' : 'OutlineInputBorder()'},
+        filled: \${tk.inputStyle == 'filled'},
+        fillColor: primaryColor.withOpacity(0.05),
       ),
     );
   }
 }
 ''';
+    }
+
+    Widget buildColorPickerRow(String label, String hexValue, ValueChanged<String> onChanged) {
+      final parsedColor = Color(int.parse(hexValue.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+      final curatedColors = [
+        '#5B4FCF', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', 
+        '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', 
+        '#FF5722', '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#795548', 
+        '#607D8B', '#121212', '#1E1E1E', '#FFFFFF', '#F4F9FF', '#F4F5F7'
+      ];
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          backgroundColor: RevoTheme.sidebarBackground,
+                          title: Text("Select $label", style: GoogleFonts.outfit(color: RevoTheme.textPrimary, fontSize: 16)),
+                          content: SizedBox(
+                            width: 250,
+                            height: 200,
+                            child: GridView.builder(
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 6,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                              itemCount: curatedColors.length,
+                              itemBuilder: (context, idx) {
+                                final hex = curatedColors[idx];
+                                final c = Color(int.parse(hex.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+                                final isSelected = hexValue.toUpperCase() == hex.toUpperCase();
+                                return GestureDetector(
+                                  onTap: () {
+                                    onChanged(hex);
+                                    Navigator.pop(context);
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: c,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFF5B4FCF) : Colors.grey.withOpacity(0.3),
+                                        width: isSelected ? 3.0 : 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: parsedColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: RevoTheme.cardBorder, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    key: ValueKey(hexValue),
+                    initialValue: hexValue,
+                    onChanged: onChanged,
+                    style: GoogleFonts.inter(fontSize: 12),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildTypographyPreview(ThemeTokens tk) {
+      final primary = Color(int.parse(tk.primaryColor.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+      final textCol = Color(int.parse(tk.textPrimaryColor.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: tk.isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: RevoTheme.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Typography Preview (${tk.fontFamily})",
+              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Heading Preview",
+              style: GoogleFonts.getFont(
+                tk.fontFamily,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "This is a preview paragraph showing body copy under your selected font family.",
+              style: GoogleFonts.getFont(
+                tk.fontFamily,
+                fontSize: 11,
+                color: textCol,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildComponentPreview(ThemeTokens tk) {
+      final primary = Color(int.parse(tk.primaryColor.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+      final textCol = Color(int.parse(tk.textPrimaryColor.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+      final cardBg = Color(int.parse(tk.cardColor.replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: tk.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF4F5F7),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: RevoTheme.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              "Component Style Preview",
+              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              color: cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(tk.borderRadius),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "Themed Card Container",
+                      style: GoogleFonts.getFont(tk.fontFamily, fontSize: 11, fontWeight: FontWeight.bold, color: textCol),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      enabled: false,
+                      style: GoogleFonts.getFont(tk.fontFamily, fontSize: 10),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        labelText: 'Themed Input',
+                        labelStyle: TextStyle(fontSize: 10, color: primary),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        border: tk.inputStyle == 'underline'
+                            ? const UnderlineInputBorder()
+                            : OutlineInputBorder(borderRadius: BorderRadius.circular(tk.borderRadius)),
+                        filled: tk.inputStyle == 'filled',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(tk.borderRadius)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      child: Text(
+                        "Themed Button",
+                        style: GoogleFonts.getFont(tk.fontFamily, fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return RevoStudioPanelWrapper(
@@ -215,20 +502,90 @@ class GeneratedAppTheme {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildTextField(
-            label: "Primary Color (Hex)",
-            value: tokens.primaryColor,
-            onChanged: (val) => notifier.updateTheme(tokens.copyWith(primaryColor: val)),
+          SwitchListTile(
+            title: Text("Dark Theme Mode", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary)),
+            subtitle: Text("Invert canvas colors for night view", style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary)),
+            value: tokens.isDarkMode,
+            onChanged: (val) {
+              final newBg = val ? '#121212' : '#FFFFFF';
+              final newCard = val ? '#1E1E1E' : '#FFFFFF';
+              final newText = val ? '#FFFFFF' : '#1A1A2E';
+              notifier.updateTheme(tokens.copyWith(
+                isDarkMode: val,
+                backgroundColor: newBg,
+                cardColor: newCard,
+                textPrimaryColor: newText,
+              ));
+            },
           ),
-          _buildTextField(
-            label: "Secondary Color (Hex)",
-            value: tokens.secondaryColor,
-            onChanged: (val) => notifier.updateTheme(tokens.copyWith(secondaryColor: val)),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text(
+            "Color Presets Palette",
+            style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.w600),
           ),
-          _buildTextField(
-            label: "Background Color (Hex)",
-            value: tokens.backgroundColor,
-            onChanged: (val) => notifier.updateTheme(tokens.copyWith(backgroundColor: val)),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 40,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: presets.length,
+              itemBuilder: (context, idx) {
+                final p = presets[idx];
+                final primaryColor = Color(int.parse((p['primary'] as String).replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+                final bgColor = Color(int.parse((p['bg'] as String).replaceAll('#', '').padLeft(8, 'FF'), radix: 16));
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ActionChip(
+                    onPressed: () {
+                      notifier.updateTheme(tokens.copyWith(
+                        primaryColor: p['primary'] as String,
+                        secondaryColor: p['secondary'] as String,
+                        backgroundColor: p['bg'] as String,
+                        cardColor: p['card'] as String,
+                        textPrimaryColor: p['text'] as String,
+                        isDarkMode: p['dark'] as bool,
+                      ));
+                    },
+                    avatar: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(width: 8, height: 8, decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle)),
+                        const SizedBox(width: 2),
+                        Container(width: 8, height: 8, decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle)),
+                      ],
+                    ),
+                    label: Text(p['name'] as String, style: const TextStyle(fontSize: 10)),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          buildColorPickerRow(
+            "Primary Color (Hex)",
+            tokens.primaryColor,
+            (val) => notifier.updateTheme(tokens.copyWith(primaryColor: val)),
+          ),
+          buildColorPickerRow(
+            "Secondary Color (Hex)",
+            tokens.secondaryColor,
+            (val) => notifier.updateTheme(tokens.copyWith(secondaryColor: val)),
+          ),
+          buildColorPickerRow(
+            "Background Color (Hex)",
+            tokens.backgroundColor,
+            (val) => notifier.updateTheme(tokens.copyWith(backgroundColor: val)),
+          ),
+          buildColorPickerRow(
+            "Card Container Color (Hex)",
+            tokens.cardColor,
+            (val) => notifier.updateTheme(tokens.copyWith(cardColor: val)),
+          ),
+          buildColorPickerRow(
+            "Text Primary Color (Hex)",
+            tokens.textPrimaryColor,
+            (val) => notifier.updateTheme(tokens.copyWith(textPrimaryColor: val)),
           ),
           _buildDropdown(
             label: "Font Family",
@@ -238,7 +595,7 @@ class GeneratedAppTheme {
           ),
           const SizedBox(height: 8),
           Text(
-            "Radius: ${tokens.borderRadius.toInt()} px",
+            "Border Radius: ${tokens.borderRadius.toInt()} px",
             style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textPrimary, fontWeight: FontWeight.w600),
           ),
           Slider(
@@ -259,7 +616,11 @@ class GeneratedAppTheme {
             options: ['outline', 'filled', 'underline'],
             onChanged: (val) => notifier.updateTheme(tokens.copyWith(inputStyle: val)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+          buildTypographyPreview(tokens),
+          const SizedBox(height: 12),
+          buildComponentPreview(tokens),
+          const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () {
               final code = generateThemeDart(tokens);
@@ -267,6 +628,10 @@ class GeneratedAppTheme {
             },
             icon: const Icon(Icons.code_rounded, size: 16, color: Colors.white),
             label: const Text("Generate theme.dart", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5B4FCF),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
         ],
       ),
@@ -284,6 +649,10 @@ class RevoApiStudioPanel extends ConsumerStatefulWidget {
 
 class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
   ApiConfig? _selectedConfig;
+  bool _isTesting = false;
+  int? _responseStatus;
+  String? _responseBody;
+  String? _testError;
 
   void _showCodeSnippetDialog(String title, String code) {
     showDialog(
@@ -318,7 +687,89 @@ class _RevoApiStudioPanelState extends ConsumerState<RevoApiStudioPanel> {
     );
   }
 
-  String _generateResponseModel(ApiConfig config) {
+  Future<void> _testApi(ApiConfig config) async {
+    setState(() {
+      _isTesting = true;
+      _responseStatus = null;
+      _responseBody = null;
+      _testError = null;
+    });
+
+    try {
+      String urlStr = config.baseUrl;
+      if (!urlStr.endsWith('/') && !config.endpoint.startsWith('/')) {
+        urlStr += '/';
+      }
+      urlStr += config.endpoint;
+
+      // Replace variables in URL paths
+      final variables = ref.read(appVariablesProvider);
+      for (final v in variables) {
+        urlStr = urlStr.replaceAll('{${v.name}}', v.currentValue?.toString() ?? '');
+      }
+
+      final uri = Uri.parse(urlStr);
+      final queryParams = Map<String, String>.from(uri.queryParameters)..addAll(config.queryParams);
+      final finalUri = uri.replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final headers = Map<String, String>.from(config.headers);
+      if (config.method != 'GET' && !headers.containsKey('Content-Type') && !headers.containsKey('content-type')) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      if (config.authentication.toLowerCase().contains('bearer')) {
+        headers['Authorization'] = 'Bearer dummy_jwt_token';
+      }
+
+      http.Response response;
+      switch (config.method.toUpperCase()) {
+        case 'POST':
+          response = await http.post(finalUri, headers: headers, body: config.requestBody);
+          break;
+        case 'PUT':
+          response = await http.put(finalUri, headers: headers, body: config.requestBody);
+          break;
+        case 'PATCH':
+          response = await http.patch(finalUri, headers: headers, body: config.requestBody);
+          break;
+        case 'DELETE':
+          response = await http.delete(finalUri, headers: headers, body: config.requestBody);
+          break;
+        default: // GET
+          response = await http.get(finalUri, headers: headers);
+          break;
+      }
+
+      String formattedBody = response.body;
+      try {
+        final parsed = json.decode(response.body);
+        formattedBody = const JsonEncoder.withIndent('  ').convert(parsed);
+      } catch (_) {}
+
+      setState(() {
+        _isTesting = false;
+        _responseStatus = response.statusCode;
+        _responseBody = formattedBody;
+      });
+    } catch (e) {
+      setState(() {
+        _isTesting = false;
+        _testError = e.toString();
+      });
+    }
+  }
+
+  String _generateResponseModel(ApiConfig config, String? responseBody) {
+    if (responseBody != null && responseBody.trim().isNotEmpty) {
+      try {
+        final decoded = json.decode(responseBody);
+        if (decoded is Map<String, dynamic>) {
+          return _generateModelFromJson(config.name.replaceAll(' ', ''), decoded);
+        } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map<String, dynamic>) {
+          return _generateModelFromJson(config.name.replaceAll(' ', ''), decoded.first as Map<String, dynamic>);
+        }
+      } catch (_) {}
+    }
     return '''
 class ${config.name.replaceAll(' ', '')}Response {
   final bool success;
@@ -350,6 +801,176 @@ class ${config.name.replaceAll(' ', '')}Response {
 ''';
   }
 
+  String _generateModelFromJson(String className, Map<String, dynamic> jsonMap) {
+    final buffer = StringBuffer();
+    buffer.writeln('class $className {');
+    
+    for (final entry in jsonMap.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      String type = 'dynamic';
+      if (value is String) {
+        type = 'String';
+      } else if (value is int) {
+        type = 'int';
+      } else if (value is double) {
+        type = 'double';
+      } else if (value is bool) {
+        type = 'bool';
+      } else if (value is List) {
+        type = 'List<dynamic>';
+      } else if (value is Map) {
+        type = 'Map<String, dynamic>';
+      }
+      
+      buffer.writeln('  final $type $key;');
+    }
+    
+    buffer.writeln('');
+    buffer.writeln('  $className({');
+    for (final key in jsonMap.keys) {
+      buffer.writeln('    required this.$key,');
+    }
+    buffer.writeln('  });');
+    buffer.writeln('');
+    
+    buffer.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+    buffer.writeln('    return $className(');
+    for (final entry in jsonMap.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      String fallback = 'null';
+      if (value is String) {
+        fallback = "''";
+      } else if (value is int) {
+        fallback = '0';
+      } else if (value is double) {
+        fallback = '0.0';
+      } else if (value is bool) {
+        fallback = 'false';
+      } else if (value is List) {
+        fallback = 'const []';
+      } else if (value is Map) {
+        fallback = 'const {}';
+      }
+      
+      if (fallback == 'null') {
+        buffer.writeln("      $key: json['$key'],");
+      } else {
+        buffer.writeln("      $key: json['$key'] ?? $fallback,");
+      }
+    }
+    buffer.writeln('    );');
+    buffer.writeln('  }');
+    buffer.writeln('');
+    
+    buffer.writeln('  Map<String, dynamic> toJson() {');
+    buffer.writeln('    return {');
+    for (final key in jsonMap.keys) {
+      buffer.writeln("      '$key': $key,");
+    }
+    buffer.writeln('    };');
+    buffer.writeln('  }');
+    
+    buffer.writeln('}');
+    return buffer.toString();
+  }
+
+  Widget _buildMapEditor({
+    required String title,
+    required Map<String, String> dataMap,
+    required void Function(Map<String, String>) onUpdated,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.w600),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF5B4FCF)),
+              onPressed: () {
+                final updMap = Map<String, String>.from(dataMap);
+                int count = 1;
+                final baseKey = title.toLowerCase().contains('header') ? 'header' : 'param';
+                while (updMap.containsKey('${baseKey}_$count')) {
+                  count++;
+                }
+                updMap['${baseKey}_$count'] = 'value';
+                onUpdated(updMap);
+              },
+            ),
+          ],
+        ),
+        if (dataMap.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Text(
+              "No $title configured",
+              style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary, fontStyle: FontStyle.italic),
+            ),
+          ),
+        ...dataMap.entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: entry.key,
+                    onChanged: (newKey) {
+                      if (newKey.trim().isEmpty || newKey == entry.key) return;
+                      final updMap = Map<String, String>.from(dataMap);
+                      final val = updMap.remove(entry.key);
+                      updMap[newKey] = val ?? '';
+                      onUpdated(updMap);
+                    },
+                    style: GoogleFonts.inter(fontSize: 11),
+                    decoration: const InputDecoration(
+                      hintText: 'Key',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: entry.value,
+                    onChanged: (newVal) {
+                      final updMap = Map<String, String>.from(dataMap);
+                      updMap[entry.key] = newVal;
+                      onUpdated(updMap);
+                    },
+                    style: GoogleFonts.inter(fontSize: 11),
+                    decoration: const InputDecoration(
+                      hintText: 'Value',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                  onPressed: () {
+                    final updMap = Map<String, String>.from(dataMap);
+                    updMap.remove(entry.key);
+                    onUpdated(updMap);
+                  },
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = ref.watch(apiConfigsProvider);
@@ -363,7 +984,14 @@ class ${config.name.replaceAll(' ', '')}Response {
         actions: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            onPressed: () => setState(() => _selectedConfig = null),
+            onPressed: () {
+              setState(() {
+                _selectedConfig = null;
+                _responseStatus = null;
+                _responseBody = null;
+                _testError = null;
+              });
+            },
           ),
         ],
         child: ListView(
@@ -415,17 +1043,52 @@ class ${config.name.replaceAll(' ', '')}Response {
                 notifier.updateConfig(config.id, upd);
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            _buildMapEditor(
+              title: "Headers",
+              dataMap: config.headers,
+              onUpdated: (newMap) {
+                final upd = config.copyWith(headers: newMap);
+                setState(() => _selectedConfig = upd);
+                notifier.updateConfig(config.id, upd);
+              },
+            ),
+            _buildMapEditor(
+              title: "Query Parameters",
+              dataMap: config.queryParams,
+              onUpdated: (newMap) {
+                final upd = config.copyWith(queryParams: newMap);
+                setState(() => _selectedConfig = upd);
+                notifier.updateConfig(config.id, upd);
+              },
+            ),
+            if (config.method != 'GET') ...[
+              Text(
+                "Request Body (JSON)",
+                style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                initialValue: config.requestBody,
+                onChanged: (val) {
+                  final upd = config.copyWith(requestBody: val);
+                  setState(() => _selectedConfig = upd);
+                  notifier.updateConfig(config.id, upd);
+                },
+                maxLines: 4,
+                style: GoogleFonts.sourceCodePro(fontSize: 11),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      _showCodeSnippetDialog(
-                        "Test API Response simulation",
-                        '{\n  "success": true,\n  "message": "API executed successfully",\n  "data": {\n    "id": "12345",\n    "status": "active"\n  }\n}',
-                      );
-                    },
+                    onPressed: () => _testApi(config),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       backgroundColor: Colors.teal[700],
@@ -439,7 +1102,7 @@ class ${config.name.replaceAll(' ', '')}Response {
                     onPressed: () {
                       _showCodeSnippetDialog(
                         "Generated Response Model",
-                        _generateResponseModel(config),
+                        _generateResponseModel(config, _responseBody),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -451,6 +1114,83 @@ class ${config.name.replaceAll(' ', '')}Response {
                 ),
               ],
             ),
+            const Divider(height: 24),
+            Text(
+              "Response Preview",
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            if (_isTesting)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5B4FCF)),
+                ),
+              )
+            else if (_testError != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  _testError!,
+                  style: GoogleFonts.inter(fontSize: 11, color: Colors.redAccent),
+                ),
+              )
+            else if (_responseStatus != null) ...[
+              Row(
+                children: [
+                  Text(
+                    "Status: ",
+                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: RevoTheme.textSecondary),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: (_responseStatus! >= 200 && _responseStatus! < 300)
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : Colors.red.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _responseStatus.toString(),
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: (_responseStatus! >= 200 && _responseStatus! < 300) ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_responseBody != null)
+                Container(
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: RevoTheme.cardBorder),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      _responseBody!,
+                      style: GoogleFonts.sourceCodePro(fontSize: 10, color: Colors.greenAccent),
+                    ),
+                  ),
+                ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  "No response loaded yet. Click Test Endpoint.",
+                  style: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary, fontStyle: FontStyle.italic),
+                ),
+              ),
           ],
         ),
       );
@@ -489,7 +1229,7 @@ class ${config.name.replaceAll(' ', '')}Response {
                 leading: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getMethodColor(api.method).withValues(alpha:0.15),
+                    color: _getMethodColor(api.method).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

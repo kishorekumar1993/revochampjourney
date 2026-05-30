@@ -152,7 +152,7 @@ class _CanvasToolbar extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Canvas Workspace — watches rootNode, selectedNode, hoveredNode, mode, size.
+// Canvas Workspace — watches rootNode, mode, size.
 // ─────────────────────────────────────────────────────────────────────────────
 class _CanvasWorkspace extends ConsumerWidget {
   const _CanvasWorkspace();
@@ -161,8 +161,6 @@ class _CanvasWorkspace extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasSize = ref.watch(builderCanvasSizeProvider);
     final rootNode = ref.watch(builderRootNodeProvider);
-    final selectedNode = ref.watch(builderSelectedNodeProvider);
-    final hoveredNode = ref.watch(builderHoveredNodeProvider);
     final isDesignMode = ref.watch(builderDesignModeProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
 
@@ -175,8 +173,6 @@ class _CanvasWorkspace extends ConsumerWidget {
           scale: canvasSize.scale,
           child: _DeviceMockup(
             rootNode: rootNode,
-            selectedNode: selectedNode,
-            hoveredNode: hoveredNode,
             isDesignMode: isDesignMode,
             canvasWidth: canvasSize.width,
             canvasHeight: canvasSize.height,
@@ -191,10 +187,8 @@ class _CanvasWorkspace extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Device Mockup Frame
 // ─────────────────────────────────────────────────────────────────────────────
-class _DeviceMockup extends StatelessWidget {
+class _DeviceMockup extends ConsumerWidget {
   final ComponentNode rootNode;
-  final ComponentNode? selectedNode;
-  final ComponentNode? hoveredNode;
   final bool isDesignMode;
   final double canvasWidth;
   final double canvasHeight;
@@ -202,8 +196,6 @@ class _DeviceMockup extends StatelessWidget {
 
   const _DeviceMockup({
     required this.rootNode,
-    required this.selectedNode,
-    required this.hoveredNode,
     required this.isDesignMode,
     required this.canvasWidth,
     required this.canvasHeight,
@@ -211,17 +203,15 @@ class _DeviceMockup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isMobile = canvasWidth < 600;
     final isScaffold = rootNode.type == 'Scaffold';
-    final isSelected = selectedNode?.id == rootNode.id;
+    final isSelected = ref.watch(visualBuilderProvider.select((s) => s.selectedNode?.id == rootNode.id));
 
     // Build the rendered content.
     Widget renderedContent = ComponentRenderer.render(
       rootNode,
       isDesignMode: isDesignMode,
-      selectedNode: selectedNode,
-      hoveredNode: hoveredNode,
       onSelect: controller.selectNode,
       onHover: controller.hoverNode,
       onDelete: (node) => controller.deleteNode(node.id),

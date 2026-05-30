@@ -144,42 +144,54 @@ class ThemeTokens {
   final String primaryColor;
   final String secondaryColor;
   final String backgroundColor;
+  final String cardColor;
+  final String textPrimaryColor;
   final String fontFamily;
   final double borderRadius;
   final double spacingUnit;
   final String buttonStyle; // elevated, outlined, flat
   final String inputStyle; // outline, filled, underline
+  final bool isDarkMode;
 
   ThemeTokens({
     this.primaryColor = '#5B4FCF',
     this.secondaryColor = '#6C757D',
     this.backgroundColor = '#FFFFFF',
+    this.cardColor = '#FFFFFF',
+    this.textPrimaryColor = '#1A1A2E',
     this.fontFamily = 'Outfit',
     this.borderRadius = 8.0,
     this.spacingUnit = 16.0,
     this.buttonStyle = 'elevated',
     this.inputStyle = 'outline',
+    this.isDarkMode = false,
   });
 
   ThemeTokens copyWith({
     String? primaryColor,
     String? secondaryColor,
     String? backgroundColor,
+    String? cardColor,
+    String? textPrimaryColor,
     String? fontFamily,
     double? borderRadius,
     double? spacingUnit,
     String? buttonStyle,
     String? inputStyle,
+    bool? isDarkMode,
   }) {
     return ThemeTokens(
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
       backgroundColor: backgroundColor ?? this.backgroundColor,
+      cardColor: cardColor ?? this.cardColor,
+      textPrimaryColor: textPrimaryColor ?? this.textPrimaryColor,
       fontFamily: fontFamily ?? this.fontFamily,
       borderRadius: borderRadius ?? this.borderRadius,
       spacingUnit: spacingUnit ?? this.spacingUnit,
       buttonStyle: buttonStyle ?? this.buttonStyle,
       inputStyle: inputStyle ?? this.inputStyle,
+      isDarkMode: isDarkMode ?? this.isDarkMode,
     );
   }
 }

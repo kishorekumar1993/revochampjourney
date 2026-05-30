@@ -38,16 +38,31 @@ class ComponentNode {
   });
 
   factory ComponentNode.fromJson(Map<String, dynamic> json) {
-    var childrenList = json['children'] as List? ?? [];
-    var actionsList = json['actions'] as List? ?? [];
+    // Robust extraction: if json contains a steps list or screenLayout, dig deeper.
+    if (json.containsKey('screenLayout') && json['screenLayout'] is Map) {
+      return ComponentNode.fromJson(Map<String, dynamic>.from(json['screenLayout'] as Map));
+    }
+    if (json.containsKey('steps') && json['steps'] is List && (json['steps'] as List).isNotEmpty) {
+      final firstStep = (json['steps'] as List).first;
+      if (firstStep is Map && firstStep.containsKey('screenLayout') && firstStep['screenLayout'] is Map) {
+        return ComponentNode.fromJson(Map<String, dynamic>.from(firstStep['screenLayout'] as Map));
+      }
+    }
 
-    Map<String, dynamic> rawProps = json['properties'] != null
-        ? Map<String, dynamic>.from(json['properties'])
-        : {};
+    final id = (json['id']?.toString() ?? '').isNotEmpty
+        ? json['id'].toString()
+        : 'node_${DateTime.now().millisecondsSinceEpoch}_${json.hashCode.abs() % 1000}';
+    final type = json['type']?.toString() ?? 'Container';
 
-    Map<String, dynamic> rawStyles = json['styles'] != null
-        ? Map<String, dynamic>.from(json['styles'])
-        : {};
+    Map<String, dynamic> rawProps = {};
+    if (json['properties'] is Map) {
+      rawProps = Map<String, dynamic>.from(json['properties'] as Map);
+    }
+
+    Map<String, dynamic> rawStyles = {};
+    if (json['styles'] is Map) {
+      rawStyles = Map<String, dynamic>.from(json['styles'] as Map);
+    }
 
     // Legacy style migration: if styles is empty, pull styling keys from properties.
     // Also always migrate style keys even if rawStyles is not empty, so properties bag
@@ -75,31 +90,45 @@ class ComponentNode {
       }
     }
 
+    Map<String, dynamic> rawResponsive = {};
+    if (json['responsive'] is Map) {
+      rawResponsive = Map<String, dynamic>.from(json['responsive'] as Map);
+    }
+
+    Map<String, dynamic> rawBindings = {};
+    if (json['bindings'] is Map) {
+      rawBindings = Map<String, dynamic>.from(json['bindings'] as Map);
+    }
+
+    Map<String, dynamic> rawAnimations = {};
+    if (json['animations'] is Map) {
+      rawAnimations = Map<String, dynamic>.from(json['animations'] as Map);
+    }
+
+    var childrenList = json['children'] is List ? (json['children'] as List) : [];
+    var actionsList = json['actions'] is List ? (json['actions'] as List) : [];
+
     return ComponentNode(
-      id: json['id'] ?? '',
-      type: json['type'] ?? 'Container',
-      displayName: json['displayName'],
-      parentId: json['parentId'],
-      sortOrder: json['sortOrder'],
-      isLocked: json['isLocked'] ?? false,
-      isVisible: json['isVisible'] ?? true,
-      isReusable: json['isReusable'] ?? false,
+      id: id,
+      type: type,
+      displayName: json['displayName']?.toString(),
+      parentId: json['parentId']?.toString(),
+      sortOrder: json['sortOrder'] is int ? json['sortOrder'] as int : null,
+      isLocked: json['isLocked'] == true,
+      isVisible: json['isVisible'] != false,
+      isReusable: json['isReusable'] == true,
       properties: rawProps,
       styles: rawStyles,
-      responsive: json['responsive'] != null
-          ? Map<String, dynamic>.from(json['responsive'])
-          : {},
-      bindings: json['bindings'] != null
-          ? Map<String, dynamic>.from(json['bindings'])
-          : {},
-      animations: json['animations'] != null
-          ? Map<String, dynamic>.from(json['animations'])
-          : {},
+      responsive: rawResponsive,
+      bindings: rawBindings,
+      animations: rawAnimations,
       children: childrenList
-          .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child)))
+          .where((child) => child is Map)
+          .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child as Map)))
           .toList(),
       actions: actionsList
-          .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action)))
+          .where((action) => action is Map)
+          .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action as Map)))
           .toList(),
     );
   }

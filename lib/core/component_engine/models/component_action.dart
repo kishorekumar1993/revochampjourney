@@ -8,10 +8,13 @@ class ComponentAction {
   });
 
   factory ComponentAction.fromJson(Map<String, dynamic> json) {
-    var stepsList = json['steps'] as List? ?? [];
+    final stepsList = json['steps'] is List ? (json['steps'] as List) : [];
     return ComponentAction(
-      event: json['event'] ?? 'onTap',
-      steps: stepsList.map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step))).toList(),
+      event: json['event']?.toString() ?? 'onTap',
+      steps: stepsList
+          .where((step) => step is Map)
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .toList(),
     );
   }
 
@@ -55,13 +58,14 @@ class ActionStep {
   });
 
   factory ActionStep.fromJson(Map<String, dynamic> json) {
-    final type = json['type'] ?? 'validate';
-    final id = json['id'] ?? 'step_${DateTime.now().millisecondsSinceEpoch}_${json.hashCode}';
-    final enabled = json['enabled'] ?? true;
-    final conditionsList = json['conditions'] as List? ?? [];
-    final successList = json['successSteps'] as List? ?? [];
-    final failureList = json['failureSteps'] as List? ?? [];
-    final nestedList = json['nestedSteps'] as List? ?? [];
+    final type = json['type']?.toString() ?? 'validate';
+    final id = json['id']?.toString() ?? 'step_${DateTime.now().millisecondsSinceEpoch}_${json.hashCode.abs() % 1000}';
+    final enabled = json['enabled'] == true || json['enabled'] == null;
+    
+    final conditionsList = json['conditions'] is List ? (json['conditions'] as List) : [];
+    final successList = json['successSteps'] is List ? (json['successSteps'] as List) : [];
+    final failureList = json['failureSteps'] is List ? (json['failureSteps'] as List) : [];
+    final nestedList = json['nestedSteps'] is List ? (json['nestedSteps'] as List) : [];
 
     final properties = Map<String, dynamic>.from(json)
       ..remove('id')
@@ -76,10 +80,22 @@ class ActionStep {
       id: id,
       type: type,
       enabled: enabled,
-      conditions: conditionsList.map((c) => Map<String, dynamic>.from(c)).toList(),
-      successSteps: successList.map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step))).toList(),
-      failureSteps: failureList.map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step))).toList(),
-      nestedSteps: nestedList.map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step))).toList(),
+      conditions: conditionsList
+          .where((c) => c is Map)
+          .map((c) => Map<String, dynamic>.from(c as Map))
+          .toList(),
+      successSteps: successList
+          .where((step) => step is Map)
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .toList(),
+      failureSteps: failureList
+          .where((step) => step is Map)
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .toList(),
+      nestedSteps: nestedList
+          .where((step) => step is Map)
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .toList(),
       properties: properties,
     );
   }

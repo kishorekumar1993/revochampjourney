@@ -1,119 +1,75 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/component_node.dart';
 import '../models/component_property.dart';
 import '../registry/component_registry.dart';
+import '../../../features/visual_builder/application/visual_builder_controller.dart';
+import '../../../features/visual_builder/application/studio_providers.dart';
+import '../../../features/journey_builder/application/controllers/journey_controller.dart';
 
-class ComponentRenderer {
-  static Widget render(
-    ComponentNode node, {
-    required bool isDesignMode,
-    ComponentNode? parentNode,
-    ComponentNode? selectedNode,
-    ComponentNode? hoveredNode,
-    void Function(ComponentNode?)? onSelect,
-    void Function(ComponentNode?)? onHover,
-    void Function(ComponentNode)? onDelete,
-    void Function(ComponentNode)? onDuplicate,
-    void Function(ComponentNode, ComponentNode, int)? onMoveChild,
-    void Function(ComponentNode, String)? onAddChild,
-    Map<String, dynamic> formValues = const {},
-    void Function(String, dynamic)? onFormValueChanged,
-    bool insideScrollable = false,
-  }) {
-    if (node.type == 'Expanded') {
-      Widget childWidget;
-      if (node.children.isEmpty) {
-        childWidget = isDesignMode
-            ? GestureDetector(
-                onTap: () {
-                  if (onSelect != null) onSelect(node);
-                },
-                child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
-              )
-            : const SizedBox.shrink();
-      } else {
-        childWidget = render(
-          node.children.first,
-          isDesignMode: isDesignMode,
-          parentNode: node,
-          selectedNode: selectedNode,
-          hoveredNode: hoveredNode,
-          onSelect: onSelect,
-          onHover: onHover,
-          onDelete: onDelete,
-          onDuplicate: onDuplicate,
-          onMoveChild: onMoveChild,
-          onAddChild: onAddChild,
-          formValues: formValues,
-          onFormValueChanged: onFormValueChanged,
-          insideScrollable: insideScrollable,
-        );
-      }
-      
-      if (insideScrollable) {
-        return childWidget;
-      }
+class ComponentRendererWidget extends ConsumerWidget {
+  final ComponentNode node;
+  final ComponentNode? parentNode;
+  final bool insideScrollable;
+  final bool? overrideIsDesignMode;
+  final Map<String, dynamic>? overrideFormValues;
+  final void Function(String, dynamic)? overrideOnFormValueChanged;
+  
+  final void Function(ComponentNode?)? overrideOnSelect;
+  final void Function(ComponentNode?)? overrideOnHover;
+  final void Function(ComponentNode)? overrideOnDelete;
+  final void Function(ComponentNode)? overrideOnDuplicate;
+  final void Function(ComponentNode, ComponentNode, int)? overrideOnMoveChild;
+  final void Function(ComponentNode, String)? overrideOnAddChild;
 
-      final bool isValidParent =
-          parentNode != null &&
-          (parentNode.type == 'Row' ||
-              parentNode.type == 'Column' ||
-              parentNode.type == 'Flex') &&
-          parentNode.type != 'SingleChildScrollView';
-      return isValidParent ? Expanded(child: childWidget) : childWidget;
-    }
+  const ComponentRendererWidget({
+    required ValueKey<String> super.key,
+    required this.node,
+    this.parentNode,
+    this.insideScrollable = false,
+    this.overrideIsDesignMode,
+    this.overrideFormValues,
+    this.overrideOnFormValueChanged,
+    this.overrideOnSelect,
+    this.overrideOnHover,
+    this.overrideOnDelete,
+    this.overrideOnDuplicate,
+    this.overrideOnMoveChild,
+    this.overrideOnAddChild,
+  });
 
-    if (node.type == 'Flexible') {
-      Widget childWidget;
-      if (node.children.isEmpty) {
-        childWidget = isDesignMode
-            ? GestureDetector(
-                onTap: () {
-                  if (onSelect != null) onSelect(node);
-                },
-                child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
-              )
-            : const SizedBox.shrink();
-      } else {
-        childWidget = render(
-          node.children.first,
-          isDesignMode: isDesignMode,
-          parentNode: node,
-          selectedNode: selectedNode,
-          hoveredNode: hoveredNode,
-          onSelect: onSelect,
-          onHover: onHover,
-          onDelete: onDelete,
-          onDuplicate: onDuplicate,
-          onMoveChild: onMoveChild,
-          onAddChild: onAddChild,
-          formValues: formValues,
-          onFormValueChanged: onFormValueChanged,
-          insideScrollable: insideScrollable,
-        );
-      }
-      
-      if (insideScrollable) {
-        return childWidget;
-      }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isDesignMode = overrideIsDesignMode ?? ref.watch(builderDesignModeProvider);
+    final themeTokens = ref.watch(themeTokensProvider);
+    
+    // Select selection and hovered state for this specific node to prevent full-canvas rebuilds
+    final isSelected = ref.watch(visualBuilderProvider.select((s) => s.selectedNode?.id == node.id));
+    final isHovered = ref.watch(visualBuilderProvider.select((s) => s.hoveredNode?.id == node.id));
+    
+    final Map<String, dynamic> formValues = overrideFormValues ?? ref.watch(formValuesProvider);
+    final controller = ref.read(visualBuilderProvider.notifier);
 
-      final bool isValidParent =
-          parentNode != null &&
-          (parentNode.type == 'Row' ||
-              parentNode.type == 'Column' ||
-              parentNode.type == 'Flex') &&
-          parentNode.type != 'SingleChildScrollView';
-      return isValidParent ? Flexible(child: childWidget) : childWidget;
-    }
+    // Resolve callbacks (using override if provided, otherwise defaulting to the global controller/providers)
+    final onSelect = overrideOnSelect ?? (ComponentNode? n) => controller.selectNode(n);
+    final onHover = overrideOnHover ?? (ComponentNode? n) => controller.hoverNode(n);
+    final onDelete = overrideOnDelete ?? (ComponentNode n) => controller.deleteNode(n.id);
+    final onDuplicate = overrideOnDuplicate ?? (ComponentNode n) => controller.duplicateNode(n.id);
+    final onMoveChild = overrideOnMoveChild ?? (ComponentNode parent, ComponentNode child, int idx) => controller.moveChildNode(parent, child, idx);
+    final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type) => controller.addChildNode(parent.id, type);
+    final onFormValueChanged = overrideOnFormValueChanged ?? (String field, dynamic val) {
+      ref.read(formValuesProvider.notifier).updateValue(field, val);
+    };
 
     // 1. Render the actual core widget
-    Widget coreWidget = _buildWidget(
+    Widget coreWidget = ComponentRenderer._buildWidget(
       node,
       isDesignMode: isDesignMode,
       parentNode: parentNode,
-      selectedNode: selectedNode,
-      hoveredNode: hoveredNode,
+      selectedNode: ref.read(visualBuilderProvider).selectedNode,
+      hoveredNode: ref.read(visualBuilderProvider).hoveredNode,
       onSelect: onSelect,
       onHover: onHover,
       onDelete: onDelete,
@@ -123,61 +79,46 @@ class ComponentRenderer {
       formValues: formValues,
       onFormValueChanged: onFormValueChanged,
       insideScrollable: insideScrollable,
+      themeTokens: themeTokens,
     );
 
     // Apply global padding and sizing
-    coreWidget = _applyPaddingAndSizing(coreWidget, node);
+    coreWidget = ComponentRenderer._applyPaddingAndSizing(coreWidget, node);
     // Apply global decoration (background color, border radius)
-    coreWidget = _applyDecoration(coreWidget, node);
+    coreWidget = ComponentRenderer._applyDecoration(coreWidget, node);
 
-    // 2. If Design Mode, wrap with interaction overlays (selection border, hover border, drag/drop wrappers)
+    // Disable interactions inside inputs when designing so they don't hijack drag/click gestures
     if (isDesignMode) {
-      final isSelected = selectedNode?.id == node.id;
-      final isHovered = hoveredNode?.id == node.id;
+      coreWidget = AbsorbPointer(child: coreWidget);
+    }
 
-      // ── Types that MUST NOT be wrapped in Draggable or DragTarget ──────────
-      // These widgets depend on clean BuildContext ancestry (Scaffold uses
-      // Navigator/MediaQuery InheritedWidgets; Scrollables use ScrollController;
-      // form fields use Form). Wrapping in Draggable duplicates the subtree and
-      // breaks the ancestor check at framework.dart:6417.
+    Widget resultWidget;
+
+    // 2. If Design Mode, wrap with interaction overlays
+    if (isDesignMode) {
       const nonDraggableTypes = {
         'Scaffold',
-        'SingleChildScrollView',
-        'ListView',
-        'GridView',
-        'Carousel',
-        'TextField',
-        'Dropdown',
-        'DatePicker',
-        'Search',
-        'FilePicker',
-        'Checkbox',
-        'RadioGroup',
-        'Switch',
-        'Slider',
-        'Tabs',
       };
 
       if (nonDraggableTypes.contains(node.type)) {
-        // Lightweight overlay: just a thin selection/hover border + tap-to-select.
-        // No Draggable, no DragTarget, no MouseRegion — keeps BuildContext ancestry clean.
+        // Lightweight overlay: selection/hover border + tap-to-select.
         final decorated = Container(
           decoration: BoxDecoration(
             border: Border.all(
               color: isSelected
                   ? const Color(0xFF5B4FCF)
                   : isHovered
-                  ? const Color(0xFF9E95F5)
-                  : Colors.transparent,
+                      ? const Color(0xFF9E95F5)
+                      : Colors.transparent,
               width: isSelected ? 2.0 : 1.0,
             ),
           ),
           child: coreWidget,
         );
-        return _applyMargin(
+        resultWidget = ComponentRenderer._applyMargin(
           GestureDetector(
             onTap: () {
-              if (onSelect != null) onSelect(node);
+              onSelect(node);
             },
             behavior: HitTestBehavior.translucent,
             child: Stack(
@@ -215,7 +156,7 @@ class ComponentRenderer {
                           const SizedBox(width: 6),
                           GestureDetector(
                             onTap: () {
-                              if (onDelete != null) onDelete(node);
+                              onDelete(node);
                             },
                             child: const Icon(
                               Icons.delete_forever_rounded,
@@ -232,152 +173,251 @@ class ComponentRenderer {
           ),
           node,
         );
-      }
+      } else {
+        // ── Full draggable overlay for regular widgets ─────────────────────────
+        final canAcceptChildren = ComponentRenderer._canAcceptChildren(node.type);
 
-      // ── Full draggable overlay for regular widgets ─────────────────────────
-      final canAcceptChildren = _canAcceptChildren(node.type);
-
-      Widget interactiveWrapper = MouseRegion(
-        onEnter: (_) {
-          if (onHover != null) onHover(node);
-        },
-        onExit: (_) {
-          if (onHover != null && hoveredNode?.id == node.id) {
-            onHover(null);
-          }
-        },
-        child: GestureDetector(
-          onTap: () {
-            if (onSelect != null) onSelect(node);
+        Widget interactiveWrapper = MouseRegion(
+          onEnter: (_) {
+            onHover(node);
           },
-          behavior: HitTestBehavior.opaque,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF5B4FCF)
-                        : isHovered
-                        ? const Color(0xFF9E95F5)
-                        : Colors.transparent,
-                    width: isSelected ? 2.0 : 1.5,
-                  ),
-                ),
-                child: coreWidget,
-              ),
-              if (isSelected)
-                Positioned(
-                  top: -24,
-                  left: 0,
-                  child: Container(
-                    height: 24,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+          onExit: (_) {
+            if (ref.read(visualBuilderProvider).hoveredNode?.id == node.id) {
+              onHover(null);
+            }
+          },
+          child: GestureDetector(
+            onTap: () {
+              onSelect(node);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF5B4FCF)
+                          : isHovered
+                              ? const Color(0xFF9E95F5)
+                              : Colors.transparent,
+                      width: isSelected ? 2.0 : 1.5,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF5B4FCF),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(4),
-                        topRight: Radius.circular(4),
+                  ),
+                  child: coreWidget,
+                ),
+                if (isSelected)
+                  Positioned(
+                    top: -24,
+                    left: 0,
+                    child: Container(
+                      height: 24,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF5B4FCF),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            node.type,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              onDuplicate(node);
+                            },
+                            child: const Icon(
+                              Icons.copy_rounded,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () {
+                              onDelete(node);
+                            },
+                            child: const Icon(
+                              Icons.delete_forever_rounded,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          node.type,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            if (onDuplicate != null) onDuplicate(node);
-                          },
-                          child: const Icon(
-                            Icons.copy_rounded,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () {
-                            if (onDelete != null) onDelete(node);
-                          },
-                          child: const Icon(
-                            Icons.delete_forever_rounded,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                ),
-            ],
-          ),
-        ),
-      );
-
-      // Drag source
-      Widget dragSource = Draggable<ComponentNode>(
-        data: node,
-        feedback: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF5B4FCF).withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              node.type,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              ],
             ),
           ),
-        ),
-        childWhenDragging: Opacity(opacity: 0.3, child: interactiveWrapper),
-        child: interactiveWrapper,
-      );
-
-      // If it is a container, wrap it with DragTarget to support dropping items into it
-      if (canAcceptChildren) {
-        return _applyMargin(
-          DragTarget<Object>(
-            onWillAcceptWithDetails: (details) => true,
-            onAcceptWithDetails: (details) {
-              final data = details.data;
-              if (data is String) {
-                if (onAddChild != null) onAddChild(node, data);
-              } else if (data is ComponentNode) {
-                if (onMoveChild != null && data.id != node.id) {
-                  onMoveChild(node, data, node.children.length);
-                }
-              }
-            },
-            builder: (context, candidateData, rejectedData) {
-              final isOver = candidateData.isNotEmpty;
-              return Container(
-                color: isOver ? const Color(0x155B4FCF) : Colors.transparent,
-                child: dragSource,
-              );
-            },
-          ),
-          node,
         );
-      }
 
-      return _applyMargin(dragSource, node);
+        // Drag source - using LongPressDraggable for smooth canvas panning/scrolling
+        Widget dragSource = LongPressDraggable<ComponentNode>(
+          data: node,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5B4FCF).withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                node.type,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+          childWhenDragging: Opacity(opacity: 0.3, child: interactiveWrapper),
+          child: interactiveWrapper,
+        );
+
+        // If it is a container, wrap it with DragTarget to support dropping items into it
+        if (canAcceptChildren) {
+          resultWidget = ComponentRenderer._applyMargin(
+            DragTarget<Object>(
+              onWillAcceptWithDetails: (details) => true,
+              onAcceptWithDetails: (details) {
+                final data = details.data;
+                if (data is String) {
+                  onAddChild(node, data);
+                } else if (data is ComponentNode) {
+                  if (data.id != node.id) {
+                    onMoveChild(node, data, node.children.length);
+                  }
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                final isOver = candidateData.isNotEmpty;
+                return Container(
+                  color: isOver ? const Color(0x155B4FCF) : Colors.transparent,
+                  child: dragSource,
+                );
+              },
+            ),
+            node,
+          );
+        } else {
+          resultWidget = ComponentRenderer._applyMargin(dragSource, node);
+        }
+      }
+    } else {
+      resultWidget = ComponentRenderer._applyMargin(coreWidget, node);
     }
 
-    return _applyMargin(coreWidget, node);
+    // Apply dynamic AppTheme from themeTokens if it's root or Scaffold
+    if (parentNode == null || node.type == 'Scaffold') {
+      final primaryHex = themeTokens.primaryColor.replaceAll('#', '').padLeft(8, 'FF');
+      final secondaryHex = themeTokens.secondaryColor.replaceAll('#', '').padLeft(8, 'FF');
+      final bgHex = themeTokens.backgroundColor.replaceAll('#', '').padLeft(8, 'FF');
+      final cardHex = themeTokens.cardColor.replaceAll('#', '').padLeft(8, 'FF');
+      final textHex = themeTokens.textPrimaryColor.replaceAll('#', '').padLeft(8, 'FF');
+
+      final primary = Color(int.parse(primaryHex, radix: 16));
+      final secondary = Color(int.parse(secondaryHex, radix: 16));
+      final bg = Color(int.parse(bgHex, radix: 16));
+      final cardColor = Color(int.parse(cardHex, radix: 16));
+      final textColor = Color(int.parse(textHex, radix: 16));
+
+      final brightness = themeTokens.isDarkMode ? Brightness.dark : Brightness.light;
+
+      TextTheme txtTheme;
+      try {
+        txtTheme = GoogleFonts.getTextTheme(themeTokens.fontFamily);
+      } catch (_) {
+        txtTheme = const TextTheme();
+      }
+
+      final appTheme = ThemeData(
+        brightness: brightness,
+        primaryColor: primary,
+        scaffoldBackgroundColor: bg,
+        cardColor: cardColor,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: brightness,
+          primary: primary,
+          secondary: secondary,
+          surface: cardColor,
+        ),
+        textTheme: txtTheme.copyWith(
+          bodyLarge: TextStyle(color: textColor),
+          bodyMedium: TextStyle(color: textColor),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(themeTokens.borderRadius),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: themeTokens.inputStyle == 'outline'
+              ? OutlineInputBorder(borderRadius: BorderRadius.circular(themeTokens.borderRadius))
+              : themeTokens.inputStyle == 'underline'
+                  ? const UnderlineInputBorder()
+                  : const OutlineInputBorder(),
+          filled: themeTokens.inputStyle == 'filled',
+        ),
+      );
+
+      resultWidget = Theme(
+        data: appTheme,
+        child: resultWidget,
+      );
+    }
+
+    return resultWidget;
+  }
+}
+
+class ComponentRenderer {
+  static Widget render(
+    ComponentNode node, {
+    required bool isDesignMode,
+    ComponentNode? parentNode,
+    ComponentNode? selectedNode,
+    ComponentNode? hoveredNode,
+    void Function(ComponentNode?)? onSelect,
+    void Function(ComponentNode?)? onHover,
+    void Function(ComponentNode)? onDelete,
+    void Function(ComponentNode)? onDuplicate,
+    void Function(ComponentNode, ComponentNode, int)? onMoveChild,
+    void Function(ComponentNode, String)? onAddChild,
+    Map<String, dynamic> formValues = const {},
+    void Function(String, dynamic)? onFormValueChanged,
+    bool insideScrollable = false,
+  }) {
+    return ComponentRendererWidget(
+      key: ValueKey(node.id),
+      node: node,
+      parentNode: parentNode,
+      insideScrollable: insideScrollable,
+      overrideIsDesignMode: isDesignMode,
+      overrideFormValues: formValues,
+      overrideOnFormValueChanged: onFormValueChanged,
+      overrideOnSelect: onSelect,
+      overrideOnHover: onHover,
+      overrideOnDelete: onDelete,
+      overrideOnDuplicate: onDuplicate,
+      overrideOnMoveChild: onMoveChild,
+      overrideOnAddChild: onAddChild,
+    );
   }
 
   static Widget _buildWidget(
@@ -395,6 +435,7 @@ class ComponentRenderer {
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
+    ThemeTokens? themeTokens,
   }) {
     final properties = node.properties;
     // Note: node.styles is accessed via getStyle() helper below.
@@ -525,7 +566,7 @@ class ComponentRenderer {
           properties['crossAxisAlignment'],
         );
 
-        Widget buildRow(CrossAxisAlignment effectiveCrossAlign) {
+        Widget buildRow(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedWidth) {
           if (node.children.isEmpty && isDesignMode) {
             return Row(
               mainAxisAlignment: mainAlign,
@@ -558,30 +599,26 @@ class ComponentRenderer {
                     childNode.properties['flex']?.toString() ??
                     '',
               );
-              // if (flexVal != null) {
-              //   return Expanded(flex: flexVal, child: childWidget);
-              // }
-              if (flexVal != null &&
+              if (flexVal != null && flexVal > 0 && hasBoundedWidth &&
                   parentNode?.type != "SingleChildScrollView") {
                 return Expanded(flex: flexVal, child: childWidget);
+              }
+              if (isDesignMode && hasBoundedWidth) {
+                return Flexible(fit: FlexFit.loose, child: childWidget);
               }
               return childWidget;
             }).toList(),
           );
         }
 
-        if (crossAlign == CrossAxisAlignment.stretch) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return buildRow(
-                constraints.hasBoundedHeight
-                    ? crossAlign
-                    : CrossAxisAlignment.start,
-              );
-            },
-          );
-        }
-        return buildRow(crossAlign);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final effectiveCrossAlign = (crossAlign == CrossAxisAlignment.stretch && !constraints.hasBoundedHeight)
+                ? CrossAxisAlignment.start
+                : crossAlign;
+            return buildRow(effectiveCrossAlign, constraints.hasBoundedWidth);
+          },
+        );
 
       case 'Column':
         final mainAlign = PropertyParser.parseMainAxisAlignment(
@@ -594,7 +631,7 @@ class ComponentRenderer {
           getStyle('mainAxisSize') ?? properties['mainAxisSize'],
         );
 
-        Widget buildColumn(CrossAxisAlignment effectiveCrossAlign) {
+        Widget buildColumn(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedHeight) {
           if (node.children.isEmpty && isDesignMode) {
             return Column(
               mainAxisAlignment: mainAlign,
@@ -630,27 +667,26 @@ class ComponentRenderer {
                     childNode.properties['flex']?.toString() ??
                     '',
               );
-              if (flexVal != null && flexVal > 0 &&
-  parentNode?.type != "SingleChildScrollView") {
+              if (flexVal != null && flexVal > 0 && hasBoundedHeight &&
+                  parentNode?.type != "SingleChildScrollView") {
                 return Expanded(flex: flexVal, child: childWidget);
+              }
+              if (isDesignMode && hasBoundedHeight) {
+                return Flexible(fit: FlexFit.loose, child: childWidget);
               }
               return childWidget;
             }).toList(),
           );
         }
 
-        if (crossAlign == CrossAxisAlignment.stretch) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return buildColumn(
-                constraints.hasBoundedWidth
-                    ? crossAlign
-                    : CrossAxisAlignment.start,
-              );
-            },
-          );
-        }
-        return buildColumn(crossAlign);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final effectiveCrossAlign = (crossAlign == CrossAxisAlignment.stretch && !constraints.hasBoundedWidth)
+                ? CrossAxisAlignment.start
+                : crossAlign;
+            return buildColumn(effectiveCrossAlign, constraints.hasBoundedHeight);
+          },
+        );
 
       case 'Stack':
         final stackFit = () {
@@ -815,11 +851,13 @@ class ComponentRenderer {
       case 'Card':
         final elevation =
             double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 2.0;
-        final bg = PropertyParser.parseColor(getStyle('backgroundColor'));
+        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ??
+            PropertyParser.parseColor(themeTokens?.cardColor);
         final pad = PropertyParser.parsePadding(getStyle('padding'));
         final marg = PropertyParser.parsePadding(getStyle('margin'));
         final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 12.0;
+            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ??
+            themeTokens?.borderRadius ?? 12.0;
         return Card(
           elevation: elevation,
           color: bg,
@@ -907,7 +945,9 @@ class ComponentRenderer {
             PropertyParser.parseColor(getStyle('backgroundColor')) ??
             (isEnabled ? Colors.white : Colors.grey[200]);
         final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 4.0;
+            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ??
+            themeTokens?.borderRadius ?? 4.0;
+        final inputStyle = themeTokens?.inputStyle ?? 'outline';
 
         return TextFormField(
           initialValue: isDesignMode ? null : currentValue,
@@ -921,10 +961,12 @@ class ComponentRenderer {
           decoration: InputDecoration(
             labelText: label + (isRequired ? ' *' : ''),
             hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            filled: true,
+            border: inputStyle == 'underline'
+                ? const UnderlineInputBorder()
+                : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+            filled: inputStyle == 'filled' || bg != null,
             fillColor: bg,
           ),
         );
@@ -1096,15 +1138,17 @@ class ComponentRenderer {
         final text = properties['label'] ?? 'Click Me';
         final bg =
             PropertyParser.parseColor(getStyle('backgroundColor')) ??
+            PropertyParser.parseColor(themeTokens?.primaryColor) ??
             const Color(0xFF5B4FCF);
         final fg =
             PropertyParser.parseColor(
               getStyle('textColor') ?? getStyle('color'),
             ) ??
+            PropertyParser.parseColor(themeTokens?.secondaryColor) ??
             Colors.white;
         final radius = PropertyParser.parseDouble(
           getStyle('borderRadius'),
-          8.0,
+          themeTokens?.borderRadius ?? 8.0,
         );
         final btnWidth = double.tryParse(getStyle('width')?.toString() ?? '');
         final btnHeight = double.tryParse(getStyle('height')?.toString() ?? '');
@@ -1197,6 +1241,7 @@ class ComponentRenderer {
         final fontStyle = PropertyParser.parseFontStyle(getStyle('fontStyle'));
         final col =
             PropertyParser.parseColor(getStyle('color')) ??
+            PropertyParser.parseColor(themeTokens?.textPrimaryColor) ??
             const Color(0xFF1A1A2E);
         final textAlign = PropertyParser.parseTextAlign(getStyle('textAlign'));
         final maxLines = int.tryParse(getStyle('maxLines')?.toString() ?? '');
@@ -1220,14 +1265,17 @@ class ComponentRenderer {
           textAlign: textAlign,
           maxLines: maxLines,
           overflow: overflow,
-          style: TextStyle(
-            fontSize: size,
-            fontWeight: weight,
-            fontStyle: fontStyle,
-            color: col,
-            letterSpacing: letterSpacing,
-            height: lineHeight,
-            decoration: decoration,
+          style: GoogleFonts.getFont(
+            themeTokens?.fontFamily ?? 'Outfit',
+            textStyle: TextStyle(
+              fontSize: size,
+              fontWeight: weight,
+              fontStyle: fontStyle,
+              color: col,
+              letterSpacing: letterSpacing,
+              height: lineHeight,
+              decoration: decoration,
+            ),
           ),
         );
 
@@ -1735,6 +1783,7 @@ class ComponentRenderer {
       case 'Scaffold':
         final bg =
             PropertyParser.parseColor(getStyle('backgroundColor')) ??
+            PropertyParser.parseColor(themeTokens?.backgroundColor) ??
             Colors.white;
         final bottomNavNode = node.children
             .where((c) => c.type == 'BottomNavigationBar')
