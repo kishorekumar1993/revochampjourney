@@ -35,7 +35,9 @@ class WebFileExporter {
       final jsonString = jsonEncode(files);
       await _downloadProjectZip(jsonString.toJS).toDart;
     } catch (e) {
-      print('Error exporting files to ZIP: $e');
+      if (kDebugMode) {
+        print('Error exporting files to ZIP: $e');
+      }
     }
   }
 }

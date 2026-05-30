@@ -265,8 +265,6 @@ String generatecontrollerClass(
   // Helper to get value/label field names from config
   String dropdownValueField(Map<String, dynamic> field) =>
       field['valueField']?.toString() ?? 'id';
-  String dropdownLabelField(Map<String, dynamic> field) =>
-      field['labelField']?.toString() ?? 'name';
 
   // ================= FIELD DECLARATIONS =================
   for (final item in flatFields) {
