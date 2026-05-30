@@ -1,7 +1,6 @@
 // lib/codegenerator/getx/getx_core_generator.dart
 // Improved GetX core file generator – enterprise grade
 
-import 'dart:io';
 
 /// Generate all global GetX core files.
 /// Call this once per project (e.g., in your main generation script).

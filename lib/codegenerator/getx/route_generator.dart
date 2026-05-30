@@ -1,4 +1,4 @@
-import 'package:revojourneytryone/codegenerator/getx/getx_model_naming.dart';
+
 
 /// Generates the GetX router files and returns them in the standard map format.
 ///

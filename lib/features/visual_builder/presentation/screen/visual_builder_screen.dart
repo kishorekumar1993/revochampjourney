@@ -6,7 +6,16 @@ import '../widgets/builder_canvas.dart';
 import '../widgets/component_tree.dart';
 import '../widgets/property_panel.dart';
 import '../widgets/builder_sidebar.dart';
-import '../widgets/studio_panels.dart';
+import '../widgets/studio_panels/action_flow_panel.dart';
+import '../widgets/studio_panels/api_panel.dart';
+import '../widgets/studio_panels/assets_panel.dart';
+import '../widgets/studio_panels/database_panel.dart';
+import '../widgets/studio_panels/generated_code_panel.dart';
+import '../widgets/studio_panels/pages_panel.dart';
+import '../widgets/studio_panels/responsive_panel.dart';
+import '../widgets/studio_panels/settings_panel.dart';
+import '../widgets/studio_panels/theme_panel.dart';
+import '../widgets/studio_panels/variable_panel.dart';
 
 class VisualBuilderScreen extends ConsumerStatefulWidget {
   const VisualBuilderScreen({super.key});
