@@ -3,6 +3,12 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/journey_models.dart';
 
+import 'journey_history_manager.dart';
+import 'journey_step_manager.dart';
+import 'journey_validation_manager.dart';
+import 'journey_import_manager.dart';
+import 'journey_export_manager.dart';
+
 // Initial state creator to populate "Motor Insurance" as seen in the mockup
 JourneyConfig getInitialJourney() {
   return JourneyConfig(
@@ -68,47 +74,72 @@ JourneyConfig getInitialJourney() {
           ),
         ],
         validations: [
-          StepValidation(type: "required", field: "fullName", message: "Full Name is required"),
-          StepValidation(type: "required", field: "mobile", message: "Mobile number is required"),
-          StepValidation(type: "required", field: "dob", message: "Date of Birth is required"),
+          StepValidation(
+            type: "required",
+            field: "fullName",
+            message: "Full Name is required",
+          ),
+          StepValidation(
+            type: "required",
+            field: "mobile",
+            message: "Mobile number is required",
+          ),
+          StepValidation(
+            type: "required",
+            field: "dob",
+            message: "Date of Birth is required",
+          ),
         ],
         conditions: [
-          StepCondition(type: "visibleIf", field: "gender", operator: "equals", value: "Female"),
-          StepCondition(type: "enableIf", field: "email", operator: "contains", value: "@"),
+          StepCondition(
+            type: "visibleIf",
+            field: "gender",
+            operator: "equals",
+            value: "Female",
+          ),
+          StepCondition(
+            type: "enableIf",
+            field: "email",
+            operator: "contains",
+            value: "@",
+          ),
         ],
         apiCalls: [
-          StepAPI(method: "POST", url: "/api/v1/personal-info", description: "Save personal details info"),
+          StepAPI(
+            method: "POST",
+            url: "/api/v1/personal-info",
+            description: "Save personal details info",
+          ),
         ],
         actions: [
-          StepAction(trigger: "onSubmit", actionType: "apiCall", details: "Submit personal details"),
+          StepAction(
+            trigger: "onSubmit",
+            actionType: "apiCall",
+            details: "Submit personal details",
+          ),
         ],
         screenLayout: {
           "id": "root-scaffold",
           "type": "Column",
           "properties": {
             "mainAxisAlignment": "start",
-            "crossAxisAlignment": "stretch"
+            "crossAxisAlignment": "stretch",
           },
-          "styles": {
-            "padding": 16.0
-          },
+          "styles": {"padding": 16.0},
           "children": [
             {
               "id": "banner_image",
               "type": "Image",
-              "properties": {
-                "label": "Banner Image"
-              },
+              "properties": {"label": "Banner Image"},
               "styles": {
-                "src": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800",
+                "src":
+                    "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800",
                 "height": 160.0,
                 "borderRadius": 12.0,
-                "margin": {
-                  "bottom": 16.0
-                }
+                "margin": {"bottom": 16.0},
               },
               "children": [],
-              "actions": []
+              "actions": [],
             },
             {
               "id": "details_card",
@@ -119,9 +150,7 @@ JourneyConfig getInitialJourney() {
                 "backgroundColor": "#FFFFFF",
                 "borderRadius": 16.0,
                 "padding": 16.0,
-                "margin": {
-                  "bottom": 16.0
-                }
+                "margin": {"bottom": 16.0},
               },
               "children": [
                 {
@@ -129,39 +158,35 @@ JourneyConfig getInitialJourney() {
                   "type": "Row",
                   "properties": {
                     "mainAxisAlignment": "space_between",
-                    "crossAxisAlignment": "center"
+                    "crossAxisAlignment": "center",
                   },
                   "styles": {},
                   "children": [
                     {
                       "id": "card_title",
                       "type": "Text",
-                      "properties": {
-                        "label": "Motor Insurance Details"
-                      },
+                      "properties": {"label": "Motor Insurance Details"},
                       "styles": {
                         "fontSize": 18.0,
                         "fontWeight": "bold",
-                        "color": "#1A1A2E"
+                        "color": "#1A1A2E",
                       },
                       "children": [],
-                      "actions": []
+                      "actions": [],
                     },
                     {
                       "id": "card_badge",
                       "type": "Badge",
-                      "properties": {
-                        "label": "Step 1 of 4"
-                      },
+                      "properties": {"label": "Step 1 of 4"},
                       "styles": {
                         "backgroundColor": "#E8E7FD",
-                        "textColor": "#5B4FCF"
+                        "textColor": "#5B4FCF",
                       },
                       "children": [],
-                      "actions": []
-                    }
+                      "actions": [],
+                    },
                   ],
-                  "actions": []
+                  "actions": [],
                 },
                 {
                   "id": "card_divider",
@@ -170,13 +195,10 @@ JourneyConfig getInitialJourney() {
                   "styles": {
                     "height": 1.0,
                     "color": "#E5E7EB",
-                    "margin": {
-                      "top": 12.0,
-                      "bottom": 12.0
-                    }
+                    "margin": {"top": 12.0, "bottom": 12.0},
                   },
                   "children": [],
-                  "actions": []
+                  "actions": [],
                 },
                 {
                   "id": "fullName_field",
@@ -185,18 +207,18 @@ JourneyConfig getInitialJourney() {
                     "fieldName": "fullName",
                     "label": "Full Name",
                     "hint": "Enter full name",
-                    "required": true
+                    "required": true,
                   },
                   "styles": {},
                   "children": [],
-                  "actions": []
+                  "actions": [],
                 },
                 {
                   "id": "phone_dob_row",
                   "type": "Row",
                   "properties": {
                     "mainAxisAlignment": "start",
-                    "crossAxisAlignment": "start"
+                    "crossAxisAlignment": "start",
                   },
                   "styles": {},
                   "children": [
@@ -213,14 +235,14 @@ JourneyConfig getInitialJourney() {
                             "fieldName": "mobile",
                             "label": "Mobile Number",
                             "hint": "Enter mobile number",
-                            "required": true
+                            "required": true,
                           },
                           "styles": {},
                           "children": [],
-                          "actions": []
-                        }
+                          "actions": [],
+                        },
                       ],
-                      "actions": []
+                      "actions": [],
                     },
                     {
                       "id": "dob_expanded",
@@ -235,17 +257,17 @@ JourneyConfig getInitialJourney() {
                             "fieldName": "dob",
                             "label": "Date of Birth",
                             "hint": "DD/MM/YYYY",
-                            "required": true
+                            "required": true,
                           },
                           "styles": {},
                           "children": [],
-                          "actions": []
-                        }
+                          "actions": [],
+                        },
                       ],
-                      "actions": []
-                    }
+                      "actions": [],
+                    },
                   ],
-                  "actions": []
+                  "actions": [],
                 },
                 {
                   "id": "email_field",
@@ -254,11 +276,11 @@ JourneyConfig getInitialJourney() {
                     "fieldName": "email",
                     "label": "Email Address",
                     "hint": "Enter email address",
-                    "required": false
+                    "required": false,
                   },
                   "styles": {},
                   "children": [],
-                  "actions": []
+                  "actions": [],
                 },
                 {
                   "id": "gender_field",
@@ -266,14 +288,14 @@ JourneyConfig getInitialJourney() {
                   "properties": {
                     "fieldName": "gender",
                     "label": "Gender",
-                    "options": ["Male", "Female", "Other"]
+                    "options": ["Male", "Female", "Other"],
                   },
                   "styles": {},
                   "children": [],
-                  "actions": []
-                }
+                  "actions": [],
+                },
               ],
-              "actions": []
+              "actions": [],
             },
             {
               "id": "notice_box",
@@ -284,9 +306,7 @@ JourneyConfig getInitialJourney() {
                 "padding": 12.0,
                 "gradientStart": "#5B4FCF",
                 "gradientEnd": "#8B5CF6",
-                "margin": {
-                  "bottom": 16.0
-                }
+                "margin": {"bottom": 16.0},
               },
               "children": [
                 {
@@ -294,53 +314,44 @@ JourneyConfig getInitialJourney() {
                   "type": "Row",
                   "properties": {
                     "mainAxisAlignment": "start",
-                    "crossAxisAlignment": "center"
+                    "crossAxisAlignment": "center",
                   },
                   "styles": {},
                   "children": [
                     {
                       "id": "notice_icon",
                       "type": "Icon",
-                      "properties": {
-                        "icon": "info"
-                      },
-                      "styles": {
-                        "fontSize": 20.0,
-                        "color": "#FFFFFF"
-                      },
+                      "properties": {"icon": "info"},
+                      "styles": {"fontSize": 20.0, "color": "#FFFFFF"},
                       "children": [],
-                      "actions": []
+                      "actions": [],
                     },
                     {
                       "id": "notice_text",
                       "type": "Text",
                       "properties": {
-                        "label": " Provide correct details to get instant policy quotes."
+                        "label":
+                            " Provide correct details to get instant policy quotes.",
                       },
-                      "styles": {
-                        "fontSize": 12.0,
-                        "color": "#FFFFFF"
-                      },
+                      "styles": {"fontSize": 12.0, "color": "#FFFFFF"},
                       "children": [],
-                      "actions": []
-                    }
+                      "actions": [],
+                    },
                   ],
-                  "actions": []
-                }
+                  "actions": [],
+                },
               ],
-              "actions": []
+              "actions": [],
             },
             {
               "id": "submit_btn",
               "type": "Button",
-              "properties": {
-                "label": "Continue to Vehicle Details"
-              },
+              "properties": {"label": "Continue to Vehicle Details"},
               "styles": {
                 "backgroundColor": "#5B4FCF",
                 "textColor": "#FFFFFF",
                 "borderRadius": 8.0,
-                "elevation": 3.0
+                "elevation": 3.0,
               },
               "children": [],
               "actions": [
@@ -350,19 +361,19 @@ JourneyConfig getInitialJourney() {
                     {
                       "id": "step_validate_1",
                       "type": "validate",
-                      "enabled": true
+                      "enabled": true,
                     },
                     {
                       "id": "step_navigate_1",
                       "type": "navigate",
                       "enabled": true,
-                      "pageId": "vehicle"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+                      "pageId": "vehicle",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
         },
       ),
       JourneyStep(
@@ -506,126 +517,17 @@ final activeStepIdProvider = StateProvider<String>((ref) => "personal");
 // Selected Field ID (the one selected in the design canvas)
 final selectedFieldIdProvider = StateProvider<String?>((ref) => null);
 
-// History State for Undo/Redo operations
-class HistoryState {
-  final List<JourneyConfig> past;
-  final JourneyConfig present;
-  final List<JourneyConfig> future;
-
-  HistoryState({
-    required this.past,
-    required this.present,
-    required this.future,
-  });
-}
-
-class HistoryNotifier extends StateNotifier<HistoryState> {
-  final Ref _ref;
-  static const int maxHistoryLength = 50;
-  bool _isUndoing = false;
-
-  HistoryNotifier(this._ref, JourneyConfig initial)
-      : super(HistoryState(past: [], present: initial, future: []));
-
-  void push(JourneyConfig nextConfig) {
-    if (_isUndoing) return;
-    var newPast = [...state.past, state.present.copyWith()];
-    if (newPast.length > maxHistoryLength) {
-      newPast = newPast.sublist(newPast.length - maxHistoryLength);
-    }
-    state = HistoryState(
-      past: newPast,
-      present: nextConfig,
-      future: [],
-    );
-  }
-
-  void undo() {
-    if (state.past.isEmpty) return;
-    final previous = state.past.last;
-    final newPast = state.past.sublist(0, state.past.length - 1);
-    state = HistoryState(
-      past: newPast,
-      present: previous,
-      future: [state.present.copyWith(), ...state.future],
-    );
-    _applyToConfig(state.present);
-  }
-
-  void redo() {
-    if (state.future.isEmpty) return;
-    final next = state.future.first;
-    final newFuture = state.future.sublist(1);
-    state = HistoryState(
-      past: [...state.past, state.present.copyWith()],
-      present: next,
-      future: newFuture,
-    );
-    _applyToConfig(state.present);
-  }
-
-  void reset(JourneyConfig config) {
-    state = HistoryState(past: [], present: config, future: []);
-    _applyToConfig(config);
-  }
-
-  void rollbackTo(int pastIndex) {
-    if (pastIndex < 0 || pastIndex >= state.past.length) return;
-    final target = state.past[pastIndex];
-    final newPast = state.past.sublist(0, pastIndex);
-    final newFuture = [
-      ...state.past.sublist(pastIndex + 1),
-      state.present.copyWith(),
-      ...state.future
-    ];
-    state = HistoryState(
-      past: newPast,
-      present: target,
-      future: newFuture,
-    );
-    _applyToConfig(state.present);
-  }
-
-  void _applyToConfig(JourneyConfig config) {
-    _isUndoing = true;
-    _ref.read(journeyConfigProvider.notifier).syncWithHistory(config);
-    _isUndoing = false;
-  }
-}
-
-final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
-  final notifier = HistoryNotifier(ref, getInitialJourney());
-  ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
-    notifier.push(next);
-  });
-  return notifier;
-});
-
 // Journey Config Provider
-class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
-  final Ref _ref;
+class JourneyConfigNotifier extends StateNotifier<JourneyConfig>
+    with
+        JourneyImportManager,
+        JourneyExportManager,
+        JourneyStepManager,
+        JourneyValidationManager {
+  @override
+  final Ref ref;
 
-  JourneyConfigNotifier(this._ref, JourneyConfig initial) : super(initial);
-
-  bool updateFromJson(String jsonStr) {
-    try {
-      final rawDecoded = json.decode(jsonStr);
-      final decoded = json.decode(json.encode(rawDecoded)) as Map<String, dynamic>;
-      final newConfig = JourneyConfig.fromJson(decoded);
-      state = newConfig;
-      
-      // Clear the history stack when a new JSON is completely loaded
-      _ref.read(historyProvider.notifier).reset(newConfig);
-
-      // Reset active step to first step of the loaded configuration
-      if (newConfig.steps.isNotEmpty) {
-        _ref.read(activeStepIdProvider.notifier).state = newConfig.steps.first.id;
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  JourneyConfigNotifier(this.ref, JourneyConfig initial) : super(initial);
 
   void updateJourneyName(String name) {
     state = state.copyWith(journeyName: name);
@@ -652,20 +554,22 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 
   // Steps operations
+  @override
   void addStep(JourneyStep step) {
     final updatedSteps = [...state.steps, step];
     state = state.copyWith(steps: updatedSteps);
   }
 
   void _checkAndClearSelectedField(List<JourneyField> removedFields) {
-    final selectedId = _ref.read(selectedFieldIdProvider);
+    final selectedId = ref.read(selectedFieldIdProvider);
     if (selectedId == null) return;
     final flattened = EngineHelper.flattenFields(removedFields);
     if (flattened.any((f) => f.id == selectedId)) {
-      _ref.read(selectedFieldIdProvider.notifier).state = null;
+      ref.read(selectedFieldIdProvider.notifier).state = null;
     }
   }
 
+  @override
   void removeStep(String stepId) {
     final stepToRemove = state.steps.firstWhere((s) => s.id == stepId);
     _checkAndClearSelectedField(stepToRemove.fields);
@@ -674,13 +578,21 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     state = state.copyWith(steps: updatedSteps);
   }
 
+  @override
   void updateStep(String stepId, JourneyStep updatedStep) {
     updatedStep.invalidateCache();
-    final updatedSteps = state.steps.map((s) => s.id == stepId ? updatedStep : s).toList();
+    final updatedSteps = state.steps
+        .map((s) => s.id == stepId ? updatedStep : s)
+        .toList();
     state = state.copyWith(steps: updatedSteps);
   }
 
-  void updateStepLayout(String stepId, Map<String, dynamic> screenLayout, List<JourneyField> fields) {
+  @override
+  void updateStepLayout(
+    String stepId,
+    Map<String, dynamic> screenLayout,
+    List<JourneyField> fields,
+  ) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
@@ -693,14 +605,23 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
 
   // --- Step Collection Helpers (Conditions, Validations, APIs, Actions) ---
 
+  @override
   void addConditionToStep(String stepId, StepCondition condition) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
-    updateStep(stepId, step.copyWith(conditions: [...step.conditions, condition]));
+    updateStep(
+      stepId,
+      step.copyWith(conditions: [...step.conditions, condition]),
+    );
   }
 
-  void updateConditionInStep(String stepId, int index, StepCondition condition) {
+  @override
+  void updateConditionInStep(
+    String stepId,
+    int index,
+    StepCondition condition,
+  ) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
@@ -709,6 +630,7 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     updateStep(stepId, step.copyWith(conditions: newConds));
   }
 
+  @override
   void removeConditionFromStep(String stepId, int index) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
@@ -717,14 +639,23 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     updateStep(stepId, step.copyWith(conditions: newConds));
   }
 
+  @override
   void addValidationToStep(String stepId, StepValidation validation) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
-    updateStep(stepId, step.copyWith(validations: [...step.validations, validation]));
+    updateStep(
+      stepId,
+      step.copyWith(validations: [...step.validations, validation]),
+    );
   }
 
-  void updateValidationInStep(String stepId, int index, StepValidation validation) {
+  @override
+  void updateValidationInStep(
+    String stepId,
+    int index,
+    StepValidation validation,
+  ) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
@@ -733,14 +664,17 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     updateStep(stepId, step.copyWith(validations: newVals));
   }
 
+  @override
   void removeValidationFromStep(String stepId, int index) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
     final step = state.steps[stepIndex];
-    final newVals = List<StepValidation>.from(step.validations)..removeAt(index);
+    final newVals = List<StepValidation>.from(step.validations)
+      ..removeAt(index);
     updateStep(stepId, step.copyWith(validations: newVals));
   }
 
+  @override
   void addApiCallToStep(String stepId, StepAPI api) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
@@ -748,6 +682,7 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     updateStep(stepId, step.copyWith(apiCalls: [...step.apiCalls, api]));
   }
 
+  @override
   void updateApiCallInStep(String stepId, int index, StepAPI api) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
@@ -757,106 +692,32 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
     updateStep(stepId, step.copyWith(apiCalls: newApis));
   }
 
+  @override
   void removeApiCallFromStep(String stepId, int index) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-    final step = state.steps[stepIndex];
-    final newApis = List<StepAPI>.from(step.apiCalls)..removeAt(index);
-    updateStep(stepId, step.copyWith(apiCalls: newApis));
-  }
 
-  void addActionToStep(String stepId, StepAction action) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-    final step = state.steps[stepIndex];
-    updateStep(stepId, step.copyWith(actions: [...step.actions, action]));
-  }
-
-  void updateActionInStep(String stepId, int index, StepAction action) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-    final step = state.steps[stepIndex];
-    final newActions = List<StepAction>.from(step.actions);
-    newActions[index] = action;
-    updateStep(stepId, step.copyWith(actions: newActions));
-  }
-
-  void removeActionFromStep(String stepId, int index) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-    final step = state.steps[stepIndex];
-    final newActions = List<StepAction>.from(step.actions)..removeAt(index);
-    updateStep(stepId, step.copyWith(actions: newActions));
-  }
-
-  void reorderSteps(int oldIndex, int newIndex) {
-    if (oldIndex < 0 || oldIndex >= state.steps.length) return;
-    if (newIndex < 0 || newIndex > state.steps.length) return;
-
-    final updatedSteps = List<JourneyStep>.from(state.steps);
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
-    final step = updatedSteps.removeAt(oldIndex);
-    updatedSteps.insert(newIndex, step);
-    
-    state = state.copyWith(steps: updatedSteps);
-  }
-
-  // Fields operations (mutating specific step fields)
-  void addFieldToStep(String stepId, JourneyField field, {int? index}) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
-    final updatedFields = List<JourneyField>.from(step.fields);
-    if (index != null && index >= 0 && index <= updatedFields.length) {
-      updatedFields.insert(index, field);
-    } else {
-      updatedFields.add(field);
+
+    if (index < 0 || index >= step.apiCalls.length) {
+      return;
     }
 
-    final updatedStep = step.copyWith(fields: updatedFields);
+    final updatedApis = List<StepAPI>.from(step.apiCalls)..removeAt(index);
+
+    final updatedStep = step.copyWith(apiCalls: updatedApis);
+
     updatedStep.invalidateCache();
+
     final updatedSteps = List<JourneyStep>.from(state.steps);
+
     updatedSteps[stepIndex] = updatedStep;
 
     state = state.copyWith(steps: updatedSteps);
   }
 
-  void removeFieldFromStep(String stepId, String fieldId) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-
-    final step = state.steps[stepIndex];
-    final fieldsToRemove = step.fields.where((f) => f.id == fieldId).toList();
-    _checkAndClearSelectedField(fieldsToRemove);
-
-    final updatedFields = step.fields.where((f) => f.id != fieldId).toList();
-
-    final updatedStep = step.copyWith(fields: updatedFields);
-    updatedStep.invalidateCache();
-    final updatedSteps = List<JourneyStep>.from(state.steps);
-    updatedSteps[stepIndex] = updatedStep;
-
-    state = state.copyWith(steps: updatedSteps);
-  }
-
-  void updateFieldInStep(String stepId, String fieldId, JourneyField updatedField) {
-    final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
-    if (stepIndex == -1) return;
-
-    final step = state.steps[stepIndex];
-    final updatedFields = EngineHelper.updateFieldRecursive(step.fields, fieldId, updatedField);
-
-    final updatedStep = step.copyWith(fields: updatedFields);
-    updatedStep.invalidateCache();
-    final updatedSteps = List<JourneyStep>.from(state.steps);
-    updatedSteps[stepIndex] = updatedStep;
-
-    state = state.copyWith(steps: updatedSteps);
-  }
-
+  @override
   void reorderFieldsInStep(String stepId, int oldIndex, int newIndex) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
@@ -881,7 +742,12 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 
   // Add a field into the nestedFields of a container field (section/card/tabs/accordion/repeater)
-  void addFieldToNestedContainer(String stepId, String parentFieldId, JourneyField newField) {
+  @override
+  void addFieldToNestedContainer(
+    String stepId,
+    String parentFieldId,
+    JourneyField newField,
+  ) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
 
@@ -892,7 +758,11 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
       return; // Parent not found, avoid making a stale tree
     }
 
-    final updatedFields = EngineHelper.addFieldToParent(step.fields, parentFieldId, newField);
+    final updatedFields = EngineHelper.addFieldToParent(
+      step.fields,
+      parentFieldId,
+      newField,
+    );
 
     final updatedStep = step.copyWith(fields: updatedFields);
     updatedStep.invalidateCache();
@@ -903,18 +773,24 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 
   // Remove a field from any nested container recursively
+  @override
   void removeFieldFromNestedContainer(String stepId, String fieldId) {
     final stepIndex = state.steps.indexWhere((s) => s.id == stepId);
     if (stepIndex == -1) return;
 
     final step = state.steps[stepIndex];
 
-    final fieldsToRemove = step.flattenedFields.where((f) => f.id == fieldId).toList();
+    final fieldsToRemove = step.flattenedFields
+        .where((f) => f.id == fieldId)
+        .toList();
     if (fieldsToRemove.isEmpty) return; // Field not found, safely return
 
     _checkAndClearSelectedField(fieldsToRemove);
 
-    final updatedFields = EngineHelper.removeFieldRecursive(step.fields, fieldId);
+    final updatedFields = EngineHelper.removeFieldRecursive(
+      step.fields,
+      fieldId,
+    );
 
     final updatedStep = step.copyWith(fields: updatedFields);
     updatedStep.invalidateCache();
@@ -929,9 +805,10 @@ class JourneyConfigNotifier extends StateNotifier<JourneyConfig> {
   }
 }
 
-final journeyConfigProvider = StateNotifierProvider<JourneyConfigNotifier, JourneyConfig>((ref) {
-  return JourneyConfigNotifier(ref, getInitialJourney());
-});
+final journeyConfigProvider =
+    StateNotifierProvider<JourneyConfigNotifier, JourneyConfig>((ref) {
+      return JourneyConfigNotifier(ref, getInitialJourney());
+    });
 
 // Centralized dynamic form state mapping provider (Step Values)
 // Map<String, dynamic> supports strings, booleans, lists (repeater/grid rows), nested objects
@@ -949,15 +826,19 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
     state = newState;
   }
 
-  void _setNested(Map<String, dynamic> current, List<dynamic> path, dynamic value) {
+  void _setNested(
+    Map<String, dynamic> current,
+    List<dynamic> path,
+    dynamic value,
+  ) {
     if (path.length == 1) {
       current[path.first.toString()] = value;
       return;
     }
-    
+
     final key = path.first.toString();
     final nextKey = path[1];
-    
+
     if (nextKey is int) {
       if (!current.containsKey(key) || current[key] is! List) {
         current[key] = [];
@@ -1029,99 +910,10 @@ class FormValuesNotifier extends StateNotifier<Map<String, dynamic>> {
   }
 }
 
-final formValuesProvider = StateNotifierProvider<FormValuesNotifier, Map<String, dynamic>>((ref) {
-  return FormValuesNotifier();
-});
-
-// Validation and condition evaluation functions
-class EngineHelper {
-  static List<JourneyField> flattenFields(List<JourneyField> fields) {
-    final flattened = <JourneyField>[];
-    for (final field in fields) {
-      flattened.add(field);
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        flattened.addAll(flattenFields(field.nestedFields!));
-      }
-    }
-    return flattened;
-  }
-
-  static List<JourneyField> updateFieldRecursive(List<JourneyField> fields, String fieldId, JourneyField updatedField) {
-    return fields.map((field) {
-      if (field.id == fieldId) return updatedField;
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        return field.copyWith(
-          nestedFields: updateFieldRecursive(field.nestedFields!, fieldId, updatedField),
-        );
-      }
-      return field;
-    }).toList();
-  }
-
-  static List<JourneyField> addFieldToParent(List<JourneyField> fields, String parentId, JourneyField newField) {
-    return fields.map((field) {
-      if (field.id == parentId) {
-        final nested = List<JourneyField>.from(field.nestedFields ?? [])..add(newField);
-        return field.copyWith(nestedFields: nested);
-      }
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        return field.copyWith(
-          nestedFields: addFieldToParent(field.nestedFields!, parentId, newField),
-        );
-      }
-      return field;
-    }).toList();
-  }
-
-  static List<JourneyField> removeFieldRecursive(List<JourneyField> fields, String fieldId) {
-    return fields.where((f) => f.id != fieldId).map((field) {
-      if (field.nestedFields != null && field.nestedFields!.isNotEmpty) {
-        return field.copyWith(
-          nestedFields: removeFieldRecursive(field.nestedFields!, fieldId),
-        );
-      }
-      return field;
-    }).toList();
-  }
-
-  static bool evaluateCondition(StepCondition cond, Map<String, dynamic> values) {
-    final val = values[cond.field]?.toString();
-    if (val == null) return false;
-    switch (cond.operator) {
-      case 'equals':
-        return val.toLowerCase() == cond.value.toLowerCase();
-      case 'notEquals':
-        return val.toLowerCase() != cond.value.toLowerCase();
-      case 'contains':
-        return val.toLowerCase().contains(cond.value.toLowerCase());
-      default:
-        return false;
-    }
-  }
-
-  // Field visible condition evaluation helper
-  static bool isFieldVisible(JourneyField field, Map<String, dynamic> values) {
-    if (!field.visible) return false;
-    if (field.visibleIf == null) return true;
-
-    final targetField = field.visibleIf!['field'];
-    final expectedVal = field.visibleIf!['equals'] ?? field.visibleIf!['value'];
-    final operator = field.visibleIf!['operator']?.toString() ?? 'equals';
-    if (targetField == null || expectedVal == null) return true;
-
-    final currentVal = values[targetField]?.toString();
-    if (currentVal == null) return false;
-    switch (operator) {
-      case 'notEquals':
-        return currentVal.toLowerCase() != expectedVal.toString().toLowerCase();
-      case 'contains':
-        return currentVal.toLowerCase().contains(expectedVal.toString().toLowerCase());
-      case 'equals':
-      default:
-        return currentVal.toLowerCase() == expectedVal.toString().toLowerCase();
-    }
-  }
-}
+final formValuesProvider =
+    StateNotifierProvider<FormValuesNotifier, Map<String, dynamic>>((ref) {
+      return FormValuesNotifier();
+    });
 
 class JourneysListNotifier extends StateNotifier<List<JourneyConfig>> {
   JourneysListNotifier(super.initial);
@@ -1148,124 +940,125 @@ class JourneysListNotifier extends StateNotifier<List<JourneyConfig>> {
   }
 }
 
-final journeysListProvider = StateNotifierProvider<JourneysListNotifier, List<JourneyConfig>>((ref) {
-  final notifier = JourneysListNotifier([
-    getInitialJourney(),
-  ]);
-  Timer? debounceTimer;
-  ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
-    debounceTimer?.cancel();
-    debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      notifier.saveJourney(next);
+final journeysListProvider =
+    StateNotifierProvider<JourneysListNotifier, List<JourneyConfig>>((ref) {
+      final notifier = JourneysListNotifier([getInitialJourney()]);
+      Timer? debounceTimer;
+      ref.listen<JourneyConfig>(journeyConfigProvider, (prev, next) {
+        debounceTimer?.cancel();
+        debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          notifier.saveJourney(next);
+        });
+      });
+      ref.onDispose(() {
+        debounceTimer?.cancel();
+      });
+      return notifier;
     });
-  });
-  ref.onDispose(() {
-    debounceTimer?.cancel();
-  });
-  return notifier;
-});
 
 class JourneyRunsNotifier extends StateNotifier<List<Map<String, dynamic>>> {
-  JourneyRunsNotifier() : super([
-    {
-      'id': 'RUN-1049',
-      'journeyName': 'Motor Insurance Journey',
-      'user': 'john.doe@gmail.com',
-      'status': 'Completed',
-      'currentStep': 'Success',
-      'progress': 1.0,
-      'stepsCount': '7/7',
-      'started': '12 mins ago',
-      'data': {
-        'fullName': 'John Doe',
-        'dob': '25/08/1992',
-        'mobile': '+91 9876543210',
-        'email': 'john.doe@gmail.com',
-        'gender': 'Male',
-        'maritalStatus': 'Single',
-        'vehicleNum': 'MH-12-PQ-9988',
-        'vehicleMake': 'Toyota',
-        'vehicleModel': 'Fortuner',
-        'regYear': '2025',
-        'nomineeName': 'Jane Doe',
-        'nomineeRelation': 'Spouse',
-        'panDoc': 'pan_uploaded.png',
-        'drivingLicense': 'license_scan.jpg',
-        'paymentMethod': 'UPI',
-        'termsAccepted': 'true',
-      }
-    },
-    {
-      'id': 'RUN-1048',
-      'journeyName': 'User KYC Onboarding',
-      'user': 'alice.smith@yahoo.com',
-      'status': 'In Progress',
-      'currentStep': 'Facial Verification',
-      'progress': 0.75,
-      'stepsCount': '3/4',
-      'started': '45 mins ago',
-      'data': {
-        'firstName': 'Alice',
-        'lastName': 'Smith',
-        'panNumber': 'DKFPD8812K',
-        'panDoc': 'alice_pan.png',
-        'aadhaarFront': 'aadhaar_front.jpg',
-      }
-    },
-    {
-      'id': 'RUN-1047',
-      'journeyName': 'Personal Loan Application',
-      'user': 'bob.jones@outlook.com',
-      'status': 'Draft',
-      'currentStep': 'Employment Details',
-      'progress': 0.25,
-      'stepsCount': '1/4',
-      'started': '2 hours ago',
-      'data': {
-        'fullName': 'Bob Jones',
-        'loanAmount': '25000',
-      }
-    },
-    {
-      'id': 'RUN-1046',
-      'journeyName': 'Motor Insurance Journey',
-      'user': 'sarah.k@hotmail.com',
-      'status': 'Failed Validation',
-      'currentStep': 'Nominee Details',
-      'progress': 0.57,
-      'stepsCount': '4/7',
-      'started': '1 day ago',
-      'data': {
-        'fullName': 'Sarah Kerigan',
-        'dob': '09/11/1988',
-        'mobile': '+91 8877665544',
-        'gender': 'Female',
-        'vehicleNum': 'DL-03-AB-1122',
-        'vehicleMake': 'Honda',
-      }
-    },
-    {
-      'id': 'RUN-1045',
-      'journeyName': 'Service Feedback Survey',
-      'user': 'steve.jobs@apple.com',
-      'status': 'Completed',
-      'currentStep': 'Contact Info',
-      'progress': 1.0,
-      'stepsCount': '3/3',
-      'started': '2 days ago',
-      'data': {
-        'overallRating': '5 - Highly Satisfied',
-        'feedbackComments': 'Awesome builder platform! Love the laptop simulator feature.',
-        'followUpEmail': 'steve.jobs@apple.com',
-      }
-    }
-  ]);
+  JourneyRunsNotifier()
+    : super([
+        {
+          'id': 'RUN-1049',
+          'journeyName': 'Motor Insurance Journey',
+          'user': 'john.doe@gmail.com',
+          'status': 'Completed',
+          'currentStep': 'Success',
+          'progress': 1.0,
+          'stepsCount': '7/7',
+          'started': '12 mins ago',
+          'data': {
+            'fullName': 'John Doe',
+            'dob': '25/08/1992',
+            'mobile': '+91 9876543210',
+            'email': 'john.doe@gmail.com',
+            'gender': 'Male',
+            'maritalStatus': 'Single',
+            'vehicleNum': 'MH-12-PQ-9988',
+            'vehicleMake': 'Toyota',
+            'vehicleModel': 'Fortuner',
+            'regYear': '2025',
+            'nomineeName': 'Jane Doe',
+            'nomineeRelation': 'Spouse',
+            'panDoc': 'pan_uploaded.png',
+            'drivingLicense': 'license_scan.jpg',
+            'paymentMethod': 'UPI',
+            'termsAccepted': 'true',
+          },
+        },
+        {
+          'id': 'RUN-1048',
+          'journeyName': 'User KYC Onboarding',
+          'user': 'alice.smith@yahoo.com',
+          'status': 'In Progress',
+          'currentStep': 'Facial Verification',
+          'progress': 0.75,
+          'stepsCount': '3/4',
+          'started': '45 mins ago',
+          'data': {
+            'firstName': 'Alice',
+            'lastName': 'Smith',
+            'panNumber': 'DKFPD8812K',
+            'panDoc': 'alice_pan.png',
+            'aadhaarFront': 'aadhaar_front.jpg',
+          },
+        },
+        {
+          'id': 'RUN-1047',
+          'journeyName': 'Personal Loan Application',
+          'user': 'bob.jones@outlook.com',
+          'status': 'Draft',
+          'currentStep': 'Employment Details',
+          'progress': 0.25,
+          'stepsCount': '1/4',
+          'started': '2 hours ago',
+          'data': {'fullName': 'Bob Jones', 'loanAmount': '25000'},
+        },
+        {
+          'id': 'RUN-1046',
+          'journeyName': 'Motor Insurance Journey',
+          'user': 'sarah.k@hotmail.com',
+          'status': 'Failed Validation',
+          'currentStep': 'Nominee Details',
+          'progress': 0.57,
+          'stepsCount': '4/7',
+          'started': '1 day ago',
+          'data': {
+            'fullName': 'Sarah Kerigan',
+            'dob': '09/11/1988',
+            'mobile': '+91 8877665544',
+            'gender': 'Female',
+            'vehicleNum': 'DL-03-AB-1122',
+            'vehicleMake': 'Honda',
+          },
+        },
+        {
+          'id': 'RUN-1045',
+          'journeyName': 'Service Feedback Survey',
+          'user': 'steve.jobs@apple.com',
+          'status': 'Completed',
+          'currentStep': 'Contact Info',
+          'progress': 1.0,
+          'stepsCount': '3/3',
+          'started': '2 days ago',
+          'data': {
+            'overallRating': '5 - Highly Satisfied',
+            'feedbackComments':
+                'Awesome builder platform! Love the laptop simulator feature.',
+            'followUpEmail': 'steve.jobs@apple.com',
+          },
+        },
+      ]);
 
   void addRun(Map<String, dynamic> run) {
     state = [run, ...state];
   }
 }
 
-final journeyRunsProvider = StateNotifierProvider<JourneyRunsNotifier, List<Map<String, dynamic>>>((ref) {
-  return JourneyRunsNotifier();
-});
+final journeyRunsProvider =
+    StateNotifierProvider<JourneyRunsNotifier, List<Map<String, dynamic>>>((
+      ref,
+    ) {
+      return JourneyRunsNotifier();
+    });

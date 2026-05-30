@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme.dart';
+import '../../application/controllers/journey_history_manager.dart';
 import '../../domain/entities/journey_models.dart';
 import '../../application/controllers/journey_controller.dart';
 

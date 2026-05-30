@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../journey_builder/application/controllers/journey_controller.dart';
+import '../../journey_builder/application/controllers/journey_validation_manager.dart';
 import '../../journey_builder/domain/entities/journey_models.dart';
 
 /// Runs sync + async validations defined in journey step JSON.

@@ -1,4 +1,5 @@
 import '../../journey_builder/application/controllers/journey_controller.dart';
+import '../../journey_builder/application/controllers/journey_validation_manager.dart';
 import '../../journey_builder/domain/entities/journey_models.dart';
 
 /// Resolves step transitions from journey JSON (`nextStep`, `nextStepIf`, history).

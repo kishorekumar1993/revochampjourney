@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme.dart';
+import '../../../journey_builder/application/controllers/journey_validation_manager.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 

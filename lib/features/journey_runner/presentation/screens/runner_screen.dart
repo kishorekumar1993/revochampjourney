@@ -9,6 +9,7 @@ import 'package:revojourneytryone/features/journey_runner/presentation/screens/s
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/accordin_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/carousel_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/master_detail.dart';
+import '../../../journey_builder/application/controllers/journey_validation_manager.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
 import '../../application/journey_draft_store.dart';

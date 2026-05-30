@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../../../core/theme.dart';
+import '../../../application/controllers/journey_validation_manager.dart';
 import '../../../domain/entities/journey_models.dart';
 import '../../../application/controllers/journey_controller.dart';
 
