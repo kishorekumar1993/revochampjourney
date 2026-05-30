@@ -197,7 +197,7 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     _syncWithJourney();
   }
 
-  void addChildNode(String parentId, String componentType) {
+  void addChildNode(String parentId, String componentType, {int? targetIndex}) {
     final meta = ComponentRegistry.getByType(componentType);
     if (meta == null) return;
 
@@ -209,7 +209,13 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       actions: [],
     );
 
-    final updatedRoot = _addChildToParent(state.rootNode, parentId, newNode);
+    final ComponentNode? updatedRoot;
+    if (targetIndex != null) {
+      updatedRoot = _insertChildInParent(state.rootNode, parentId, newNode, targetIndex);
+    } else {
+      updatedRoot = _addChildToParent(state.rootNode, parentId, newNode);
+    }
+
     if (updatedRoot != null) {
       _pushHistory(updatedRoot);
       selectNode(newNode);

@@ -22,7 +22,7 @@ class ComponentRendererWidget extends ConsumerWidget {
   final void Function(ComponentNode)? overrideOnDelete;
   final void Function(ComponentNode)? overrideOnDuplicate;
   final void Function(ComponentNode, ComponentNode, int)? overrideOnMoveChild;
-  final void Function(ComponentNode, String)? overrideOnAddChild;
+  final void Function(ComponentNode, String, {int? targetIndex})? overrideOnAddChild;
 
   const ComponentRendererWidget({
     required ValueKey<String> super.key,
@@ -58,7 +58,7 @@ class ComponentRendererWidget extends ConsumerWidget {
     final onDelete = overrideOnDelete ?? (ComponentNode n) => controller.deleteNode(n.id);
     final onDuplicate = overrideOnDuplicate ?? (ComponentNode n) => controller.duplicateNode(n.id);
     final onMoveChild = overrideOnMoveChild ?? (ComponentNode parent, ComponentNode child, int idx) => controller.moveChildNode(parent, child, idx);
-    final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type) => controller.addChildNode(parent.id, type);
+    final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type, {int? targetIndex}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex);
     final onFormValueChanged = overrideOnFormValueChanged ?? (String field, dynamic val) {
       ref.read(formValuesProvider.notifier).updateValue(field, val);
     };
@@ -287,34 +287,133 @@ class ComponentRendererWidget extends ConsumerWidget {
           child: interactiveWrapper,
         );
 
-        // If it is a container, wrap it with DragTarget to support dropping items into it
-        if (canAcceptChildren) {
-          resultWidget = ComponentRenderer._applyMargin(
-            DragTarget<Object>(
-              onWillAcceptWithDetails: (details) => true,
-              onAcceptWithDetails: (details) {
-                final data = details.data;
-                if (data is String) {
-                  onAddChild(node, data);
-                } else if (data is ComponentNode) {
-                  if (data.id != node.id) {
-                    onMoveChild(node, data, node.children.length);
-                  }
-                }
-              },
-              builder: (context, candidateData, rejectedData) {
-                final isOver = candidateData.isNotEmpty;
-                return Container(
-                  color: isOver ? const Color(0x155B4FCF) : Colors.transparent,
-                  child: dragSource,
-                );
-              },
-            ),
-            node,
+        // Drag-and-drop sensor overlays supporting insert above, below, or inside
+        Widget designWidget = dragSource;
+
+        if (parentNode != null || canAcceptChildren) {
+          designWidget = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // 1. The original dragSource widget
+              designWidget,
+
+              // 2. Center zone (Insert Inside) - only if the node can accept children
+              if (canAcceptChildren)
+                Positioned.fill(
+                  child: DragTarget<Object>(
+                    onWillAcceptWithDetails: (details) {
+                      final data = details.data;
+                      if (data is ComponentNode && data.id == node.id) return false;
+                      return true;
+                    },
+                    onAcceptWithDetails: (details) {
+                      final data = details.data;
+                      if (data is String) {
+                        onAddChild?.call(node, data);
+                      } else if (data is ComponentNode) {
+                        onMoveChild(node, data, node.children.length);
+                      }
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      final isOver = candidateData.isNotEmpty;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
+                          border: isOver
+                              ? Border.all(color: const Color(0xFF5B4FCF), width: 1.5)
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+              // 3. Top zone (Insert Above) - only if we have a parent
+              if (parentNode != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 16,
+                  child: DragTarget<Object>(
+                    onWillAcceptWithDetails: (details) {
+                      final data = details.data;
+                      if (data is ComponentNode && data.id == node.id) return false;
+                      return true;
+                    },
+                    onAcceptWithDetails: (details) {
+                      final data = details.data;
+                      final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
+                      if (idx != -1) {
+                        if (data is String) {
+                          onAddChild?.call(parentNode!, data, targetIndex: idx);
+                        } else if (data is ComponentNode) {
+                          onMoveChild(parentNode!, data, idx);
+                        }
+                      }
+                    },
+                    builder: (context, candidateData, _) {
+                      final isOver = candidateData.isNotEmpty;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(color: Colors.transparent),
+                          if (isOver)
+                            const Positioned(
+                              top: 0, left: 0, right: 0,
+                              child: _DropLineIndicator(position: _DropLinePosition.top),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+
+              // 4. Bottom zone (Insert Below) - only if we have a parent
+              if (parentNode != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 16,
+                  child: DragTarget<Object>(
+                    onWillAcceptWithDetails: (details) {
+                      final data = details.data;
+                      if (data is ComponentNode && data.id == node.id) return false;
+                      return true;
+                    },
+                    onAcceptWithDetails: (details) {
+                      final data = details.data;
+                      final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
+                      if (idx != -1) {
+                        if (data is String) {
+                          onAddChild?.call(parentNode!, data, targetIndex: idx + 1);
+                        } else if (data is ComponentNode) {
+                          onMoveChild(parentNode!, data, idx + 1);
+                        }
+                      }
+                    },
+                    builder: (context, candidateData, _) {
+                      final isOver = candidateData.isNotEmpty;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(color: Colors.transparent),
+                          if (isOver)
+                            const Positioned(
+                              bottom: 0, left: 0, right: 0,
+                              child: _DropLineIndicator(position: _DropLinePosition.bottom),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
           );
-        } else {
-          resultWidget = ComponentRenderer._applyMargin(dragSource, node);
         }
+
+        resultWidget = ComponentRenderer._applyMargin(designWidget, node);
       }
     } else {
       resultWidget = ComponentRenderer._applyMargin(coreWidget, node);
@@ -398,7 +497,7 @@ class ComponentRenderer {
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild,
-    void Function(ComponentNode, String)? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
@@ -431,7 +530,7 @@ class ComponentRenderer {
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild,
-    void Function(ComponentNode, String)? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
@@ -2103,7 +2202,7 @@ class ComponentRenderer {
 
   static Widget _buildEmptyPlaceholder(
     ComponentNode node, {
-    void Function(ComponentNode, String)? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
   }) {
     final isWrapOrRow = node.type == 'Wrap' || node.type == 'Row';
     return Container(
@@ -2741,6 +2840,55 @@ class _RevoCarouselWidgetState extends State<RevoCarouselWidget> {
             child: widget.children[index],
           );
         },
+      ),
+    );
+  }
+}
+
+enum _DropLinePosition { top, bottom }
+
+class _DropLineIndicator extends StatelessWidget {
+  final _DropLinePosition position;
+  const _DropLineIndicator({required this.position});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Thin highlight boundary bar
+          Positioned(
+            top: position == _DropLinePosition.top ? 0 : null,
+            bottom: position == _DropLinePosition.bottom ? 0 : null,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFF5B4FCF),
+                borderRadius: BorderRadius.circular(2),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x3F5B4FCF), blurRadius: 4, spreadRadius: 1),
+                ],
+              ),
+            ),
+          ),
+          // Small visual drop bubble dot on the left of the line (like Figma/FlutterFlow drop indicators)
+          Positioned(
+            top: position == _DropLinePosition.top ? -3 : null,
+            bottom: position == _DropLinePosition.bottom ? -3 : null,
+            left: -4,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Color(0xFF5B4FCF),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

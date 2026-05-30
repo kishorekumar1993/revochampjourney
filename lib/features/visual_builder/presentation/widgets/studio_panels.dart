@@ -333,7 +333,7 @@ class GeneratedAppTheme {
                                       color: c,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: isSelected ? const Color(0xFF5B4FCF) : Colors.grey.withOpacity(0.3),
+                                        color: isSelected ? const Color(0xFF5B4FCF) : Colors.grey.withValues(alpha: 0.3),
                                         width: isSelected ? 3.0 : 1.0,
                                       ),
                                     ),
@@ -355,7 +355,7 @@ class GeneratedAppTheme {
                       border: Border.all(color: RevoTheme.cardBorder, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 3,
                           offset: const Offset(0, 1),
                         )
@@ -1928,7 +1928,7 @@ Widget _buildDropdown({
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: options.contains(value) ? value : options.first,
+          initialValue: options.contains(value) ? value : options.first,
           onChanged: onChanged,
           isDense: true,
           style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),
