@@ -1,0 +1,734 @@
+{
+  "id": "root_hrms",
+  "type": "Container",
+  "displayName": "HRMS Dashboard",
+  "properties": {},
+  "styles": {
+    "backgroundColor": "#F0F4F8",
+    "padding": "20"
+  },
+  "children": [
+    {
+      "id": "hrms_scroll",
+      "type": "SingleChildScrollView",
+      "displayName": "Scroll View",
+      "properties": {
+        "scrollDirection": "vertical"
+      },
+      "styles": {},
+      "children": [
+        {
+          "id": "main_layout_hrms",
+          "type": "Column",
+          "displayName": "Main Column",
+          "properties": {
+            "crossAxisAlignment": "stretch",
+            "mainAxisAlignment": "start",
+            "mainAxisSize": "min"
+          },
+          "styles": {
+            "spacing": "16"
+          },
+          "children": [
+            {
+              "id": "hrms_header_row",
+              "type": "Row",
+              "displayName": "Header Bar",
+              "properties": {
+                "mainAxisAlignment": "spaceBetween",
+                "crossAxisAlignment": "center"
+              },
+              "styles": {},
+              "children": [
+                {
+                  "id": "hrms_title_col",
+                  "type": "Column",
+                  "properties": {
+                    "crossAxisAlignment": "start",
+                    "mainAxisSize": "min"
+                  },
+                  "styles": {
+                    "flex": "1"
+                  },
+                  "children": [
+                    {
+                      "id": "hrms_header_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "HR Management Portal"
+                      },
+                      "styles": {
+                        "fontSize": "22",
+                        "fontWeight": "bold",
+                        "color": "#1A365D"
+                      }
+                    },
+                    {
+                      "id": "hrms_header_subtitle",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Manage employees, leaves and approvals."
+                      },
+                      "styles": {
+                        "fontSize": "12",
+                        "color": "#4A5568"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "hrms_header_spacer",
+                  "type": "SizedBox",
+                  "properties": {},
+                  "styles": {
+                    "width": "16"
+                  }
+                },
+                {
+                  "id": "add_emp_btn",
+                  "type": "Button",
+                  "properties": {
+                    "label": "Add Employee",
+                    "icon": "add"
+                  },
+                  "styles": {
+                    "backgroundColor": "#1A365D",
+                    "textColor": "#FFFFFF",
+                    "borderRadius": "8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "divider_hrms_header",
+              "type": "Divider",
+              "properties": {},
+              "styles": {
+                "height": "1",
+                "color": "#CBD5E0"
+              }
+            },
+            {
+              "id": "hrms_stats_row",
+              "type": "Row",
+              "displayName": "Stats Row",
+              "properties": {
+                "mainAxisAlignment": "spaceEvenly",
+                "crossAxisAlignment": "start"
+              },
+              "styles": {
+                "spacing": "12"
+              },
+              "children": [
+                {
+                  "id": "card_emp_count",
+                  "type": "Card",
+                  "displayName": "Total Employees",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "emp_count_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "TOTAL EMPLOYEES"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#718096",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "emp_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "emp_count_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "248"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#2D3748"
+                      }
+                    },
+                    {
+                      "id": "emp_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "emp_count_growth",
+                      "type": "Text",
+                      "properties": {
+                        "text": "+4 joined this month"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#38A169"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_attendance",
+                  "type": "Card",
+                  "displayName": "Attendance",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "att_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "TODAY ATTENDANCE"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#718096",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "att_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "att_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "94.2%"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#2D3748"
+                      }
+                    },
+                    {
+                      "id": "att_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "att_sub",
+                      "type": "Text",
+                      "properties": {
+                        "text": "234 present / 14 absent"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#718096"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_leaves",
+                  "type": "Card",
+                  "displayName": "Pending Leaves",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFBEB",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "leaves_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "PENDING LEAVES"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#92400E",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "leaves_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "leaves_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "12"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#DD6B20"
+                      }
+                    },
+                    {
+                      "id": "leaves_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "leaves_sub",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Needs immediate review"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#DD6B20"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_recruitment",
+                  "type": "Card",
+                  "displayName": "Open Roles",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#1A365D",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "4"
+                  },
+                  "children": [
+                    {
+                      "id": "rec_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "OPEN REQUISITIONS"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#90CDF4",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "rec_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "rec_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "6 Roles"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#FFFFFF"
+                      }
+                    },
+                    {
+                      "id": "rec_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "rec_sub",
+                      "type": "Text",
+                      "properties": {
+                        "text": "45 active candidates"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#BEE3F8"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "hrms_content_col",
+              "type": "Column",
+              "displayName": "Form + Approvals",
+              "properties": {
+                "crossAxisAlignment": "stretch",
+                "mainAxisSize": "min"
+              },
+              "styles": {
+                "spacing": "16"
+              },
+              "children": [
+                {
+                  "id": "leave_apply_card",
+                  "type": "Card",
+                  "displayName": "Leave Request Form",
+                  "styles": {
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "20",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "leave_form_header",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Request Time Off"
+                      },
+                      "styles": {
+                        "fontSize": "15",
+                        "fontWeight": "bold",
+                        "color": "#1A365D"
+                      }
+                    },
+                    {
+                      "id": "leave_form_divider",
+                      "type": "Divider",
+                      "properties": {},
+                      "styles": {
+                        "height": "1"
+                      }
+                    },
+                    {
+                      "id": "leave_row_1",
+                      "type": "Row",
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "start"
+                      },
+                      "styles": { "spacing": "12" },
+                      "children": [
+                        {
+                          "id": "leave_emp_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "leave_emp_id",
+                              "type": "TextField",
+                              "properties": {
+                                "fieldName": "leave_employee_name",
+                                "label": "Employee Name",
+                                "required": true
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "leave_type_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "leave_type_select",
+                              "type": "Dropdown",
+                              "properties": {
+                                "fieldName": "leave_type",
+                                "label": "Leave Category",
+                                "options": [
+                                  "Annual Paid Leave",
+                                  "Sick Leave",
+                                  "Maternity/Paternity",
+                                  "Unpaid Leave",
+                                  "Casual Leave"
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "leave_spacer_1",
+                      "type": "SizedBox",
+                      "styles": { "height": "12" }
+                    },
+                    {
+                      "id": "leave_row_2",
+                      "type": "Row",
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "start"
+                      },
+                      "styles": { "spacing": "12" },
+                      "children": [
+                        {
+                          "id": "leave_start_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "leave_start_picker",
+                              "type": "DatePicker",
+                              "properties": {
+                                "fieldName": "leave_start_date",
+                                "label": "Start Date"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "leave_end_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "leave_end_picker",
+                              "type": "DatePicker",
+                              "properties": {
+                                "fieldName": "leave_end_date",
+                                "label": "End Date"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "leave_spacer_2",
+                      "type": "SizedBox",
+                      "styles": { "height": "12" }
+                    },
+                    {
+                      "id": "leave_remarks",
+                      "type": "TextField",
+                      "properties": {
+                        "fieldName": "leave_reason",
+                        "label": "Reason / Remarks",
+                        "hint": "Brief description..."
+                      }
+                    },
+                    {
+                      "id": "leave_spacer_3",
+                      "type": "SizedBox",
+                      "styles": { "height": "16" }
+                    },
+                    {
+                      "id": "leave_submit_btn",
+                      "type": "Button",
+                      "properties": {
+                        "label": "Submit Application",
+                        "icon": "send"
+                      },
+                      "styles": {
+                        "backgroundColor": "#1A365D",
+                        "textColor": "#FFFFFF",
+                        "borderRadius": "8"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "approvals_card",
+                  "type": "Card",
+                  "displayName": "Pending Approvals",
+                  "styles": {
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "20",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "approvals_header",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Approvals Requiring Action"
+                      },
+                      "styles": {
+                        "fontSize": "15",
+                        "fontWeight": "bold",
+                        "color": "#1A365D"
+                      }
+                    },
+                    {
+                      "id": "approvals_divider",
+                      "type": "Divider",
+                      "properties": {},
+                      "styles": { "height": "1" }
+                    },
+                    {
+                      "id": "approval_item_1",
+                      "type": "Container",
+                      "styles": {
+                        "padding": "14",
+                        "borderRadius": "8",
+                        "backgroundColor": "#FFFBEB",
+                        "borderColor": "#FBD38D",
+                        "borderWidth": "1"
+                      },
+                      "children": [
+                        {
+                          "id": "app_item_title_1",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Leave Request: Alexander Pierce"
+                          },
+                          "styles": {
+                            "fontSize": "13",
+                            "color": "#2D3748",
+                            "fontWeight": "bold"
+                          }
+                        },
+                        {
+                          "id": "app_item_desc_1",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Sick Leave — 2 days (Jun 1 - Jun 2, 2025)"
+                          },
+                          "styles": {
+                            "fontSize": "11",
+                            "color": "#4A5568"
+                          }
+                        },
+                        {
+                          "id": "app_spacer_1",
+                          "type": "SizedBox",
+                          "styles": { "height": "8" }
+                        },
+                        {
+                          "id": "app_actions_row_1",
+                          "type": "Row",
+                          "properties": {
+                            "mainAxisAlignment": "end",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": { "spacing": "8" },
+                          "children": [
+                            {
+                              "id": "btn_reject_1",
+                              "type": "Button",
+                              "properties": {
+                                "label": "Reject"
+                              },
+                              "styles": {
+                                "backgroundColor": "#FED7D7",
+                                "textColor": "#C53030",
+                                "borderRadius": "6",
+                                "height": "36"
+                              }
+                            },
+                            {
+                              "id": "btn_approve_1",
+                              "type": "Button",
+                              "properties": {
+                                "label": "Approve",
+                                "icon": "done"
+                              },
+                              "styles": {
+                                "backgroundColor": "#38A169",
+                                "textColor": "#FFFFFF",
+                                "borderRadius": "6",
+                                "height": "36"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "app_list_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "10" }
+                    },
+                    {
+                      "id": "approval_item_2",
+                      "type": "Container",
+                      "styles": {
+                        "padding": "14",
+                        "borderRadius": "8",
+                        "backgroundColor": "#FFFBEB",
+                        "borderColor": "#FBD38D",
+                        "borderWidth": "1"
+                      },
+                      "children": [
+                        {
+                          "id": "app_item_title_2",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Expense Claim: Sarah Connor"
+                          },
+                          "styles": {
+                            "fontSize": "13",
+                            "color": "#2D3748",
+                            "fontWeight": "bold"
+                          }
+                        },
+                        {
+                          "id": "app_item_desc_2",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Amount: $450.00 — Client Dinner & Entertainment"
+                          },
+                          "styles": {
+                            "fontSize": "11",
+                            "color": "#4A5568"
+                          }
+                        },
+                        {
+                          "id": "app_spacer_2",
+                          "type": "SizedBox",
+                          "styles": { "height": "8" }
+                        },
+                        {
+                          "id": "app_actions_row_2",
+                          "type": "Row",
+                          "properties": {
+                            "mainAxisAlignment": "end",
+                            "crossAxisAlignment": "center"
+                          },
+                          "styles": { "spacing": "8" },
+                          "children": [
+                            {
+                              "id": "btn_reject_2",
+                              "type": "Button",
+                              "properties": {
+                                "label": "Reject"
+                              },
+                              "styles": {
+                                "backgroundColor": "#FED7D7",
+                                "textColor": "#C53030",
+                                "borderRadius": "6",
+                                "height": "36"
+                              }
+                            },
+                            {
+                              "id": "btn_approve_2",
+                              "type": "Button",
+                              "properties": {
+                                "label": "Approve",
+                                "icon": "done"
+                              },
+                              "styles": {
+                                "backgroundColor": "#38A169",
+                                "textColor": "#FFFFFF",
+                                "borderRadius": "6",
+                                "height": "36"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

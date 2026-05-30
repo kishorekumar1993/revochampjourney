@@ -1,0 +1,687 @@
+{
+  "id": "root_crm",
+  "type": "Container",
+  "displayName": "CRM Dashboard",
+  "properties": {},
+  "styles": {
+    "backgroundColor": "#F4F5FA",
+    "padding": "20"
+  },
+  "children": [
+    {
+      "id": "crm_scroll",
+      "type": "SingleChildScrollView",
+      "displayName": "Scroll View",
+      "properties": {
+        "scrollDirection": "vertical"
+      },
+      "styles": {},
+      "children": [
+        {
+          "id": "main_layout",
+          "type": "Column",
+          "displayName": "Main Column",
+          "properties": {
+            "crossAxisAlignment": "stretch",
+            "mainAxisAlignment": "start",
+            "mainAxisSize": "min"
+          },
+          "styles": {
+            "spacing": "16"
+          },
+          "children": [
+            {
+              "id": "header_row",
+              "type": "Row",
+              "displayName": "Header Bar",
+              "properties": {
+                "mainAxisAlignment": "spaceBetween",
+                "crossAxisAlignment": "center"
+              },
+              "styles": {},
+              "children": [
+                {
+                  "id": "header_title_col",
+                  "type": "Column",
+                  "properties": {
+                    "crossAxisAlignment": "start",
+                    "mainAxisSize": "min"
+                  },
+                  "styles": {
+                    "flex": "1"
+                  },
+                  "children": [
+                    {
+                      "id": "header_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "CRM Dashboard"
+                      },
+                      "styles": {
+                        "fontSize": "22",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "header_subtitle",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Welcome back, Admin! Manage your leads and deals."
+                      },
+                      "styles": {
+                        "fontSize": "12",
+                        "color": "#6B7280"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "spacer_header",
+                  "type": "SizedBox",
+                  "properties": {},
+                  "styles": {
+                    "width": "16"
+                  }
+                },
+                {
+                  "id": "new_lead_btn",
+                  "type": "Button",
+                  "properties": {
+                    "label": "Create Lead",
+                    "icon": "add"
+                  },
+                  "styles": {
+                    "backgroundColor": "#5B4FCF",
+                    "textColor": "#FFFFFF",
+                    "borderRadius": "8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "divider_header",
+              "type": "Divider",
+              "properties": {},
+              "styles": {
+                "height": "1",
+                "color": "#E5E7EB"
+              }
+            },
+            {
+              "id": "stats_grid",
+              "type": "Row",
+              "displayName": "Stats Row",
+              "properties": {
+                "mainAxisAlignment": "spaceEvenly",
+                "crossAxisAlignment": "start"
+              },
+              "styles": {
+                "spacing": "12"
+              },
+              "children": [
+                {
+                  "id": "card_leads",
+                  "type": "Card",
+                  "displayName": "Total Leads",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "leads_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "TOTAL LEADS"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#9CA3AF",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "leads_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "leads_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "1,482"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "leads_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "leads_growth",
+                      "type": "Text",
+                      "properties": {
+                        "text": "+12.4% this week"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#10B981"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_deals",
+                  "type": "Card",
+                  "displayName": "Active Deals",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "deals_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "ACTIVE DEALS"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#9CA3AF",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "deals_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "deals_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "85"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "deals_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "deals_growth",
+                      "type": "Text",
+                      "properties": {
+                        "text": "+8.2% this week"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#10B981"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_conversion",
+                  "type": "Card",
+                  "displayName": "Conversion",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "conv_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "CONVERSION"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#9CA3AF",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "conv_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "conv_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "24.6%"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "conv_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "conv_growth",
+                      "type": "Text",
+                      "properties": {
+                        "text": "-1.5% this week"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#EF4444"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "card_revenue",
+                  "type": "Card",
+                  "displayName": "Revenue",
+                  "styles": {
+                    "flex": "1",
+                    "backgroundColor": "#5B4FCF",
+                    "padding": "16",
+                    "borderRadius": "12",
+                    "elevation": "4"
+                  },
+                  "children": [
+                    {
+                      "id": "rev_title",
+                      "type": "Text",
+                      "properties": {
+                        "text": "REVENUE"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#C4BBF8",
+                        "fontWeight": "bold"
+                      }
+                    },
+                    {
+                      "id": "rev_spacer",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "rev_val",
+                      "type": "Text",
+                      "properties": {
+                        "text": "$48,920"
+                      },
+                      "styles": {
+                        "fontSize": "24",
+                        "fontWeight": "bold",
+                        "color": "#FFFFFF"
+                      }
+                    },
+                    {
+                      "id": "rev_spacer2",
+                      "type": "SizedBox",
+                      "styles": { "height": "4" }
+                    },
+                    {
+                      "id": "rev_growth",
+                      "type": "Text",
+                      "properties": {
+                        "text": "+23.1% this week"
+                      },
+                      "styles": {
+                        "fontSize": "10",
+                        "color": "#A7F3D0"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "content_col",
+              "type": "Column",
+              "displayName": "Form + Activity",
+              "properties": {
+                "crossAxisAlignment": "stretch",
+                "mainAxisSize": "min"
+              },
+              "styles": {
+                "spacing": "16"
+              },
+              "children": [
+                {
+                  "id": "leads_form_card",
+                  "type": "Card",
+                  "displayName": "Add New Lead",
+                  "styles": {
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "20",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "form_header",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Quick Lead Registration"
+                      },
+                      "styles": {
+                        "fontSize": "15",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "form_divider",
+                      "type": "Divider",
+                      "properties": {},
+                      "styles": {
+                        "height": "1"
+                      }
+                    },
+                    {
+                      "id": "form_row_1",
+                      "type": "Row",
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "start"
+                      },
+                      "styles": { "spacing": "12" },
+                      "children": [
+                        {
+                          "id": "form_field_name_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "form_field_name",
+                              "type": "TextField",
+                              "properties": {
+                                "fieldName": "lead_name",
+                                "label": "Full Name",
+                                "required": true
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "form_field_email_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "form_field_email",
+                              "type": "TextField",
+                              "properties": {
+                                "fieldName": "lead_email",
+                                "label": "Email Address",
+                                "required": true
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "form_spacer_1",
+                      "type": "SizedBox",
+                      "styles": { "height": "12" }
+                    },
+                    {
+                      "id": "form_row_2",
+                      "type": "Row",
+                      "properties": {
+                        "mainAxisAlignment": "start",
+                        "crossAxisAlignment": "start"
+                      },
+                      "styles": { "spacing": "12" },
+                      "children": [
+                        {
+                          "id": "form_field_stage_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "form_field_stage",
+                              "type": "Dropdown",
+                              "properties": {
+                                "fieldName": "lead_stage",
+                                "label": "Lead Stage",
+                                "options": [
+                                  "Prospect",
+                                  "Contacted",
+                                  "Qualified",
+                                  "Proposal Sent",
+                                  "Negotiating"
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "form_field_date_wrap",
+                          "type": "Container",
+                          "styles": { "flex": "1" },
+                          "children": [
+                            {
+                              "id": "form_field_date",
+                              "type": "DatePicker",
+                              "properties": {
+                                "fieldName": "follow_up_date",
+                                "label": "Follow-up Date"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "form_spacer_2",
+                      "type": "SizedBox",
+                      "styles": { "height": "12" }
+                    },
+                    {
+                      "id": "form_field_active",
+                      "type": "Switch",
+                      "properties": {
+                        "fieldName": "is_priority_lead",
+                        "label": "Mark as Priority Lead"
+                      }
+                    },
+                    {
+                      "id": "form_spacer_3",
+                      "type": "SizedBox",
+                      "styles": { "height": "16" }
+                    },
+                    {
+                      "id": "submit_form_btn",
+                      "type": "Button",
+                      "properties": {
+                        "label": "Register Lead",
+                        "icon": "add"
+                      },
+                      "styles": {
+                        "backgroundColor": "#5B4FCF",
+                        "textColor": "#FFFFFF",
+                        "borderRadius": "8"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "activity_card",
+                  "type": "Card",
+                  "displayName": "Recent Activity",
+                  "styles": {
+                    "backgroundColor": "#FFFFFF",
+                    "padding": "20",
+                    "borderRadius": "12",
+                    "elevation": "2"
+                  },
+                  "children": [
+                    {
+                      "id": "activity_header",
+                      "type": "Text",
+                      "properties": {
+                        "text": "Recent Activity Feed"
+                      },
+                      "styles": {
+                        "fontSize": "15",
+                        "fontWeight": "bold",
+                        "color": "#1E1E2F"
+                      }
+                    },
+                    {
+                      "id": "activity_divider",
+                      "type": "Divider",
+                      "properties": {},
+                      "styles": { "height": "1" }
+                    },
+                    {
+                      "id": "activity_item_1",
+                      "type": "Container",
+                      "styles": {
+                        "padding": "12",
+                        "borderRadius": "8",
+                        "backgroundColor": "#F9FAFB",
+                        "borderColor": "#E5E7EB",
+                        "borderWidth": "1"
+                      },
+                      "children": [
+                        {
+                          "id": "activity_text_1",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Deal 'Cloud Migration' won by John Doe"
+                          },
+                          "styles": {
+                            "fontSize": "12",
+                            "color": "#374151",
+                            "fontWeight": "bold"
+                          }
+                        },
+                        {
+                          "id": "activity_time_1",
+                          "type": "Text",
+                          "properties": {
+                            "text": "10 minutes ago"
+                          },
+                          "styles": {
+                            "fontSize": "10",
+                            "color": "#9CA3AF"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "activity_spacer_1",
+                      "type": "SizedBox",
+                      "styles": { "height": "8" }
+                    },
+                    {
+                      "id": "activity_item_2",
+                      "type": "Container",
+                      "styles": {
+                        "padding": "12",
+                        "borderRadius": "8",
+                        "backgroundColor": "#F9FAFB",
+                        "borderColor": "#E5E7EB",
+                        "borderWidth": "1"
+                      },
+                      "children": [
+                        {
+                          "id": "activity_text_2",
+                          "type": "Text",
+                          "properties": {
+                            "text": "New lead 'Jane Smith' registered by Admin"
+                          },
+                          "styles": {
+                            "fontSize": "12",
+                            "color": "#374151"
+                          }
+                        },
+                        {
+                          "id": "activity_time_2",
+                          "type": "Text",
+                          "properties": {
+                            "text": "2 hours ago"
+                          },
+                          "styles": {
+                            "fontSize": "10",
+                            "color": "#9CA3AF"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "activity_spacer_2",
+                      "type": "SizedBox",
+                      "styles": { "height": "8" }
+                    },
+                    {
+                      "id": "activity_item_3",
+                      "type": "Container",
+                      "styles": {
+                        "padding": "12",
+                        "borderRadius": "8",
+                        "backgroundColor": "#EEF2FF",
+                        "borderColor": "#C7D2FE",
+                        "borderWidth": "1"
+                      },
+                      "children": [
+                        {
+                          "id": "activity_text_3",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Follow-up email sent to 'Robert Downey'"
+                          },
+                          "styles": {
+                            "fontSize": "12",
+                            "color": "#374151"
+                          }
+                        },
+                        {
+                          "id": "activity_time_3",
+                          "type": "Text",
+                          "properties": {
+                            "text": "Yesterday"
+                          },
+                          "styles": {
+                            "fontSize": "10",
+                            "color": "#9CA3AF"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
