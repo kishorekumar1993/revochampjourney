@@ -12,8 +12,8 @@ class ComponentAction {
     return ComponentAction(
       event: json['event']?.toString() ?? 'onTap',
       steps: stepsList
-          .where((step) => step is Map)
-          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .whereType<Map>()
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step)))
           .toList(),
     );
   }
@@ -81,20 +81,20 @@ class ActionStep {
       type: type,
       enabled: enabled,
       conditions: conditionsList
-          .where((c) => c is Map)
-          .map((c) => Map<String, dynamic>.from(c as Map))
+          .whereType<Map>()
+          .map((c) => Map<String, dynamic>.from(c))
           .toList(),
       successSteps: successList
-          .where((step) => step is Map)
-          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .whereType<Map>()
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step)))
           .toList(),
       failureSteps: failureList
-          .where((step) => step is Map)
-          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .whereType<Map>()
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step)))
           .toList(),
       nestedSteps: nestedList
-          .where((step) => step is Map)
-          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step as Map)))
+          .whereType<Map>()
+          .map((step) => ActionStep.fromJson(Map<String, dynamic>.from(step)))
           .toList(),
       properties: properties,
     );

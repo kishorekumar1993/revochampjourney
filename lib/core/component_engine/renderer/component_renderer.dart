@@ -309,7 +309,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                     onAcceptWithDetails: (details) {
                       final data = details.data;
                       if (data is String) {
-                        onAddChild?.call(node, data);
+                        onAddChild.call(node, data);
                       } else if (data is ComponentNode) {
                         onMoveChild(node, data, node.children.length);
                       }
@@ -346,7 +346,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                       final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
                       if (idx != -1) {
                         if (data is String) {
-                          onAddChild?.call(parentNode!, data, targetIndex: idx);
+                          onAddChild.call(parentNode!, data, targetIndex: idx);
                         } else if (data is ComponentNode) {
                           onMoveChild(parentNode!, data, idx);
                         }
@@ -387,7 +387,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                       final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
                       if (idx != -1) {
                         if (data is String) {
-                          onAddChild?.call(parentNode!, data, targetIndex: idx + 1);
+                          onAddChild.call(parentNode!, data, targetIndex: idx + 1);
                         } else if (data is ComponentNode) {
                           onMoveChild(parentNode!, data, idx + 1);
                         }
@@ -1107,8 +1107,9 @@ class ComponentRenderer {
           onChanged: isDesignMode
               ? null
               : (val) {
-                  if (onFormValueChanged != null)
+                  if (onFormValueChanged != null) {
                     onFormValueChanged(fieldName, val);
+                  }
                 },
         );
 
@@ -1143,8 +1144,9 @@ class ComponentRenderer {
                 onChanged: isDesignMode
                     ? null
                     : (val) {
-                        if (onFormValueChanged != null)
+                        if (onFormValueChanged != null) {
                           onFormValueChanged(fieldName, val);
+                        }
                       },
               );
             }),
@@ -1165,8 +1167,9 @@ class ComponentRenderer {
           onChanged: isDesignMode
               ? null
               : (val) {
-                  if (onFormValueChanged != null)
+                  if (onFormValueChanged != null) {
                     onFormValueChanged(fieldName, val);
+                  }
                 },
         );
 
@@ -1213,8 +1216,9 @@ class ComponentRenderer {
           onChanged: isDesignMode
               ? null
               : (val) {
-                  if (onFormValueChanged != null)
+                  if (onFormValueChanged != null) {
                     onFormValueChanged(fieldName, val);
+                  }
                 },
         );
 
@@ -1242,8 +1246,9 @@ class ComponentRenderer {
               onChanged: isDesignMode
                   ? null
                   : (newVal) {
-                      if (onFormValueChanged != null)
+                      if (onFormValueChanged != null) {
                         onFormValueChanged(fieldName, newVal);
+                      }
                     },
             ),
           ],

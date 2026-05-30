@@ -11,16 +11,12 @@ import '../../../../core/theme.dart';
 import '../../../builder_workspace/presentation/screen/builder_workspace_screen.dart';
 import '../../../journey_builder/data/models.dart';
 import '../../../journey_builder/presentation/providers/journey_provider.dart';
-import '../../../journey_builder/presentation/widgets/canvas_panel/canvas_panel_main.dart';
-import '../../../journey_builder/presentation/widgets/properties_panel/properties_panel_main.dart';
 import '../../../journey_builder/presentation/widgets/sidebar.dart';
-import '../../../journey_builder/presentation/widgets/steps_panel.dart';
 import 'code_preview_dialog.dart';
 import 'templates_screen.dart';
 import 'journeys_screen.dart';
 import 'runs_screen.dart';
 import 'misc_screens.dart';
-import '../../../visual_builder/presentation/screen/visual_builder_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});

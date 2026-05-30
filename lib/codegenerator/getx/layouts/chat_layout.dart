@@ -30,7 +30,7 @@ void generateChatLayout(
   buffer.writeln("                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),");
   buffer.writeln("                children: [");
   buffer.writeln("                  // System message");
-  buffer.writeln("                  _buildSystemMessage('Welcome! I will guide you step-by-step. Let\'s get started.'),");
+  buffer.writeln("                  _buildSystemMessage('Welcome! I will guide you step-by-step. Let\\'s get started.'),");
   buffer.writeln("                  const SizedBox(height: 20),");
   buffer.writeln("                  ");
   buffer.writeln("                  // Chat history");
@@ -48,7 +48,7 @@ void generateChatLayout(
   buffer.writeln("                  ");
   buffer.writeln("                  // Active bot prompt");
   buffer.writeln("                  _buildBotPrompt(");
-  buffer.writeln("                    'Great! Now, let\'s fill in the **${stepMeta.escapedTitle}** details below:',");
+  buffer.writeln("                    'Great! Now, let\\'s fill in the **${stepMeta.escapedTitle}** details below:',");
   buffer.writeln("                    '${stepMeta.escapedTitle}',");
   buffer.writeln("                  ),");
   buffer.writeln("                  const SizedBox(height: 12),");

@@ -275,7 +275,7 @@ class MasterDetailRunnerView extends StatelessWidget {
                     ),
                     if (step.description != null)
                       Text(
-                        step.description!,
+                        step.description,
                         style: TextStyle(
                           fontSize: 12,
                           color: _IT.textMid,
@@ -320,7 +320,7 @@ class MasterDetailRunnerView extends StatelessWidget {
           // Header with step title & description
           if (activeStep.title != null)
             Text(
-              activeStep.title!,
+              activeStep.title,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -330,7 +330,7 @@ class MasterDetailRunnerView extends StatelessWidget {
           if (activeStep.description != null) ...[
             const SizedBox(height: 8),
             Text(
-              activeStep.description!,
+              activeStep.description,
               style: TextStyle(fontSize: 14, color: _IT.textMid),
             ),
           ],

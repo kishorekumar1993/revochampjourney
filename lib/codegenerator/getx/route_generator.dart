@@ -37,13 +37,13 @@ List<Map<String, String>> generateGetXRouterFromSteps(
   for (final view in views) {
     final snake = _toSnakeCase(view.replaceAll('View', ''));
     bufferPages.writeln(
-      "import '../../features/$journeyNamespace/${snake}/view/${snake}_view.dart';",
+      "import '../../features/$journeyNamespace/$snake/view/${snake}_view.dart';",
     );
   }
   for (final binding in bindings) {
     final snake = _toSnakeCase(binding.replaceAll('Binding', ''));
     bufferPages.writeln(
-      "import '../../features/$journeyNamespace/${snake}/binding/${snake}_binding.dart';",
+      "import '../../features/$journeyNamespace/$snake/binding/${snake}_binding.dart';",
     );
   }
   bufferPages.writeln();

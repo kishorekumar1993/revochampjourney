@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:flutter/foundation.dart';
+
 /// Binds the Dart function to the top-level JavaScript function defined in index.html.
 @JS('saveMultipleFilesToFolders')
 external JSPromise _saveMultipleFilesToFolders(JSString jsonString);
@@ -21,7 +23,9 @@ class WebFileExporter {
       await _saveMultipleFilesToFolders(jsonString.toJS).toDart;
       
     } catch (e) {
-      print('Error exporting files to local file system: $e');
+      if (kDebugMode) {
+        print('Error exporting files to local file system: $e');
+      }
     }
   }
 

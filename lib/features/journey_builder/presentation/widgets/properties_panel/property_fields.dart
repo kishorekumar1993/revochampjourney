@@ -9,7 +9,7 @@ class PropertyTextField extends StatefulWidget {
   final int maxLines;
   final ValueChanged<String>? onChanged;
 
-  const PropertyTextField({
+  const PropertyTextField({super.key, 
     required this.label,
     required this.initialValue,
     this.hint,
@@ -93,7 +93,7 @@ class PropertyDropdownField extends StatelessWidget {
   final List<String> items;
   final ValueChanged<String>? onChanged;
 
-  const PropertyDropdownField({
+  const PropertyDropdownField({super.key, 
     required this.label,
     required this.currentValue,
     required this.items,
