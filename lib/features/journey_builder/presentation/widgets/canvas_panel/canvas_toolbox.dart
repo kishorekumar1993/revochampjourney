@@ -8,10 +8,10 @@ class CanvasToolbox extends StatelessWidget {
   final ValueChanged<String> onAddField;
 
   const CanvasToolbox({
-    Key? key,
+    super.key,
     required this.componentGroups,
     required this.onAddField,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

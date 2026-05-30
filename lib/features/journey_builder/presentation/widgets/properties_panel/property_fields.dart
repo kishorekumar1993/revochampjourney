@@ -140,3 +140,132 @@ class PropertyDropdownField extends StatelessWidget {
   }
 }
 
+class CollapsibleSection extends StatelessWidget {
+  final String title;
+  final Color accentColor;
+  final IconData icon;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final List<Widget> children;
+
+  const CollapsibleSection({
+    super.key,
+    required this.title,
+    required this.accentColor,
+    required this.icon,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: RevoTheme.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isExpanded ? accentColor.withValues(alpha: 0.2) : RevoTheme.cardBorder,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, color: isExpanded ? accentColor : RevoTheme.textSecondary, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontFamily: 'Outfit',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isExpanded ? accentColor : RevoTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    isExpanded ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_right_rounded,
+                    color: isExpanded ? accentColor : RevoTheme.textSecondary,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isExpanded) ...[
+            Divider(color: RevoTheme.cardBorder, height: 1),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class CompactSwitchTile extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const CompactSwitchTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: RevoTheme.sidebarBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RevoTheme.cardBorder),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontFamily: 'Inter', fontSize: 10, color: RevoTheme.textPrimary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          SizedBox(
+            height: 20,
+            child: FittedBox(
+              child: Switch(
+                value: value,
+                activeTrackColor: RevoTheme.primaryLight.withValues(alpha: 0.5),
+                activeThumbColor: RevoTheme.primaryLight,
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
