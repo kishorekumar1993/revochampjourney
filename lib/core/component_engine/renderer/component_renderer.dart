@@ -687,6 +687,11 @@ class ComponentRenderer {
         final crossAlign = PropertyParser.parseCrossAxisAlignment(
           properties['crossAxisAlignment'],
         );
+        final rowSpacing = double.tryParse(
+          getStyle('spacing')?.toString() ??
+          properties['spacing']?.toString() ??
+          '',
+        );
 
         Widget buildRow(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedWidth) {
           if (node.children.isEmpty && isDesignMode) {
@@ -696,40 +701,50 @@ class ComponentRenderer {
               children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
             );
           }
+          final renderedChildren = node.children.map((childNode) {
+            final childWidget = render(
+              childNode,
+              isDesignMode: isDesignMode,
+              parentNode: node,
+              selectedNode: selectedNode,
+              hoveredNode: hoveredNode,
+              onSelect: onSelect,
+              onHover: onHover,
+              onDelete: onDelete,
+              onDuplicate: onDuplicate,
+              onMoveChild: onMoveChild,
+              onAddChild: onAddChild,
+              formValues: formValues,
+              onFormValueChanged: onFormValueChanged,
+              insideScrollable: insideScrollable,
+            );
+            final flexVal = int.tryParse(
+              childNode.styles['flex']?.toString() ??
+                  childNode.properties['flex']?.toString() ??
+                  '',
+            );
+            if (flexVal != null && flexVal > 0 && hasBoundedWidth &&
+                parentNode?.type != "SingleChildScrollView") {
+              return Expanded(flex: flexVal, child: childWidget);
+            }
+            if (isDesignMode && hasBoundedWidth) {
+              return Flexible(fit: FlexFit.loose, child: childWidget);
+            }
+            return childWidget;
+          }).toList();
+
+          final List<Widget> spacedChildren = [];
+          for (int i = 0; i < renderedChildren.length; i++) {
+            spacedChildren.add(renderedChildren[i]);
+            if (rowSpacing != null && rowSpacing > 0 && i < renderedChildren.length - 1) {
+              spacedChildren.add(SizedBox(width: rowSpacing));
+            }
+          }
+
           return Row(
             mainAxisAlignment: mainAlign,
             crossAxisAlignment: effectiveCrossAlign,
-            children: node.children.map((childNode) {
-              final childWidget = render(
-                childNode,
-                isDesignMode: isDesignMode,
-                parentNode: node,
-                selectedNode: selectedNode,
-                hoveredNode: hoveredNode,
-                onSelect: onSelect,
-                onHover: onHover,
-                onDelete: onDelete,
-                onDuplicate: onDuplicate,
-                onMoveChild: onMoveChild,
-                onAddChild: onAddChild,
-                formValues: formValues,
-                onFormValueChanged: onFormValueChanged,
-                insideScrollable: insideScrollable,
-              );
-              final flexVal = int.tryParse(
-                childNode.styles['flex']?.toString() ??
-                    childNode.properties['flex']?.toString() ??
-                    '',
-              );
-              if (flexVal != null && flexVal > 0 && hasBoundedWidth &&
-                  parentNode?.type != "SingleChildScrollView") {
-                return Expanded(flex: flexVal, child: childWidget);
-              }
-              if (isDesignMode && hasBoundedWidth) {
-                return Flexible(fit: FlexFit.loose, child: childWidget);
-              }
-              return childWidget;
-            }).toList(),
+            children: spacedChildren,
           );
         }
 
@@ -752,6 +767,11 @@ class ComponentRenderer {
         final mainSize = PropertyParser.parseMainAxisSize(
           getStyle('mainAxisSize') ?? properties['mainAxisSize'],
         );
+        final columnSpacing = double.tryParse(
+          getStyle('spacing')?.toString() ??
+          properties['spacing']?.toString() ??
+          '',
+        );
 
         Widget buildColumn(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedHeight) {
           if (node.children.isEmpty && isDesignMode) {
@@ -762,42 +782,52 @@ class ComponentRenderer {
               children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
             );
           }
+          final renderedChildren = node.children.map((childNode) {
+            final childWidget = render(
+              childNode,
+              isDesignMode: isDesignMode,
+              parentNode: node,
+              selectedNode: selectedNode,
+              hoveredNode: hoveredNode,
+              onSelect: onSelect,
+              onHover: onHover,
+              onDelete: onDelete,
+              onDuplicate: onDuplicate,
+              onMoveChild: onMoveChild,
+              onAddChild: onAddChild,
+              formValues: formValues,
+              onFormValueChanged: onFormValueChanged,
+              insideScrollable: insideScrollable,
+            );
+            // Support flex on direct Column children (same as Row)
+            final flexVal = int.tryParse(
+              childNode.styles['flex']?.toString() ??
+                  childNode.properties['flex']?.toString() ??
+                  '',
+            );
+            if (flexVal != null && flexVal > 0 && hasBoundedHeight &&
+                parentNode?.type != "SingleChildScrollView") {
+              return Expanded(flex: flexVal, child: childWidget);
+            }
+            if (isDesignMode && hasBoundedHeight) {
+              return Flexible(fit: FlexFit.loose, child: childWidget);
+            }
+            return childWidget;
+          }).toList();
+
+          final List<Widget> spacedChildren = [];
+          for (int i = 0; i < renderedChildren.length; i++) {
+            spacedChildren.add(renderedChildren[i]);
+            if (columnSpacing != null && columnSpacing > 0 && i < renderedChildren.length - 1) {
+              spacedChildren.add(SizedBox(height: columnSpacing));
+            }
+          }
+
           return Column(
             mainAxisAlignment: mainAlign,
             crossAxisAlignment: effectiveCrossAlign,
             mainAxisSize: mainSize,
-            children: node.children.map((childNode) {
-              final childWidget = render(
-                childNode,
-                isDesignMode: isDesignMode,
-                parentNode: node,
-                selectedNode: selectedNode,
-                hoveredNode: hoveredNode,
-                onSelect: onSelect,
-                onHover: onHover,
-                onDelete: onDelete,
-                onDuplicate: onDuplicate,
-                onMoveChild: onMoveChild,
-                onAddChild: onAddChild,
-                formValues: formValues,
-                onFormValueChanged: onFormValueChanged,
-                insideScrollable: insideScrollable,
-              );
-              // Support flex on direct Column children (same as Row)
-              final flexVal = int.tryParse(
-                childNode.styles['flex']?.toString() ??
-                    childNode.properties['flex']?.toString() ??
-                    '',
-              );
-              if (flexVal != null && flexVal > 0 && hasBoundedHeight &&
-                  parentNode?.type != "SingleChildScrollView") {
-                return Expanded(flex: flexVal, child: childWidget);
-              }
-              if (isDesignMode && hasBoundedHeight) {
-                return Flexible(fit: FlexFit.loose, child: childWidget);
-              }
-              return childWidget;
-            }).toList(),
+            children: spacedChildren,
           );
         }
 
