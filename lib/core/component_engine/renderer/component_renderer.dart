@@ -63,6 +63,29 @@ class ComponentRendererWidget extends ConsumerWidget {
       ref.read(formValuesProvider.notifier).updateValue(field, val);
     };
 
+    // Check responsive visibility
+    double currentWidth = MediaQuery.of(context).size.width;
+    try {
+      final simulatedWidth = ref.watch(visualBuilderProvider.select((s) => s.canvasWidth));
+      if (simulatedWidth > 0) {
+        currentWidth = simulatedWidth;
+      }
+    } catch (_) {}
+
+    final isMobile = currentWidth < 600;
+    final isTablet = currentWidth >= 600 && currentWidth < 1024;
+    final isDesktop = currentWidth >= 1024;
+
+    final resp = node.responsive;
+    if (resp.isNotEmpty) {
+      final isVisible = (isMobile && resp['mobile'] != false) ||
+                        (isTablet && resp['tablet'] != false) ||
+                        (isDesktop && resp['desktop'] != false);
+      if (!isVisible) {
+        return const SizedBox.shrink();
+      }
+    }
+
     // 1. Render the actual core widget
     Widget coreWidget = ComponentRenderer._buildWidget(
       node,

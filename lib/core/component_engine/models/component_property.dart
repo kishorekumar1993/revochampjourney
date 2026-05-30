@@ -61,6 +61,54 @@ class PropertyParser {
       final d = val.toDouble();
       return EdgeInsets.all(d < 0.0 ? 0.0 : d);
     }
+    if (val is String) {
+      final str = val.trim();
+      if (str.isEmpty) return EdgeInsets.zero;
+      
+      // Try to parse single number first
+      final singleNum = double.tryParse(str);
+      if (singleNum != null) {
+        return EdgeInsets.all(singleNum < 0.0 ? 0.0 : singleNum);
+      }
+      
+      // Try space-separated values
+      final parts = str.split(RegExp(r'\s+'));
+      if (parts.length == 2) {
+        final vertical = double.tryParse(parts[0]) ?? 0.0;
+        final horizontal = double.tryParse(parts[1]) ?? 0.0;
+        return EdgeInsets.symmetric(
+          vertical: vertical < 0.0 ? 0.0 : vertical,
+          horizontal: horizontal < 0.0 ? 0.0 : horizontal,
+        );
+      } else if (parts.length == 4) {
+        // CSS style padding: top right bottom left
+        final top = double.tryParse(parts[0]) ?? 0.0;
+        final right = double.tryParse(parts[1]) ?? 0.0;
+        final bottom = double.tryParse(parts[2]) ?? 0.0;
+        final left = double.tryParse(parts[3]) ?? 0.0;
+        return EdgeInsets.fromLTRB(
+          left < 0.0 ? 0.0 : left,
+          top < 0.0 ? 0.0 : top,
+          right < 0.0 ? 0.0 : right,
+          bottom < 0.0 ? 0.0 : bottom,
+        );
+      }
+      
+      // Try comma-separated values (left, top, right, bottom)
+      final commaParts = str.split(',');
+      if (commaParts.length == 4) {
+        final left = double.tryParse(commaParts[0].trim()) ?? 0.0;
+        final top = double.tryParse(commaParts[1].trim()) ?? 0.0;
+        final right = double.tryParse(commaParts[2].trim()) ?? 0.0;
+        final bottom = double.tryParse(commaParts[3].trim()) ?? 0.0;
+        return EdgeInsets.fromLTRB(
+          left < 0.0 ? 0.0 : left,
+          top < 0.0 ? 0.0 : top,
+          right < 0.0 ? 0.0 : right,
+          bottom < 0.0 ? 0.0 : bottom,
+        );
+      }
+    }
     if (val is Map) {
       final left = double.tryParse(val['left']?.toString() ?? '0') ?? 0.0;
       final top = double.tryParse(val['top']?.toString() ?? '0') ?? 0.0;
