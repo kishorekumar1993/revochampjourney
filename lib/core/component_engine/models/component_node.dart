@@ -123,12 +123,12 @@ class ComponentNode {
       bindings: rawBindings,
       animations: rawAnimations,
       children: childrenList
-          .where((child) => child is Map)
-          .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child as Map)))
+          .whereType<Map>()
+          .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child)))
           .toList(),
       actions: actionsList
-          .where((action) => action is Map)
-          .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action as Map)))
+          .whereType<Map>()
+          .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action)))
           .toList(),
     );
   }

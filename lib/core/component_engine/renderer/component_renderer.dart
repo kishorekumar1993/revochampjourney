@@ -921,7 +921,7 @@ class ComponentRenderer {
           physics: const NeverScrollableScrollPhysics(),
           padding: pad,
           itemCount: node.children.isEmpty ? 1 : node.children.length,
-          separatorBuilder: (_, __) => SizedBox(height: spacing),
+          separatorBuilder: (_, _) => SizedBox(height: spacing),
           itemBuilder: (context, index) {
             if (node.children.isEmpty) {
               return isDesignMode
@@ -1419,7 +1419,7 @@ class ComponentRenderer {
             width: width ?? double.infinity,
             height: height,
             fit: fit,
-            errorBuilder: (_, __, ___) {
+            errorBuilder: (_, _, _) {
               return Container(
                 width: width ?? double.infinity,
                 height: height,

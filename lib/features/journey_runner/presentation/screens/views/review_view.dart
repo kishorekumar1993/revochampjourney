@@ -313,7 +313,7 @@ class ReviewRunnerView extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: fields.length,
-      separatorBuilder: (_, __) => const Divider(color: _IT.border, height: 24),
+      separatorBuilder: (_, _) => const Divider(color: _IT.border, height: 24),
       itemBuilder: (context, fIdx) {
         final field = fields[fIdx];
         if (field.type.toLowerCase() == 'divider' || field.type.toLowerCase() == 'label') {

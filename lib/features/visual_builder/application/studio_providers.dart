@@ -224,6 +224,12 @@ class ThemeTokens {
   final String tableStyle;
   final String stepperStyle;
   final String snackbarStyle;
+  final String dataGridStyle;
+  final String calendarStyle;
+  final String treeViewStyle;
+  final String chartsStyle;
+  final String timelineStyle;
+  final String kanbanStyle;
   // Dark mode
   final bool isDarkMode;
 
@@ -284,6 +290,12 @@ class ThemeTokens {
     this.tableStyle = 'standard',
     this.stepperStyle = 'standard',
     this.snackbarStyle = 'standard',
+    this.dataGridStyle = 'compact',
+    this.calendarStyle = 'minimalist',
+    this.treeViewStyle = 'tree-lines',
+    this.chartsStyle = 'solid',
+    this.timelineStyle = 'left-align',
+    this.kanbanStyle = 'board-flat',
     this.isDarkMode = false,
   });
 
@@ -344,6 +356,12 @@ class ThemeTokens {
     String? tableStyle,
     String? stepperStyle,
     String? snackbarStyle,
+    String? dataGridStyle,
+    String? calendarStyle,
+    String? treeViewStyle,
+    String? chartsStyle,
+    String? timelineStyle,
+    String? kanbanStyle,
     bool? isDarkMode,
   }) {
     return ThemeTokens(
@@ -403,6 +421,12 @@ class ThemeTokens {
       tableStyle: tableStyle ?? this.tableStyle,
       stepperStyle: stepperStyle ?? this.stepperStyle,
       snackbarStyle: snackbarStyle ?? this.snackbarStyle,
+      dataGridStyle: dataGridStyle ?? this.dataGridStyle,
+      calendarStyle: calendarStyle ?? this.calendarStyle,
+      treeViewStyle: treeViewStyle ?? this.treeViewStyle,
+      chartsStyle: chartsStyle ?? this.chartsStyle,
+      timelineStyle: timelineStyle ?? this.timelineStyle,
+      kanbanStyle: kanbanStyle ?? this.kanbanStyle,
       isDarkMode: isDarkMode ?? this.isDarkMode,
     );
   }
@@ -430,6 +454,8 @@ class ThemeTokens {
     'dialogStyle': dialogStyle, 'drawerStyle': drawerStyle, 'bottomSheetStyle': bottomSheetStyle,
     'tabBarStyle': tabBarStyle, 'navigationBarStyle': navigationBarStyle, 'listTileStyle': listTileStyle,
     'tableStyle': tableStyle, 'stepperStyle': stepperStyle, 'snackbarStyle': snackbarStyle,
+    'dataGridStyle': dataGridStyle, 'calendarStyle': calendarStyle, 'treeViewStyle': treeViewStyle,
+    'chartsStyle': chartsStyle, 'timelineStyle': timelineStyle, 'kanbanStyle': kanbanStyle,
     'isDarkMode': isDarkMode,
   };
 
@@ -490,6 +516,12 @@ class ThemeTokens {
     tableStyle: j['tableStyle'] as String? ?? 'standard',
     stepperStyle: j['stepperStyle'] as String? ?? 'standard',
     snackbarStyle: j['snackbarStyle'] as String? ?? 'standard',
+    dataGridStyle: j['dataGridStyle'] as String? ?? 'compact',
+    calendarStyle: j['calendarStyle'] as String? ?? 'minimalist',
+    treeViewStyle: j['treeViewStyle'] as String? ?? 'tree-lines',
+    chartsStyle: j['chartsStyle'] as String? ?? 'solid',
+    timelineStyle: j['timelineStyle'] as String? ?? 'left-align',
+    kanbanStyle: j['kanbanStyle'] as String? ?? 'board-flat',
     isDarkMode: j['isDarkMode'] as bool? ?? false,
   );
 }
@@ -567,3 +599,6 @@ class ThemeVersionsNotifier extends StateNotifier<List<ThemeVersion>> {
 final themeVersionsProvider = StateNotifierProvider<ThemeVersionsNotifier, List<ThemeVersion>>((ref) {
   return ThemeVersionsNotifier();
 });
+
+final geminiApiKeyProvider = StateProvider<String>((ref) => "");
+

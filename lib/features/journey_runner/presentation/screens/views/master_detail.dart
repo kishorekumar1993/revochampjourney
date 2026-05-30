@@ -203,7 +203,7 @@ class MasterDetailRunnerView extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: cfg.steps.length,
-              separatorBuilder: (_, __) => const Divider(height: 0, indent: 20, endIndent: 20),
+              separatorBuilder: (_, _) => const Divider(height: 0, indent: 20, endIndent: 20),
               itemBuilder: (context, index) {
                 final step = cfg.steps[index];
                 final isActive = index == activeIdx;
@@ -273,16 +273,15 @@ class MasterDetailRunnerView extends StatelessWidget {
                         color: isActive ? _IT.brand : _IT.textDark,
                       ),
                     ),
-                    if (step.description != null)
-                      Text(
-                        step.description,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _IT.textMid,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      step.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _IT.textMid,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -318,22 +317,21 @@ class MasterDetailRunnerView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with step title & description
-          if (activeStep.title != null)
-            Text(
-              activeStep.title,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: _IT.textDark,
-              ),
+          Text(
+            activeStep.title,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _IT.textDark,
             ),
-          if (activeStep.description != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              activeStep.description,
-              style: TextStyle(fontSize: 14, color: _IT.textMid),
-            ),
-          ],
+          ),
+          ...[
+          const SizedBox(height: 8),
+          Text(
+            activeStep.description,
+            style: TextStyle(fontSize: 14, color: _IT.textMid),
+          ),
+        ],
           const SizedBox(height: 24),
           // Form content (scrollable)
           Expanded(

@@ -429,7 +429,7 @@ class _TabbedRunnerViewState extends State<TabbedRunnerView> {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                           const SizedBox(height: 8),
                           const Divider(color: _IT.border, height: 1),
                         ],

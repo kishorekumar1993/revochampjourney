@@ -263,25 +263,11 @@ class $repoName implements I$repoName {
       if (!field.isNullable) {
         line.write(' NOT NULL');
       }
-      // FIXME: Add `isUnique` to FieldConfig model to enable this.
-      // if (field.isUnique) {
-      //   line.write(' UNIQUE');
-      // }
-      // FIXME: Add `defaultValue` to FieldConfig model to enable this.
-      // if (field.defaultValue != null && field.defaultValue.toString().isNotEmpty) {
-      //   line.write(" DEFAULT '${field.defaultValue}'");
-      // }
+    
       lines.add(line.toString());
     }
     buffer.write(lines.join(',\n'));
     buffer.writeln('\n);');
-
-    // for (final field in tc.fields) {
-    //   // FIXME: Add `isIndexed` to FieldConfig model to enable this.
-    //   // if (field.isIndexed) {
-    //   //   buffer.writeln('\nCREATE INDEX "idx_${tc.name}_${field.name}" ON "${tc.name}" ("${field.name}");');
-    //   // }
-    // }
 
     return buffer.toString();
   }
@@ -511,18 +497,7 @@ class $repoName implements I$repoName {
                   value: field.isNullable,
                   onChanged: (val) => onUpdate(field.copyWith(isNullable: val)),
                 ),
-                // FIXME: Add `isUnique` to FieldConfig model to enable this.
-                // _buildSwitch(
-                //   label: "Unique",
-                //   value: field.isUnique,
-                //   onChanged: (val) => onUpdate(field.copyWith(isUnique: val)),
-                // ),
-                // FIXME: Add `isIndexed` to FieldConfig model to enable this.
-                // _buildSwitch(
-                //   label: "Create Index",
-                //   value: field.isIndexed,
-                //   onChanged: (val) => onUpdate(field.copyWith(isIndexed: val)),
-                // ),
+                
               ],
             ),
           ),
