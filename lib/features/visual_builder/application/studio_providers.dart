@@ -41,32 +41,82 @@ final appVariablesProvider = StateNotifierProvider<AppVariablesNotifier, List<Ap
   return AppVariablesNotifier();
 });
 
+class ApiCollectionsNotifier extends StateNotifier<List<ApiCollection>> {
+  ApiCollectionsNotifier() : super([
+    ApiCollection(
+      id: 'coll_auth',
+      name: 'Authentication',
+      description: 'Endpoints for user sign in, registration, and sessions',
+      baseUrl: 'https://api.revochamp.com',
+      headers: {'Content-Type': 'application/json'},
+      authentication: 'None',
+    ),
+    ApiCollection(
+      id: 'coll_users',
+      name: 'Users',
+      description: 'Operations related to user profiles and details',
+      baseUrl: 'https://api.revochamp.com',
+      authentication: 'Bearer Token',
+      authPassword: '{{accessToken}}',
+    ),
+    ApiCollection(
+      id: 'coll_products',
+      name: 'Products',
+      description: 'Product catalog query endpoints',
+      baseUrl: 'https://api.revochamp.com',
+      authentication: 'API Key',
+      apiKeyName: 'X-API-Key',
+      apiKeyValue: 'prod_api_key_xyz_123',
+    ),
+  ]);
+
+  void addCollection(ApiCollection collection) {
+    state = [...state, collection];
+  }
+
+  void updateCollection(String id, ApiCollection updated) {
+    state = state.map((c) => c.id == id ? updated : c).toList();
+  }
+
+  void deleteCollection(String id) {
+    state = state.where((c) => c.id != id).toList();
+  }
+}
+
+final apiCollectionsProvider = StateNotifierProvider<ApiCollectionsNotifier, List<ApiCollection>>((ref) {
+  return ApiCollectionsNotifier();
+});
+
 // API Config notifier
 class ApiConfigsNotifier extends StateNotifier<List<ApiConfig>> {
   ApiConfigsNotifier() : super([
     ApiConfig(
       id: 'api_login',
       name: 'User Login API',
-      baseUrl: 'https://api.revochamp.com',
+      baseUrl: '',
       endpoint: '/v1/auth/login',
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {},
       queryParams: {},
       requestBody: '{"email": "", "password": ""}',
-      authentication: 'None',
+      authentication: 'Inherit',
       responseMapping: {'token': 'sessionToken'},
+      collectionId: 'coll_auth',
+      inheritParentSettings: true,
     ),
     ApiConfig(
       id: 'api_get_profile',
       name: 'Get User Profile',
-      baseUrl: 'https://api.revochamp.com',
+      baseUrl: '',
       endpoint: '/v1/users/profile',
       method: 'GET',
-      headers: {'Authorization': 'Bearer {token}'},
+      headers: {},
       queryParams: {},
       requestBody: '',
-      authentication: 'Bearer Token',
+      authentication: 'Inherit',
       responseMapping: {'name': 'userName'},
+      collectionId: 'coll_users',
+      inheritParentSettings: true,
     ),
   ]);
 
