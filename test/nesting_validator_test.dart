@@ -171,7 +171,7 @@ void main() {
 
       final result = NestingValidator.validateDrop(container, newChild, null);
       expect(result.success, isFalse);
-      expect(result.errorMessage, contains('Container can contain only one child widget'));
+      expect(result.errorMessage, contains('only supports named slots'));
     });
 
     test('effectiveSlotName returns null for Row and Column when no slot specified', () {

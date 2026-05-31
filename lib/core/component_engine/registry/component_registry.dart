@@ -14,6 +14,10 @@ class ComponentMetadata {
   final bool singleChildWidget;
   final List<String>? allowedChildTypes;
   final Map<String, List<String>>? slotRestrictions;
+  final List<String> supportedProperties;
+  final List<String> supportedStyles;
+  final List<String> supportedEvents;
+  final List<String> supportedValidations;
 
   const ComponentMetadata({
     required this.type,
@@ -27,9 +31,125 @@ class ComponentMetadata {
     this.singleChildWidget = false,
     this.allowedChildTypes,
     this.slotRestrictions,
+    this.supportedProperties = const [],
+    this.supportedStyles = const [],
+    this.supportedEvents = const [],
+    this.supportedValidations = const [],
   });
 
   bool get allowsChildren => canHaveChildren;
+
+  List<String> get propertiesList {
+    if (supportedProperties.isNotEmpty) return supportedProperties;
+    if (category == ComponentCategory.form) {
+      final list = ['fieldName', 'label', 'hint', 'enabled', 'readOnly'];
+      if (type == 'TextField') {
+        list.addAll(['obscureText', 'keyboardType', 'maxLength']);
+      } else if (type == 'Slider') {
+        list.addAll(['min', 'max']);
+      } else if (type == 'Dropdown' || type == 'Radio') {
+        list.add('options');
+      } else if (type == 'OTP') {
+        list.add('length');
+      }
+      return list;
+    }
+    if (type == 'Text' || type == 'Button') {
+      return ['label'];
+    }
+    if (type == 'Image') {
+      return ['src', 'fit'];
+    }
+    if (type == 'Icon' || type == 'IconButton' || type == 'FloatingButton') {
+      return ['icon'];
+    }
+    if (type == 'Progress') {
+      return ['isCircular'];
+    }
+    if (type == 'Tabs' || type == 'NavigationBar') {
+      return ['items'];
+    }
+    if (type == 'BottomNavigationBar') {
+      return ['currentIndex'];
+    }
+    if (type == 'IndexedStack') {
+      return ['index'];
+    }
+    if (type == 'AppBar' || type == 'ListTile' || type == 'AlertDialog' || type == 'Drawer') {
+      return ['title'];
+    }
+    if (type == 'Table') {
+      return ['columns'];
+    }
+    return [];
+  }
+
+  List<String> get stylesList {
+    if (supportedStyles.isNotEmpty) return supportedStyles;
+    final list = <String>[];
+    if (type == 'Container' || type == 'SizedBox' || type == 'Image' || type == 'Card') {
+      list.addAll(['width', 'height']);
+    }
+    if (type == 'Container' || type == 'Card' || type == 'Button' || type == 'FloatingButton' || type == 'Chip' || type == 'Badge') {
+      list.add('backgroundColor');
+    }
+    if (type == 'Container' || type == 'Card') {
+      list.addAll(['gradientStart', 'gradientEnd']);
+    }
+    if (type == 'Container' || type == 'Card' || type == 'Row' || type == 'Column' || type == 'ListView' || type == 'GridView' || type == 'Wrap') {
+      list.addAll(['padding', 'margin']);
+    }
+    if (type == 'Container' || type == 'Card' || type == 'Button' || type == 'Image') {
+      list.add('borderRadius');
+    }
+    if (type == 'Container' || type == 'Card') {
+      list.addAll(['borderColor', 'borderWidth']);
+    }
+    if (type == 'Icon' || type == 'IconButton' || type == 'Progress' || type == 'FloatingButton') {
+      list.add('color');
+    }
+    if (type == 'Text' || type == 'Button' || type == 'Chip' || type == 'Badge') {
+      list.add('textColor');
+    }
+    if (type == 'Text' || type == 'Icon' || type == 'IconButton') {
+      list.add('fontSize');
+    }
+    if (type == 'Text') {
+      list.add('fontWeight');
+    }
+    if (type == 'Card' || type == 'Container' || type == 'Button') {
+      list.add('elevation');
+    }
+    if (type == 'Row' || type == 'Column') {
+      list.addAll(['mainAxisAlignment', 'crossAxisAlignment']);
+    }
+    if (type == 'Row' || type == 'Column' || type == 'Wrap' || type == 'GridView' || type == 'ListView') {
+      list.add('spacing');
+    }
+    return list;
+  }
+
+  List<String> get eventsList {
+    if (supportedEvents.isNotEmpty) return supportedEvents;
+    if (type == 'Button' || type == 'IconButton' || type == 'FloatingButton' || type == 'GestureDetector' || type == 'InkWell' || type == 'ListTile') {
+      return ['onTap'];
+    }
+    if (category == ComponentCategory.form) {
+      if (type == 'TextField') {
+        return ['onChanged', 'onSubmitted'];
+      }
+      return ['onChanged'];
+    }
+    return [];
+  }
+
+  List<String> get validationsList {
+    if (supportedValidations.isNotEmpty) return supportedValidations;
+    if (category == ComponentCategory.form) {
+      return ['required', 'regexPattern', 'minLength', 'maxLength', 'errorMessage'];
+    }
+    return [];
+  }
 }
 
 class ComponentRegistry {

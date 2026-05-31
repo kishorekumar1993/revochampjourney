@@ -9,7 +9,7 @@ class ComponentRendererLayouts {
     String slotName,
     RenderContext ctx,
   ) {
-    final slotNode = parentNode.slots[slotName];
+    final slotNode = parentNode.getSlotChild(slotName);
     if (slotNode != null) {
       return ComponentRenderer.render(
         slotNode,

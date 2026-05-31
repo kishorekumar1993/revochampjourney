@@ -113,6 +113,21 @@ class ComponentRendererWidget extends ConsumerWidget {
     
     final isSelected = ref.watch(visualBuilderProvider.select((s) => s.selectedNode?.id == node.id));
     final isHovered = ref.watch(visualBuilderProvider.select((s) => s.hoveredNode?.id == node.id));
+
+    ref.listen<ComponentNode?>(builderSelectedNodeProvider, (prev, next) {
+      if (next?.id == node.id && isDesignMode) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            Scrollable.ensureVisible(
+              context,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+            );
+          }
+        });
+      }
+    });
     
     final Map<String, dynamic> formValues = overrideFormValues ?? ref.watch(formValuesProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
@@ -404,7 +419,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                       return DragTarget<Object>(
                         onWillAcceptWithDetails: (details) {
                           final data = details.data;
-                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          final droppedNode = ComponentRenderer.dropDataToNode(data);
                           if (droppedNode == null) return false;
                           if (data is ComponentNode && data.id == node.id) return false;
                           return NestingValidator.validateDrop(node, droppedNode, null).success;
@@ -454,7 +469,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                           // Only allow sibling drops into multi-child parents
                           final parentMeta = ComponentRegistry.getByType(parentNode!.type);
                           if (parentMeta == null) return false;
-                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          final droppedNode = ComponentRenderer.dropDataToNode(data);
                           if (droppedNode == null) return false;
                           return NestingValidator.validateDrop(parentNode!, droppedNode, null).success;
                         },
@@ -505,7 +520,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                           if (data is ComponentNode && data.id == node.id) return false;
                           final parentMeta = ComponentRegistry.getByType(parentNode!.type);
                           if (parentMeta == null) return false;
-                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          final droppedNode = ComponentRenderer.dropDataToNode(data);
                           if (droppedNode == null) return false;
                           return NestingValidator.validateDrop(parentNode!, droppedNode, null).success;
                         },
@@ -847,9 +862,16 @@ class ComponentRenderer {
     return '${slotName[0].toUpperCase()}${slotName.substring(1)}';
   }
 
-  static ComponentNode? _dropDataToNode(Object? data) {
+  static ComponentNode? dropDataToNode(Object? data) {
     if (data is ComponentNode) return data;
     if (data is String) {
+      // Check if it's an existing node ID in the tree first
+      final controller = VisualBuilderController.activeInstance;
+      if (controller != null) {
+        final existingNode = controller.findNodeById(data);
+        if (existingNode != null) return existingNode;
+      }
+
       // Handle reusable prefix
       final typeName = data.startsWith('reusable_') ? data : data;
       final meta = ComponentRegistry.getByType(typeName);
@@ -1422,7 +1444,7 @@ class CanvasDropSeparator extends ConsumerWidget {
     return DragTarget<Object>(
       onWillAcceptWithDetails: (details) {
         final data = details.data;
-        final droppedNode = ComponentRenderer._dropDataToNode(data);
+        final droppedNode = ComponentRenderer.dropDataToNode(data);
         if (droppedNode == null) return false;
         if (data is ComponentNode && data.id == parentNode.id) return false;
         return NestingValidator.validateDrop(parentNode, droppedNode, null).success;
@@ -1538,7 +1560,7 @@ class SlotDragTarget extends ConsumerWidget {
     return DragTarget<Object>(
       onWillAcceptWithDetails: (details) {
         final data = details.data;
-        final droppedNode = ComponentRenderer._dropDataToNode(data);
+        final droppedNode = ComponentRenderer.dropDataToNode(data);
         if (droppedNode == null) return false;
         return NestingValidator.validateDrop(parentNode, droppedNode, slotName).success;
       },

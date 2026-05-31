@@ -18,31 +18,29 @@ class RevoLayoutTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final meta = ComponentRegistry.getByType(node.type);
+    final stylesList = meta?.stylesList ?? [];
+    
+    final layoutKeys = ['mainAxisAlignment', 'crossAxisAlignment', 'spacing', 'runSpacing', 'alignment'];
+    final activeLayoutStyles = stylesList.where((key) => layoutKeys.contains(key)).toList();
+
+    if (activeLayoutStyles.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text(
+            "This component does not have any schema-defined layout properties.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+        ),
+      );
+    }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (shouldShowLayoutProperty('mainAxisAlignment', node, meta))
-          buildPropertyDropdown(
-            label: "Main Axis Alignment",
-            value: getStyleValue('mainAxisAlignment', node, meta, fallback: 'start')?.toString() ?? 'start',
-            options: const ['start', 'center', 'end', 'space_between', 'space_around', 'space_evenly'],
-            onChanged: (val) => controller.updateNodeProperties(node.id, {'mainAxisAlignment': val}),
-          ),
-        if (shouldShowLayoutProperty('crossAxisAlignment', node, meta))
-          buildPropertyDropdown(
-            label: "Cross Axis Alignment",
-            value: getStyleValue('crossAxisAlignment', node, meta, fallback: 'center')?.toString() ?? 'center',
-            options: const ['start', 'center', 'end', 'stretch'],
-            onChanged: (val) => controller.updateNodeProperties(node.id, {'crossAxisAlignment': val}),
-          ),
-        if (shouldShowLayoutProperty('spacing', node, meta))
-          buildPropertyTextField(
-            label: "Spacing (Gap)",
-            value: getStyleValue('spacing', node, meta, fallback: '')?.toString() ?? '',
-            onChanged: (val) => controller.updateNodeProperties(node.id, {'spacing': double.tryParse(val)}),
-          ),
-      ],
+      shrinkWrap: true,
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: activeLayoutStyles.map((key) => buildDynamicStyleField(context, key, node, controller)).toList(),
     );
   }
 }

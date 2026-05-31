@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../../../../core/component_engine/registry/component_registry.dart';
 import '../../../../../../../core/theme.dart';
 import '../../../../../../../core/component_engine/models/component_node.dart';
 import '../../../../../../../core/component_engine/models/component_action.dart';
@@ -49,11 +50,13 @@ class RevoActionsTab extends StatelessWidget {
 class RevoActionsFlowView extends StatelessWidget {
   final ComponentNode? selectedNode;
   final VisualBuilderController controller;
+  final String? activeTrigger;
 
   const RevoActionsFlowView({
     super.key,
     required this.selectedNode,
     required this.controller,
+    this.activeTrigger,
   });
 
   @override
@@ -71,24 +74,53 @@ class RevoActionsFlowView extends StatelessWidget {
       );
     }
 
-    if (selectedNode!.actions.isEmpty) {
+    final meta = ComponentRegistry.getByType(selectedNode!.type);
+    final String trigger = activeTrigger ?? (meta?.eventsList.isNotEmpty == true ? meta!.eventsList.first : 'onTap');
+    final existingActionIndex = selectedNode!.actions.indexWhere((a) => a.event == trigger);
+
+    if (existingActionIndex == -1) {
       return Center(
-        child: ElevatedButton.icon(
-          onPressed: () {
-            final action = ComponentAction(event: 'onTap', steps: []);
-            controller.updateNodeActions(selectedNode!.id, [action]);
-          },
-          icon: const Icon(Icons.add, color: Colors.white, size: 14),
-          label: const Text("Create Action Trigger (onTap)", style: TextStyle(color: Colors.white, fontSize: 11)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF5B4FCF),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(color: Color(0x0C5B4FCF), shape: BoxShape.circle),
+                child: const Icon(Icons.flash_on_rounded, color: Color(0xFF5B4FCF), size: 24),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "No action set for '$trigger'",
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: RevoTheme.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Add an action pipeline to run whenever the component triggers this event.",
+                style: GoogleFonts.inter(fontSize: 10, color: RevoTheme.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final action = ComponentAction(event: trigger, steps: []);
+                  controller.updateNodeActions(selectedNode!.id, [...selectedNode!.actions, action]);
+                },
+                icon: const Icon(Icons.add, color: Colors.white, size: 14),
+                label: Text("Create Pipeline ($trigger)", style: const TextStyle(color: Colors.white, fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5B4FCF),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    final action = selectedNode!.actions.first;
+    final action = selectedNode!.actions[existingActionIndex];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
