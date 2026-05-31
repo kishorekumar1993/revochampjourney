@@ -148,10 +148,14 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     final dragTargetWidget = DragTarget<String>(
       onWillAcceptWithDetails: (details) {
         final draggedId = details.data;
-        // Don't drop on self or parent to avoid cycles or redundant operations
         if (draggedId == node.id) return false;
-        // Also don't accept if target is a descendant of dragged node
         if (_isDescendant(draggedId, node)) return false;
+
+        final meta = ComponentRegistry.getByType(node.type);
+        if (meta != null && meta.maxChildren != null) {
+          final int count = node.children.length + node.slots.values.where((c) => c != null).length;
+          if (count >= meta.maxChildren!) return false;
+        }
         return true;
       },
       onAcceptWithDetails: (details) {
@@ -374,7 +378,13 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           list.add(
             DragTarget<String>(
               onWillAcceptWithDetails: (details) {
-                return details.data != _draggingNodeId;
+                if (details.data == _draggingNodeId) return false;
+                final meta = ComponentRegistry.getByType(node.type);
+                if (meta != null && meta.maxChildren != null) {
+                  final int count = node.children.length + node.slots.values.where((c) => c != null).length;
+                  if (count >= meta.maxChildren!) return false;
+                }
+                return true;
               },
               onAcceptWithDetails: (details) {
                 final draggedId = details.data;

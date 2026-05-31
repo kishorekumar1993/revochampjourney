@@ -383,6 +383,12 @@ class ComponentRendererWidget extends ConsumerWidget {
                         onWillAcceptWithDetails: (details) {
                           final data = details.data;
                           if (data is ComponentNode && data.id == node.id) return false;
+                          
+                          final meta = ComponentRegistry.getByType(node.type);
+                          if (meta != null && meta.maxChildren != null) {
+                            final int count = node.children.length + node.slots.values.where((c) => c != null).length;
+                            if (count >= meta.maxChildren!) return false;
+                          }
                           return true;
                         },
                         onAcceptWithDetails: (details) {
