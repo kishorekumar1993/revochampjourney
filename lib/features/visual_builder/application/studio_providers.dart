@@ -17,3 +17,6 @@ final dashboardIsSidebarCollapsedProvider = StateProvider<bool>((ref) => false);
 final activeSidebarTabProvider = StateProvider<String>((ref) => 'Journey Flow');
 
 final selectedApiConfigIdProvider = StateProvider<String?>((ref) => null);
+
+final canvasIsDraggingProvider = StateProvider<bool>((ref) => false);
+

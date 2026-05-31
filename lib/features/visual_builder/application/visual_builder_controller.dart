@@ -21,6 +21,7 @@ class VisualBuilderState {
   final String activeStepId;
   final List<VisualBuilderCommand> past;
   final List<VisualBuilderCommand> future;
+  final List<ComponentNode> reusableComponents;
 
   VisualBuilderState({
     required this.rootNode,
@@ -33,6 +34,7 @@ class VisualBuilderState {
     required this.activeStepId,
     this.past = const [],
     this.future = const [],
+    this.reusableComponents = const [],
   });
 
   VisualBuilderState copyWith({
@@ -46,6 +48,7 @@ class VisualBuilderState {
     String? activeStepId,
     List<VisualBuilderCommand>? past,
     List<VisualBuilderCommand>? future,
+    List<ComponentNode>? reusableComponents,
     bool clearSelected = false,
   }) {
     return VisualBuilderState(
@@ -59,6 +62,7 @@ class VisualBuilderState {
       activeStepId: activeStepId ?? this.activeStepId,
       past: past ?? this.past,
       future: future ?? this.future,
+      reusableComponents: reusableComponents ?? this.reusableComponents,
     );
   }
 }
@@ -296,6 +300,17 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   }
 
   void addChildNode(String parentId, String componentType, {int? targetIndex}) {
+    if (componentType.startsWith('reusable_')) {
+      final componentId = componentType.replaceFirst('reusable_', '');
+      final template = state.reusableComponents.firstWhere(
+        (c) => c.id == componentId,
+        orElse: () => null as dynamic,
+      );
+      if (template != null) {
+        addReusableComponentToCanvas(parentId, template, targetIndex: targetIndex);
+      }
+      return;
+    }
     final meta = ComponentRegistry.getByType(componentType);
     if (meta == null) return;
 
@@ -356,6 +371,39 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       parentId: parentId,
       node: duplicate,
     ));
+  }
+
+  void saveAsReusableComponent(String nodeId, String customLabel) {
+    final target = findNodeById(nodeId);
+    if (target == null) return;
+
+    final duplicate = _deepCloneNodeWithNewIds(target);
+    duplicate.isReusable = true;
+    duplicate.displayName = customLabel;
+
+    state = state.copyWith(
+      reusableComponents: [...state.reusableComponents, duplicate],
+    );
+    VisualBuilderLogger.log('Component', 'Saved node $nodeId as reusable component: $customLabel');
+  }
+
+  void deleteReusableComponent(String id) {
+    state = state.copyWith(
+      reusableComponents: state.reusableComponents.where((c) => c.id != id).toList(),
+    );
+    VisualBuilderLogger.log('Component', 'Deleted reusable component $id');
+  }
+
+  void addReusableComponentToCanvas(String parentId, ComponentNode templateNode, {int? targetIndex}) {
+    final clone = _deepCloneNodeWithNewIds(templateNode);
+    clone.isReusable = false;
+
+    executeCommand(AddWidgetCommand(
+      parentId: parentId,
+      node: clone,
+      index: targetIndex,
+    ));
+    VisualBuilderLogger.log('Component', 'Added reusable component instance ${clone.id} to parent $parentId');
   }
 
   void updateNodeProperties(String nodeId, Map<String, dynamic> props) {
@@ -494,6 +542,10 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     return _findNode(state.rootNode, id);
   }
 
+  ComponentNode? findParentNode(String childId) {
+    return _findParentNode(state.rootNode, childId);
+  }
+
   ComponentNode? _findNode(ComponentNode current, String id) {
     if (current.id == id) return current;
     for (final child in current.children) {
@@ -561,5 +613,10 @@ final builderCanvasSizeProvider = Provider<({double width, double height, double
 /// Undo/Redo availability — rebuilds only when history changes.
 final builderHistoryProvider = Provider<({bool canUndo, bool canRedo})>((ref) {
   return ref.watch(visualBuilderProvider.select((s) => (canUndo: s.past.isNotEmpty, canRedo: s.future.isNotEmpty)));
+});
+
+/// Reusable custom components list.
+final builderReusableComponentsProvider = Provider<List<ComponentNode>>((ref) {
+  return ref.watch(visualBuilderProvider.select((s) => s.reusableComponents));
 });
 

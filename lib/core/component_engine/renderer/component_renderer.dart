@@ -344,8 +344,10 @@ class ComponentRendererWidget extends ConsumerWidget {
           ),
         );
 
-        Widget dragSource = LongPressDraggable<ComponentNode>(
+        Widget dragSource = Draggable<ComponentNode>(
           data: node,
+          onDragStarted: () => ref.read(canvasIsDraggingProvider.notifier).state = true,
+          onDragEnd: (_) => ref.read(canvasIsDraggingProvider.notifier).state = false,
           feedback: Material(
             color: Colors.transparent,
             child: Container(
@@ -373,30 +375,36 @@ class ComponentRendererWidget extends ConsumerWidget {
               designWidget,
               if (canAcceptChildren)
                 Positioned.fill(
-                  child: DragTarget<Object>(
-                    onWillAcceptWithDetails: (details) {
-                      final data = details.data;
-                      if (data is ComponentNode && data.id == node.id) return false;
-                      return true;
-                    },
-                    onAcceptWithDetails: (details) {
-                      final data = details.data;
-                      if (data is String) {
-                        onAddChild.call(node, data);
-                      } else if (data is ComponentNode) {
-                        onMoveChild(node, data, node.children.length);
-                      }
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      final isOver = candidateData.isNotEmpty;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
-                          border: isOver
-                              ? Border.all(color: const Color(0xFF5B4FCF), width: 1.5)
-                              : null,
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final isDragging = ref.watch(canvasIsDraggingProvider);
+                      if (!isDragging) return const SizedBox.shrink();
+                      return DragTarget<Object>(
+                        onWillAcceptWithDetails: (details) {
+                          final data = details.data;
+                          if (data is ComponentNode && data.id == node.id) return false;
+                          return true;
+                        },
+                        onAcceptWithDetails: (details) {
+                          final data = details.data;
+                          if (data is String) {
+                            onAddChild.call(node, data);
+                          } else if (data is ComponentNode) {
+                            onMoveChild(node, data, node.children.length);
+                          }
+                        },
+                        builder: (context, candidateData, rejectedData) {
+                          final isOver = candidateData.isNotEmpty;
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
+                              border: isOver
+                                  ? Border.all(color: const Color(0xFF5B4FCF), width: 1.5)
+                                  : null,
                         ),
                       );
+                    },
+                  );
                     },
                   ),
                 ),
@@ -406,35 +414,41 @@ class ComponentRendererWidget extends ConsumerWidget {
                   left: 0,
                   right: 0,
                   height: 16,
-                  child: DragTarget<Object>(
-                    onWillAcceptWithDetails: (details) {
-                      final data = details.data;
-                      if (data is ComponentNode && data.id == node.id) return false;
-                      return true;
-                    },
-                    onAcceptWithDetails: (details) {
-                      final data = details.data;
-                      final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
-                      if (idx != -1) {
-                        if (data is String) {
-                          onAddChild.call(parentNode!, data, targetIndex: idx);
-                        } else if (data is ComponentNode) {
-                          onMoveChild(parentNode!, data, idx);
-                        }
-                      }
-                    },
-                    builder: (context, candidateData, _) {
-                      final isOver = candidateData.isNotEmpty;
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(color: Colors.transparent),
-                          if (isOver)
-                            const Positioned(
-                              top: 0, left: 0, right: 0,
-                              child: _DropLineIndicator(position: _DropLinePosition.top),
-                            ),
-                        ],
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final isDragging = ref.watch(canvasIsDraggingProvider);
+                      if (!isDragging) return const SizedBox.shrink();
+                      return DragTarget<Object>(
+                        onWillAcceptWithDetails: (details) {
+                          final data = details.data;
+                          if (data is ComponentNode && data.id == node.id) return false;
+                          return true;
+                        },
+                        onAcceptWithDetails: (details) {
+                          final data = details.data;
+                          final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
+                          if (idx != -1) {
+                            if (data is String) {
+                              onAddChild.call(parentNode!, data, targetIndex: idx);
+                            } else if (data is ComponentNode) {
+                              onMoveChild(parentNode!, data, idx);
+                            }
+                          }
+                        },
+                        builder: (context, candidateData, _) {
+                          final isOver = candidateData.isNotEmpty;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(color: Colors.transparent),
+                              if (isOver)
+                                const Positioned(
+                                  top: 0, left: 0, right: 0,
+                                  child: _DropLineIndicator(position: _DropLinePosition.top),
+                                ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),
@@ -445,35 +459,41 @@ class ComponentRendererWidget extends ConsumerWidget {
                   left: 0,
                   right: 0,
                   height: 16,
-                  child: DragTarget<Object>(
-                    onWillAcceptWithDetails: (details) {
-                      final data = details.data;
-                      if (data is ComponentNode && data.id == node.id) return false;
-                      return true;
-                    },
-                    onAcceptWithDetails: (details) {
-                      final data = details.data;
-                      final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
-                      if (idx != -1) {
-                        if (data is String) {
-                          onAddChild.call(parentNode!, data, targetIndex: idx + 1);
-                        } else if (data is ComponentNode) {
-                          onMoveChild(parentNode!, data, idx + 1);
-                        }
-                      }
-                    },
-                    builder: (context, candidateData, _) {
-                      final isOver = candidateData.isNotEmpty;
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(color: Colors.transparent),
-                          if (isOver)
-                            const Positioned(
-                              bottom: 0, left: 0, right: 0,
-                              child: _DropLineIndicator(position: _DropLinePosition.bottom),
-                            ),
-                        ],
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final isDragging = ref.watch(canvasIsDraggingProvider);
+                      if (!isDragging) return const SizedBox.shrink();
+                      return DragTarget<Object>(
+                        onWillAcceptWithDetails: (details) {
+                          final data = details.data;
+                          if (data is ComponentNode && data.id == node.id) return false;
+                          return true;
+                        },
+                        onAcceptWithDetails: (details) {
+                          final data = details.data;
+                          final idx = parentNode!.children.indexWhere((c) => c.id == node.id);
+                          if (idx != -1) {
+                            if (data is String) {
+                              onAddChild.call(parentNode!, data, targetIndex: idx + 1);
+                            } else if (data is ComponentNode) {
+                              onMoveChild(parentNode!, data, idx + 1);
+                            }
+                          }
+                        },
+                        builder: (context, candidateData, _) {
+                          final isOver = candidateData.isNotEmpty;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(color: Colors.transparent),
+                              if (isOver)
+                                const Positioned(
+                                  bottom: 0, left: 0, right: 0,
+                                  child: _DropLineIndicator(position: _DropLinePosition.bottom),
+                                ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),

@@ -5,6 +5,7 @@ import '../../../../core/theme.dart';
 import '../../../../core/component_engine/models/component_node.dart';
 import '../../../../core/component_engine/registry/component_registry.dart';
 import '../../application/visual_builder_controller.dart';
+import '../../application/studio_providers.dart';
 
 class RevoComponentTree extends ConsumerStatefulWidget {
   const RevoComponentTree({super.key});
@@ -16,6 +17,20 @@ class RevoComponentTree extends ConsumerStatefulWidget {
 class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
   final Set<String> _collapsedNodes = {};
   String? _draggingNodeId;
+  String _searchQuery = '';
+
+  bool _doesNodeMatchSearch(ComponentNode node, String query) {
+    if (query.isEmpty) return true;
+    final typeMatch = node.type.toLowerCase().contains(query.toLowerCase());
+    final labelMatch = node.properties['label']?.toString().toLowerCase().contains(query.toLowerCase()) ?? false;
+    final fieldMatch = node.properties['fieldName']?.toString().toLowerCase().contains(query.toLowerCase()) ?? false;
+    if (typeMatch || labelMatch || fieldMatch) return true;
+
+    for (final child in node.children) {
+      if (_doesNodeMatchSearch(child, query)) return true;
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,18 +49,52 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           // Tree Header
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Widget Tree Explorer",
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: RevoTheme.textPrimary,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Widget Tree Explorer",
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: RevoTheme.textPrimary,
+                      ),
+                    ),
+                    Icon(Icons.account_tree_outlined, color: RevoTheme.textSecondary, size: 16),
+                  ],
                 ),
-                Icon(Icons.account_tree_outlined, color: RevoTheme.textSecondary, size: 16),
+                const SizedBox(height: 10),
+                TextField(
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Search widgets...",
+                    hintStyle: GoogleFonts.inter(fontSize: 11, color: RevoTheme.textSecondary),
+                    prefixIcon: Icon(Icons.search_rounded, size: 14, color: RevoTheme.textSecondary),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                    filled: true,
+                    fillColor: RevoTheme.cardBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: RevoTheme.cardBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: RevoTheme.cardBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: Color(0xFF5B4FCF)),
+                    ),
+                  ),
+                  style: GoogleFonts.inter(fontSize: 12, color: RevoTheme.textPrimary),
+                ),
               ],
             ),
           ),
@@ -70,9 +119,15 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     VisualBuilderController controller,
     ComponentNode? parentNode,
   ) {
+    if (_searchQuery.isNotEmpty && !_doesNodeMatchSearch(node, _searchQuery)) {
+      return [];
+    }
+
     final List<Widget> list = [];
     final isSelected = selectedNode?.id == node.id;
-    final isCollapsed = _collapsedNodes.contains(node.id);
+    final isCollapsed = _searchQuery.isNotEmpty
+        ? false
+        : _collapsedNodes.contains(node.id);
     final hasChildren = node.children.isNotEmpty;
 
     // Resolve name
@@ -132,7 +187,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
       },
     );
 
-    final nodeItemWidget = LongPressDraggable<String>(
+    final nodeItemWidget = Draggable<String>(
       data: node.id,
       feedback: Material(
         color: Colors.transparent,
@@ -167,11 +222,13 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
         child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller),
       ),
       onDragStarted: () {
+        ref.read(canvasIsDraggingProvider.notifier).state = true;
         setState(() {
           _draggingNodeId = node.id;
         });
       },
       onDragEnd: (details) {
+        ref.read(canvasIsDraggingProvider.notifier).state = false;
         setState(() {
           _draggingNodeId = null;
         });
@@ -216,6 +273,48 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     if (hasChildren && !isCollapsed) {
       for (final child in node.children) {
         list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node));
+      }
+      if (_draggingNodeId != null) {
+        final isChildDragged = node.children.any((c) => c.id == _draggingNodeId);
+        if (!isChildDragged && node.id != _draggingNodeId && !_isDescendant(_draggingNodeId!, node)) {
+          list.add(
+            DragTarget<String>(
+              onWillAcceptWithDetails: (details) {
+                return details.data != _draggingNodeId;
+              },
+              onAcceptWithDetails: (details) {
+                final draggedId = details.data;
+                final draggedNode = controller.findNodeById(draggedId);
+                if (draggedNode != null) {
+                  controller.moveChildNode(node, draggedNode, node.children.length);
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                final isOver = candidateData.isNotEmpty;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: isOver ? 24 : 6,
+                  margin: EdgeInsets.only(left: 12.0 + ((depth + 1) * 16.0), right: 12.0),
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                    border: isOver ? Border.all(color: const Color(0xFF5B4FCF)) : null,
+                  ),
+                  child: isOver
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            "Add to end of ${node.type}",
+                            style: GoogleFonts.inter(fontSize: 9, color: const Color(0xFF5B4FCF), fontWeight: FontWeight.bold),
+                          ),
+                        )
+                      : null,
+                );
+              },
+            ),
+          );
+        }
       }
     }
 

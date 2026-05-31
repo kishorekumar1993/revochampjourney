@@ -137,6 +137,17 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
 
   // ── Properties Shell (multi-tab) ───────────────────────────────────────────
 
+  List<ComponentNode> _getBreadcrumbs(ComponentNode root, ComponentNode target, VisualBuilderController controller) {
+    final List<ComponentNode> path = [];
+    ComponentNode? current = target;
+    while (current != null) {
+      path.insert(0, current);
+      if (current.id == root.id) break;
+      current = controller.findParentNode(current.id);
+    }
+    return path;
+  }
+
   Widget _buildPropertiesShell(ComponentNode? selectedNode, VisualBuilderController controller) {
     if (selectedNode == null) return _noSelectionPlaceholder();
 
@@ -167,6 +178,9 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
       RevoPermissionsTab(node: selectedNode, controller: controller),
     ];
 
+    final rootNode = ref.read(builderRootNodeProvider);
+    final breadcrumbs = _getBreadcrumbs(rootNode, selectedNode, controller);
+
     return DefaultTabController(
       key: ValueKey('${selectedNode.id}_${tabs.length}'),
       length: tabs.length,
@@ -174,6 +188,46 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
         children: [
           // Component header
           _componentHeader(selectedNode, controller),
+
+          // Breadcrumbs
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: RevoTheme.cardBg,
+              border: Border(bottom: BorderSide(color: RevoTheme.cardBorder)),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: breadcrumbs.map((node) {
+                  final isLast = node.id == selectedNode.id;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: isLast ? null : () => controller.selectNode(node),
+                        child: Text(
+                          node.type,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                            color: isLast ? const Color(0xFF5B4FCF) : RevoTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (!isLast)
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 12,
+                          color: RevoTheme.textSecondary.withValues(alpha: 0.5),
+                        ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
 
           // Tab bar
           TabBar(
@@ -198,6 +252,44 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
   }
 
   // ── Component Header ───────────────────────────────────────────────────────
+
+  void _showSaveReusableDialog(BuildContext context, ComponentNode selectedNode, VisualBuilderController controller) {
+    final nameCtrl = TextEditingController(text: "Custom ${selectedNode.type}");
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: RevoTheme.sidebarBackground,
+        title: Text("Save as Reusable Component", style: GoogleFonts.outfit(color: RevoTheme.textPrimary, fontSize: 13)),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(
+            labelText: "Component Label / Name",
+            hintText: "e.g. Customer Card",
+          ),
+          style: TextStyle(color: RevoTheme.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5B4FCF)),
+            onPressed: () {
+              if (nameCtrl.text.isNotEmpty) {
+                controller.saveAsReusableComponent(selectedNode.id, nameCtrl.text);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Saved custom component: ${nameCtrl.text}")),
+                );
+              }
+            },
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _componentHeader(ComponentNode selectedNode, VisualBuilderController controller) {
     final meta = ComponentRegistry.getByType(selectedNode.type);
@@ -225,6 +317,15 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
               ],
             ),
           ),
+          // Save Reusable Component
+          IconButton(
+            tooltip: "Save as Reusable Component",
+            icon: const Icon(Icons.star_border_rounded, size: 18, color: Color(0xFF5B4FCF)),
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            onPressed: () => _showSaveReusableDialog(context, selectedNode, controller),
+          ),
+          const SizedBox(width: 4),
           // Duplicate button
           IconButton(
             tooltip: "Duplicate Component",
