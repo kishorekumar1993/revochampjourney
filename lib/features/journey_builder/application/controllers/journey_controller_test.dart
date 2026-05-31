@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:revojourneytryone/features/journey_builder/presentation/providers/journey_provider.dart';
 import 'package:revojourneytryone/features/journey_builder/data/models.dart';
 
-import 'journey_history_manager.dart';
-import 'journey_validation_manager.dart';
+import 'package:revojourneytryone/features/journey_builder/application/controllers/journey_history_manager.dart';
+import 'package:revojourneytryone/features/journey_builder/application/controllers/journey_validation_manager.dart';
 
 void main() {
   group('HistoryNotifier Tests', () {

@@ -1,9 +1,18 @@
 import '../../../core/component_engine/models/component_node.dart';
 import '../../../core/component_engine/models/component_action.dart';
 
+/// The requested parameterless command pattern interface.
+abstract class StudioCommand {
+  void execute();
+  void undo();
+
+  /// Global reference to avoid circular compile/import path issues.
+  static dynamic activeController;
+}
+
 /// The Command interface defining methods to execute and undo manipulations
 /// on the ComponentNode tree.
-abstract class VisualBuilderCommand {
+abstract class VisualBuilderCommand implements StudioCommand {
   /// User-friendly description of the command for the history log.
   String get description;
 
@@ -13,11 +22,27 @@ abstract class VisualBuilderCommand {
   /// The ID of the node that should be selected after undoing this command.
   String? get selectedNodeIdAfterUndo => null;
 
+  @override
+  void execute() {
+    final controller = StudioCommand.activeController;
+    if (controller != null) {
+      controller.executeCommand(this);
+    }
+  }
+
+  @override
+  void undo() {
+    final controller = StudioCommand.activeController;
+    if (controller != null) {
+      controller.undoSpecificCommand(this);
+    }
+  }
+
   /// Executes the command on the given [root] and returns the updated root node.
-  ComponentNode execute(ComponentNode root);
+  ComponentNode executeTree(ComponentNode root);
 
   /// Undoes the command on the given [root] and returns the restored root node.
-  ComponentNode undo(ComponentNode root);
+  ComponentNode undoTree(ComponentNode root);
 }
 
 /// Helper class for tree search and manipulation.
@@ -126,7 +151,7 @@ class AddWidgetCommand extends VisualBuilderCommand {
   String? get selectedNodeIdAfterUndo => parentId;
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     int targetIndex = index ?? 0;
     if (index == null) {
       final parentNode = ComponentTreeUtils.findNode(root, parentId);
@@ -141,7 +166,7 @@ class AddWidgetCommand extends VisualBuilderCommand {
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     final updated = ComponentTreeUtils.removeNode(root, node.id);
     return updated ?? root;
   }
@@ -169,7 +194,7 @@ class DeleteWidgetCommand extends VisualBuilderCommand {
   String? get selectedNodeIdAfterUndo => nodeId;
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     final target = ComponentTreeUtils.findNode(root, nodeId);
     if (target == null) return root;
 
@@ -185,7 +210,7 @@ class DeleteWidgetCommand extends VisualBuilderCommand {
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     if (_deletedNode == null || _parentId == null || _index == null) return root;
     final restored = ComponentTreeUtils.insertChildInParent(root, _parentId!, _deletedNode!, _index!);
     return restored ?? root;
@@ -221,7 +246,7 @@ class MoveWidgetCommand extends VisualBuilderCommand {
   String? get selectedNodeIdAfterUndo => nodeId;
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     final target = ComponentTreeUtils.findNode(root, nodeId);
     if (target == null) return root;
     _movingNode = target;
@@ -242,7 +267,7 @@ class MoveWidgetCommand extends VisualBuilderCommand {
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     if (_oldParentId == null || _oldIndex == null || _movingNode == null) return root;
 
     // Remove from new parent
@@ -284,7 +309,7 @@ class UpdatePropertyCommand extends VisualBuilderCommand {
   String? get selectedNodeIdAfterUndo => nodeId;
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     final target = ComponentTreeUtils.findNode(root, nodeId);
     if (target == null) return root;
     _targetNode = target;
@@ -306,7 +331,7 @@ class UpdatePropertyCommand extends VisualBuilderCommand {
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     if (_oldProperties == null || _oldStyles == null) return root;
 
     final updated = ComponentTreeUtils.updateNodeInTree(root, nodeId, (node) {
@@ -343,7 +368,7 @@ class UpdateActionsCommand extends VisualBuilderCommand {
   String? get selectedNodeIdAfterUndo => nodeId;
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     final target = ComponentTreeUtils.findNode(root, nodeId);
     if (target == null) return root;
     _targetNode = target;
@@ -358,7 +383,7 @@ class UpdateActionsCommand extends VisualBuilderCommand {
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     if (_oldActions == null) return root;
 
     final updated = ComponentTreeUtils.updateNodeInTree(root, nodeId, (node) {
@@ -380,13 +405,13 @@ class ImportLayoutCommand extends VisualBuilderCommand {
   String get description => "Import Layout JSON";
 
   @override
-  ComponentNode execute(ComponentNode root) {
+  ComponentNode executeTree(ComponentNode root) {
     _oldRoot = root;
     return newRoot;
   }
 
   @override
-  ComponentNode undo(ComponentNode root) {
+  ComponentNode undoTree(ComponentNode root) {
     return _oldRoot ?? root;
   }
 }

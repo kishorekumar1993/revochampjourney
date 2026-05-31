@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../../../core/component_engine/models/component_node.dart';
-import '../../../core/component_engine/models/component_action.dart';
-import 'visual_builder_commands.dart';
+import 'package:revojourneytryone/core/component_engine/models/component_node.dart';
+import 'package:revojourneytryone/core/component_engine/models/component_action.dart';
+import 'package:revojourneytryone/features/visual_builder/application/visual_builder_commands.dart';
 
 void main() {
   group('VisualBuilderCommand Tests', () {
@@ -48,13 +48,13 @@ void main() {
       );
 
       // Execute
-      final afterExec = cmd.execute(root);
+      final afterExec = cmd.executeTree(root);
       expect(afterExec.children.length, 3);
       expect(afterExec.children[1].id, 'child-new');
       expect(afterExec.children[1].type, 'Image');
 
       // Undo
-      final afterUndo = cmd.undo(afterExec);
+      final afterUndo = cmd.undoTree(afterExec);
       expect(afterUndo.children.length, 2);
       expect(afterUndo.children[0].id, 'child-1');
       expect(afterUndo.children[1].id, 'child-2');
@@ -64,12 +64,12 @@ void main() {
       final cmd = DeleteWidgetCommand(nodeId: 'child-1');
 
       // Execute
-      final afterExec = cmd.execute(root);
+      final afterExec = cmd.executeTree(root);
       expect(afterExec.children.length, 1);
       expect(afterExec.children[0].id, 'child-2');
 
       // Undo
-      final afterUndo = cmd.undo(afterExec);
+      final afterUndo = cmd.undoTree(afterExec);
       expect(afterUndo.children.length, 2);
       expect(afterUndo.children[0].id, 'child-1'); // restores at index 0
       expect(afterUndo.children[0].properties['width'], 100.0);
@@ -95,13 +95,13 @@ void main() {
       );
 
       // Execute: moves child-inner from child-1 to root at index 1
-      final afterExec = cmd.execute(root);
+      final afterExec = cmd.executeTree(root);
       expect(afterExec.children.length, 3);
       expect(afterExec.children[1].id, 'child-inner');
       expect(afterExec.children[0].children.length, 0);
 
       // Undo: moves child-inner back to child-1
-      final afterUndo = cmd.undo(afterExec);
+      final afterUndo = cmd.undoTree(afterExec);
       expect(afterUndo.children.length, 2);
       expect(afterUndo.children[0].children.length, 1);
       expect(afterUndo.children[0].children[0].id, 'child-inner');
@@ -115,13 +115,13 @@ void main() {
       );
 
       // Execute
-      final afterExec = cmd.execute(root);
+      final afterExec = cmd.executeTree(root);
       final target = afterExec.children[1];
       expect(target.properties['text'], 'Goodbye');
       expect(target.styles['color'], 'red');
 
       // Undo
-      final afterUndo = cmd.undo(afterExec);
+      final afterUndo = cmd.undoTree(afterExec);
       final originalTarget = afterUndo.children[1];
       expect(originalTarget.properties['text'], 'Hello');
       expect(originalTarget.styles.containsKey('color'), false);
@@ -144,13 +144,13 @@ void main() {
       );
 
       // Execute
-      final afterExec = cmd.execute(root);
+      final afterExec = cmd.executeTree(root);
       expect(afterExec.children[0].actions.length, 1);
       expect(afterExec.children[0].actions[0].event, 'onTap');
       expect(afterExec.children[0].actions[0].steps[0].id, 'act-step-1');
 
       // Undo
-      final afterUndo = cmd.undo(afterExec);
+      final afterUndo = cmd.undoTree(afterExec);
       expect(afterUndo.children[0].actions.isEmpty, true);
     });
   });

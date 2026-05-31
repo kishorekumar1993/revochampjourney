@@ -8,6 +8,7 @@ import '../../journey_builder/application/controllers/journey_controller.dart';
 import '../../journey_builder/domain/entities/journey_models.dart';
 import '../integration/journey_visual_adapter.dart';
 import 'visual_builder_commands.dart';
+import 'visual_builder_logger.dart';
 
 class VisualBuilderState {
   final ComponentNode rootNode;
@@ -63,6 +64,8 @@ class VisualBuilderState {
 }
 
 class VisualBuilderController extends StateNotifier<VisualBuilderState> {
+  static VisualBuilderController? activeInstance;
+
   final Ref _ref;
   ComponentNode? _clipboardNode;
   Timer? _hoverDebounce;
@@ -81,6 +84,8 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
           ),
           activeStepId: '',
         )) {
+    activeInstance = this;
+    StudioCommand.activeController = this;
     // Listen to changes in the active step ID
     _ref.listen<String>(activeStepIdProvider, (prev, next) {
       if (next.isNotEmpty) {
@@ -175,68 +180,119 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   // --- Tree Manipulation & Undo/Redo ---
 
   void executeCommand(VisualBuilderCommand command) {
-    final nextRoot = command.execute(state.rootNode);
+    try {
+      VisualBuilderLogger.log('Command', 'Executing ${command.runtimeType}...');
+      final nextRoot = command.executeTree(state.rootNode);
 
-    ComponentNode? nextSelected;
-    if (command.selectedNodeIdAfterExecute != null) {
-      nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+      ComponentNode? nextSelected;
+      if (command.selectedNodeIdAfterExecute != null) {
+        nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+      }
+
+      final updatedPast = [...state.past, command];
+      state = state.copyWith(
+        past: updatedPast.length > 30 ? updatedPast.sublist(updatedPast.length - 30) : updatedPast,
+        rootNode: nextRoot,
+        selectedNode: nextSelected,
+        clearSelected: nextSelected == null,
+        future: [],
+      );
+      _syncWithJourney();
+      VisualBuilderLogger.log('Command', 'Successfully executed ${command.runtimeType}. Past history size: ${state.past.length}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Command', 'Failed to execute ${command.runtimeType}', level: LogLevel.error, error: e, stackTrace: stack);
     }
-
-    final updatedPast = [...state.past, command];
-    state = state.copyWith(
-      past: updatedPast.length > 30 ? updatedPast.sublist(updatedPast.length - 30) : updatedPast,
-      rootNode: nextRoot,
-      selectedNode: nextSelected,
-      clearSelected: nextSelected == null,
-      future: [],
-    );
-    _syncWithJourney();
   }
 
   void undo() {
-    if (state.past.isEmpty) return;
-    final command = state.past.last;
-    final prevRoot = command.undo(state.rootNode);
-
-    ComponentNode? nextSelected;
-    if (command.selectedNodeIdAfterUndo != null) {
-      nextSelected = _findNode(prevRoot, command.selectedNodeIdAfterUndo!);
+    if (state.past.isEmpty) {
+      VisualBuilderLogger.log('Command', 'Undo requested, but history is empty.', level: LogLevel.warning);
+      return;
     }
+    final command = state.past.last;
+    try {
+      VisualBuilderLogger.log('Command', 'Undoing ${command.runtimeType}...');
+      final prevRoot = command.undoTree(state.rootNode);
 
-    final updatedPast = state.past.sublist(0, state.past.length - 1);
-    final updatedFuture = [command, ...state.future];
+      ComponentNode? nextSelected;
+      if (command.selectedNodeIdAfterUndo != null) {
+        nextSelected = _findNode(prevRoot, command.selectedNodeIdAfterUndo!);
+      }
 
-    state = state.copyWith(
-      past: updatedPast,
-      rootNode: prevRoot,
-      selectedNode: nextSelected,
-      clearSelected: nextSelected == null,
-      future: updatedFuture,
-    );
-    _syncWithJourney();
+      final updatedPast = state.past.sublist(0, state.past.length - 1);
+      final updatedFuture = [command, ...state.future];
+
+      state = state.copyWith(
+        past: updatedPast,
+        rootNode: prevRoot,
+        selectedNode: nextSelected,
+        clearSelected: nextSelected == null,
+        future: updatedFuture,
+      );
+      _syncWithJourney();
+      VisualBuilderLogger.log('Command', 'Successfully undid ${command.runtimeType}. Past history size: ${state.past.length}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Command', 'Failed to undo ${command.runtimeType}', level: LogLevel.error, error: e, stackTrace: stack);
+    }
+  }
+
+  void undoSpecificCommand(VisualBuilderCommand command) {
+    if (state.past.isNotEmpty && state.past.last == command) {
+      undo();
+      return;
+    }
+    try {
+      VisualBuilderLogger.log('Command', 'Undoing specific ${command.runtimeType}...');
+      final prevRoot = command.undoTree(state.rootNode);
+
+      ComponentNode? nextSelected;
+      if (command.selectedNodeIdAfterUndo != null) {
+        nextSelected = _findNode(prevRoot, command.selectedNodeIdAfterUndo!);
+      }
+
+      state = state.copyWith(
+        rootNode: prevRoot,
+        selectedNode: nextSelected,
+        clearSelected: nextSelected == null,
+        past: state.past.where((c) => c != command).toList(),
+      );
+      _syncWithJourney();
+      VisualBuilderLogger.log('Command', 'Successfully undid specific ${command.runtimeType}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Command', 'Failed to undo specific command ${command.runtimeType}', level: LogLevel.error, error: e, stackTrace: stack);
+    }
   }
 
   void redo() {
-    if (state.future.isEmpty) return;
-    final command = state.future.first;
-    final nextRoot = command.execute(state.rootNode);
-
-    ComponentNode? nextSelected;
-    if (command.selectedNodeIdAfterExecute != null) {
-      nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+    if (state.future.isEmpty) {
+      VisualBuilderLogger.log('Command', 'Redo requested, but future history is empty.', level: LogLevel.warning);
+      return;
     }
+    final command = state.future.first;
+    try {
+      VisualBuilderLogger.log('Command', 'Redoing ${command.runtimeType}...');
+      final nextRoot = command.executeTree(state.rootNode);
 
-    final updatedFuture = state.future.sublist(1);
-    final updatedPast = [...state.past, command];
+      ComponentNode? nextSelected;
+      if (command.selectedNodeIdAfterExecute != null) {
+        nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+      }
 
-    state = state.copyWith(
-      past: updatedPast,
-      rootNode: nextRoot,
-      selectedNode: nextSelected,
-      clearSelected: nextSelected == null,
-      future: updatedFuture,
-    );
-    _syncWithJourney();
+      final updatedFuture = state.future.sublist(1);
+      final updatedPast = [...state.past, command];
+
+      state = state.copyWith(
+        past: updatedPast,
+        rootNode: nextRoot,
+        selectedNode: nextSelected,
+        clearSelected: nextSelected == null,
+        future: updatedFuture,
+      );
+      _syncWithJourney();
+      VisualBuilderLogger.log('Command', 'Successfully redid ${command.runtimeType}. Past history size: ${state.past.length}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Command', 'Failed to redo ${command.runtimeType}', level: LogLevel.error, error: e, stackTrace: stack);
+    }
   }
 
   void addChildNode(String parentId, String componentType, {int? targetIndex}) {
@@ -350,55 +406,86 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   bool importFromJson(String jsonStr) {
     try {
+      VisualBuilderLogger.log('JSON', 'Importing layout from JSON...');
       final decoded = json.decode(jsonStr) as Map<String, dynamic>;
       final node = ComponentNode.fromJson(decoded);
       executeCommand(ImportLayoutCommand(newRoot: node));
       selectNode(null);
+      VisualBuilderLogger.log('JSON', 'Successfully imported layout from JSON.');
       return true;
-    } catch (_) {
+    } catch (e, stack) {
+      VisualBuilderLogger.log('JSON', 'Failed to import layout from JSON', level: LogLevel.error, error: e, stackTrace: stack);
       return false;
     }
   }
 
   String exportToJson() {
-    return const JsonEncoder.withIndent('  ').convert(state.rootNode.toJson());
+    try {
+      VisualBuilderLogger.log('JSON', 'Exporting layout to JSON...');
+      final exported = const JsonEncoder.withIndent('  ').convert(state.rootNode.toJson());
+      VisualBuilderLogger.log('JSON', 'Successfully exported layout to JSON. Size: ${exported.length} characters.');
+      return exported;
+    } catch (e, stack) {
+      VisualBuilderLogger.log('JSON', 'Failed to export layout to JSON', level: LogLevel.error, error: e, stackTrace: stack);
+      rethrow;
+    }
   }
 
   // --- Step Synchronization Logic ---
 
   void _loadStepFromJourney(String stepId) {
-    final journeyConfig = _ref.read(journeyConfigProvider);
-    var stepIndex = journeyConfig.steps.indexWhere((s) => s.id == stepId);
+    try {
+      VisualBuilderLogger.log('Sync', 'Loading step layout for stepId: $stepId...');
+      final journeyConfig = _ref.read(journeyConfigProvider);
+      var stepIndex = journeyConfig.steps.indexWhere((s) => s.id == stepId);
 
-    // Fallback to first step if activeStepId is invalid/not found
-    if (stepIndex == -1 && journeyConfig.steps.isNotEmpty) {
-      stepIndex = 0;
-      stepId = journeyConfig.steps.first.id;
-      Future.microtask(() {
-        _ref.read(activeStepIdProvider.notifier).state = stepId;
-      });
+      // Fallback to first step if activeStepId is invalid/not found
+      if (stepIndex == -1 && journeyConfig.steps.isNotEmpty) {
+        VisualBuilderLogger.log('Sync', 'StepId $stepId not found in journey config, falling back to first step.', level: LogLevel.warning);
+        stepIndex = 0;
+        stepId = journeyConfig.steps.first.id;
+        Future.microtask(() {
+          _ref.read(activeStepIdProvider.notifier).state = stepId;
+        });
+      }
+
+      if (stepIndex == -1) {
+        VisualBuilderLogger.log('Sync', 'No steps available in journey config to load.', level: LogLevel.warning);
+        return;
+      }
+
+      final step = journeyConfig.steps[stepIndex];
+      final tree = JourneyVisualAdapter.createTreeFromJourneyStep(step);
+      state = VisualBuilderState(
+        rootNode: tree,
+        activeStepId: stepId,
+      );
+      VisualBuilderLogger.log('Sync', 'Successfully loaded step layout. Root node ID: ${tree.id}, children count: ${tree.children.length}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Sync', 'Error loading step layout for stepId: $stepId', level: LogLevel.error, error: e, stackTrace: stack);
     }
-
-    if (stepIndex == -1) return;
-
-    final step = journeyConfig.steps[stepIndex];
-    state = VisualBuilderState(
-      rootNode: JourneyVisualAdapter.createTreeFromJourneyStep(step),
-      activeStepId: stepId,
-    );
   }
 
   void _syncWithJourney() {
-    if (state.activeStepId.isEmpty) return;
+    if (state.activeStepId.isEmpty) {
+      VisualBuilderLogger.log('Sync', 'Synchronization skipped: activeStepId is empty.', level: LogLevel.warning);
+      return;
+    }
 
-    final fields = JourneyVisualAdapter.extractFields(state.rootNode);
-    final layoutJson = state.rootNode.toJson();
+    try {
+      VisualBuilderLogger.log('Sync', 'Synchronizing layout to journey stepId: ${state.activeStepId}...');
+      final fields = JourneyVisualAdapter.extractFields(state.rootNode);
+      final layoutJson = state.rootNode.toJson();
 
-    _ref.read(journeyConfigProvider.notifier).updateStepLayout(
-          state.activeStepId,
-          layoutJson,
-          fields,
-        );
+      _ref.read(journeyConfigProvider.notifier).updateStepLayout(
+            state.activeStepId,
+            layoutJson,
+            fields,
+          );
+      VisualBuilderLogger.log('Sync', 'Successfully synchronized layout. Fields count: ${fields.length}.');
+    } catch (e, stack) {
+      VisualBuilderLogger.log('Sync', 'Error synchronizing layout to journey stepId: ${state.activeStepId}', level: LogLevel.error, error: e, stackTrace: stack);
+    }
   }
 
   // --- Tree Traversals Helper Functions ---
@@ -419,86 +506,6 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       if (found != null) return found;
     }
     return null;
-  }
-
-  ComponentNode? _addChildToParent(ComponentNode current, String parentId, ComponentNode newNode) {
-    if (current.id == parentId) {
-      return current.copyWith(children: [...current.children, newNode]);
-    }
-    final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
-    for (final child in current.children) {
-      final res = _addChildToParent(child, parentId, newNode);
-      if (res != null) {
-        updatedChildren.add(res);
-        modified = true;
-      } else {
-        updatedChildren.add(child);
-      }
-    }
-    return modified ? current.copyWith(children: updatedChildren) : null;
-  }
-
-  ComponentNode? _insertChildInParent(ComponentNode current, String parentId, ComponentNode newNode, int index) {
-    if (current.id == parentId) {
-      final List<ComponentNode> list = List.from(current.children);
-      if (index >= 0 && index <= list.length) {
-        list.insert(index, newNode);
-      } else {
-        list.add(newNode);
-      }
-      return current.copyWith(children: list);
-    }
-    final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
-    for (final child in current.children) {
-      final res = _insertChildInParent(child, parentId, newNode, index);
-      if (res != null) {
-        updatedChildren.add(res);
-        modified = true;
-      } else {
-        updatedChildren.add(child);
-      }
-    }
-    return modified ? current.copyWith(children: updatedChildren) : null;
-  }
-
-  ComponentNode? _removeNode(ComponentNode current, String targetId) {
-    if (current.id == targetId) return null;
-    final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
-    for (final child in current.children) {
-      final res = _removeNode(child, targetId);
-      if (res == null) {
-        modified = true; // removed
-      } else {
-        updatedChildren.add(res);
-        if (res.id != child.id || res.children.length != child.children.length) {
-          modified = true; // modified somewhere below
-        }
-      }
-    }
-    return modified ? current.copyWith(children: updatedChildren) : current;
-  }
-
-  ComponentNode? _updateNodeInTree(ComponentNode current, String id, ComponentNode Function(ComponentNode) updateFn) {
-    if (current.id == id) {
-      return updateFn(current);
-    }
-    final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
-    for (final child in current.children) {
-      final res = _updateNodeInTree(child, id, updateFn);
-      if (res != null) {
-        updatedChildren.add(res);
-        if (res.id != child.id || res.properties != child.properties || res.children.length != child.children.length) {
-          modified = true;
-        }
-      } else {
-        updatedChildren.add(child);
-      }
-    }
-    return modified ? current.copyWith(children: updatedChildren) : current;
   }
 
   ComponentNode _deepCloneNodeWithNewIds(ComponentNode origin) {

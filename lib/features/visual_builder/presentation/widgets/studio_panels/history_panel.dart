@@ -11,10 +11,9 @@ class RevoCommandHistoryPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final builderState = ref.watch(visualBuilderProvider);
+    final past = ref.watch(visualBuilderProvider.select((s) => s.past));
+    final future = ref.watch(visualBuilderProvider.select((s) => s.future));
     final controller = ref.read(visualBuilderProvider.notifier);
-    final past = builderState.past;
-    final future = builderState.future;
 
     final totalEdits = past.length + future.length;
 
@@ -157,26 +156,22 @@ class RevoCommandHistoryPanel extends ConsumerWidget {
         String title;
         String subtitle;
         IconData icon;
-        Color accentColor;
 
         if (isFuture) {
           final cmdIndex = (futureCount - 1) - index;
           final cmd = future[cmdIndex];
           title = cmd.description;
           subtitle = "Redoable action";
-          accentColor = Colors.grey;
           icon = _getIconForCommand(cmd);
         } else if (isCurrent) {
           if (past.isEmpty) {
             title = "Initial Scaffold";
             subtitle = "Active layout container";
-            accentColor = RevoTheme.accent;
             icon = Icons.rocket_launch_rounded;
           } else {
             final cmd = past.last;
             title = cmd.description;
             subtitle = "Active checkpoint";
-            accentColor = RevoTheme.primaryLight;
             icon = _getIconForCommand(cmd);
           }
         } else if (isPast) {
@@ -184,13 +179,11 @@ class RevoCommandHistoryPanel extends ConsumerWidget {
           final cmd = past[cmdIndex];
           title = cmd.description;
           subtitle = "Undone checkpoint available";
-          accentColor = RevoTheme.primaryLight;
           icon = _getIconForCommand(cmd);
         } else {
           // Initial state
           title = "Initial Scaffold";
           subtitle = "Step canvas started";
-          accentColor = RevoTheme.textSecondary;
           icon = Icons.rocket_launch_rounded;
         }
 

@@ -48,16 +48,16 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final builderState = ref.watch(visualBuilderProvider);
+    final canvasSize = ref.watch(builderCanvasSizeProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
 
     // Watcher to keep inputs in sync with toolbar or external changes
-    ref.listen<VisualBuilderState>(visualBuilderProvider, (prev, next) {
-      if (prev?.canvasWidth != next.canvasWidth) {
-        _widthController.text = next.canvasWidth.toInt().toString();
+    ref.listen<({double width, double height, double scale})>(builderCanvasSizeProvider, (prev, next) {
+      if (prev?.width != next.width) {
+        _widthController.text = next.width.toInt().toString();
       }
-      if (prev?.canvasHeight != next.canvasHeight) {
-        _heightController.text = next.canvasHeight.toInt().toString();
+      if (prev?.height != next.height) {
+        _heightController.text = next.height.toInt().toString();
       }
     });
 
@@ -86,7 +86,7 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
       {'label': '2XL', 'desc': 'Ultra', 'width': 1536.0, 'height': 900.0},
     ];
 
-    final isLandscape = builderState.canvasWidth > builderState.canvasHeight;
+    final isLandscape = canvasSize.width > canvasSize.height;
 
     return RevoStudioPanelWrapper(
       title: "Responsive Studio",
@@ -103,7 +103,7 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
                 child: _dimensionInput(
                   label: "Width",
                   controller: _widthController,
-                  onSubmitted: (val) => _onWidthSubmitted(val, builderState.canvasHeight),
+                  onSubmitted: (val) => _onWidthSubmitted(val, canvasSize.height),
                 ),
               ),
               const SizedBox(width: 8),
@@ -111,7 +111,7 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
                 child: _dimensionInput(
                   label: "Height",
                   controller: _heightController,
-                  onSubmitted: (val) => _onHeightSubmitted(val, builderState.canvasWidth),
+                  onSubmitted: (val) => _onHeightSubmitted(val, canvasSize.width),
                 ),
               ),
             ],
@@ -155,20 +155,20 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
           const SizedBox(height: 8),
           _customSlider(
             label: "Width Resizer",
-            value: builderState.canvasWidth,
+            value: canvasSize.width,
             min: 320.0,
             max: 2000.0,
             onChanged: (val) {
-              controller.setCanvasSize(val.roundToDouble(), builderState.canvasHeight);
+              controller.setCanvasSize(val.roundToDouble(), canvasSize.height);
             },
           ),
           _customSlider(
             label: "Height Resizer",
-            value: builderState.canvasHeight,
+            value: canvasSize.height,
             min: 320.0,
             max: 1600.0,
             onChanged: (val) {
-              controller.setCanvasSize(builderState.canvasWidth, val.roundToDouble());
+              controller.setCanvasSize(canvasSize.width, val.roundToDouble());
             },
           ),
 
@@ -180,7 +180,7 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
             spacing: 6,
             runSpacing: 6,
             children: cssBreakpoints.map((bp) {
-              final isBpActive = builderState.canvasWidth == bp['width'];
+              final isBpActive = canvasSize.width == bp['width'];
               return ChoiceChip(
                 label: Text("${bp['label']} (${bp['width']?.toString() ?? '0'}px)", style: GoogleFonts.inter(fontSize: 10)),
                 selected: isBpActive,
@@ -212,7 +212,7 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [50, 75, 100, 150, 200].map((zoom) {
               final double scale = zoom / 100.0;
-              final isSelected = (builderState.canvasScale - scale).abs() < 0.05;
+              final isSelected = (canvasSize.scale - scale).abs() < 0.05;
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2.0),
@@ -235,15 +235,15 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
           const SizedBox(height: 20),
           // Section 4: Device Presets List
           _sectionHeader("PHONES PRESETS"),
-          ...phonePresets.map((dev) => _deviceTile(dev, builderState, controller)),
+          ...phonePresets.map((dev) => _deviceTile(dev, canvasSize, controller)),
 
           const SizedBox(height: 12),
           _sectionHeader("TABLETS PRESETS"),
-          ...tabletPresets.map((dev) => _deviceTile(dev, builderState, controller)),
+          ...tabletPresets.map((dev) => _deviceTile(dev, canvasSize, controller)),
 
           const SizedBox(height: 12),
           _sectionHeader("DESKTOPS PRESETS"),
-          ...desktopPresets.map((dev) => _deviceTile(dev, builderState, controller)),
+          ...desktopPresets.map((dev) => _deviceTile(dev, canvasSize, controller)),
         ],
       ),
     );
@@ -346,12 +346,12 @@ class _RevoResponsivePanelState extends ConsumerState<RevoResponsivePanel> {
 
   Widget _deviceTile(
     Map<String, dynamic> dev,
-    VisualBuilderState state,
+    ({double width, double height, double scale}) canvasSize,
     VisualBuilderController controller,
   ) {
     final double devWidth = dev['width'] as double;
     final double devHeight = dev['height'] as double;
-    final isSelected = state.canvasWidth == devWidth && state.canvasHeight == devHeight;
+    final isSelected = canvasSize.width == devWidth && canvasSize.height == devHeight;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3.0),

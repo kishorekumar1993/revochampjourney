@@ -32,8 +32,8 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final builderState = ref.watch(visualBuilderProvider);
-    final selectedNode = builderState.selectedNode;
+    final selectedNode = ref.watch(builderSelectedNodeProvider);
+    final rootNode = ref.watch(builderRootNodeProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
 
     return Container(
@@ -68,7 +68,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
 
           // ── Main Content ───────────────────────────────────────────────────
           Expanded(
-            child: _buildContent(builderState, selectedNode, controller),
+            child: _buildContent(rootNode, selectedNode, controller),
           ),
         ],
       ),
@@ -117,7 +117,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
   // ── Content Router ─────────────────────────────────────────────────────────
 
   Widget _buildContent(
-    VisualBuilderState state,
+    ComponentNode rootNode,
     ComponentNode? selectedNode,
     VisualBuilderController controller,
   ) {
@@ -127,7 +127,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
       case 'actions':
         return RevoActionsFlowView(selectedNode: selectedNode, controller: controller);
       case 'validations':
-        return RevoValidationsSummaryView(rootNode: state.rootNode);
+        return RevoValidationsSummaryView(rootNode: rootNode);
       case 'json':
         return RevoJsonTab(controller: controller);
       default:
@@ -239,7 +239,7 @@ class _RevoPropertyPanelState extends ConsumerState<RevoPropertyPanel> {
             },
           ),
           // Delete button (not for root)
-          if (selectedNode.id != ref.read(visualBuilderProvider).rootNode.id) ...[
+          if (selectedNode.id != ref.read(builderRootNodeProvider).id) ...[
             const SizedBox(width: 4),
             IconButton(
               tooltip: "Delete Component",

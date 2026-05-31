@@ -11,8 +11,8 @@ class RevoGeneratedCodePanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final builderState = ref.watch(visualBuilderProvider);
-    final activeStepId = builderState.activeStepId;
+    final activeStepId = ref.watch(visualBuilderProvider.select((s) => s.activeStepId));
+    final rootNode = ref.watch(builderRootNodeProvider);
 
     String generateUI() {
       if (activeStepId.isEmpty) return '// Select a screen step to generate code.';
@@ -30,7 +30,7 @@ class RevoGeneratedCodePanel extends ConsumerWidget {
       buffer.writeln("          padding: const EdgeInsets.all(16.0),");
       buffer.writeln("          child: Column(");
       buffer.writeln("            children: [");
-      _dumpNodeCode(builderState.rootNode, buffer, "              ");
+      _dumpNodeCode(rootNode, buffer, "              ");
       buffer.writeln("            ],");
       buffer.writeln("          ),");
       buffer.writeln("        ),");

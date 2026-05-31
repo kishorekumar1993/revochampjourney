@@ -25,6 +25,8 @@ import 'package:revojourneytryone/features/journey_runner/presentation/screens/v
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/chat_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/kanban_view.dart';
 import 'package:revojourneytryone/features/journey_runner/presentation/screens/views/stepper_view.dart';
+import 'runner_screen/runner_dialogs.dart';
+import 'runner_screen/runner_mobile_shell.dart';
 
 export 'runner_screen/runner_state.dart' show RunnerLayoutStyle;
 
@@ -78,44 +80,7 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
 
   Future<void> _offerResume(JourneyConfig cfg, JourneyDraft draft) async {
     if (!mounted) return;
-    final resume = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: RunnerTheme.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Resume Journey?',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: RunnerTheme.textDark,
-          ),
-        ),
-        content: Text(
-          'A saved draft was found for "${cfg.journeyName}" (step: ${draft.currentStepId}).',
-          style: GoogleFonts.poppins(fontSize: 13, color: RunnerTheme.textMid),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Start Fresh',
-              style: GoogleFonts.poppins(color: RunnerTheme.textMid),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: RunnerTheme.brand,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Resume', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
-    );
+    final resume = await showOfferResumeDialog(context, cfg, draft);
     if (!mounted) return;
     if (resume == true) {
       await _runAction(
@@ -263,62 +228,11 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
   }
 
   void _showCompletion() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: RunnerTheme.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: RunnerTheme.success.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: RunnerTheme.success,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Journey Completed!',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: RunnerTheme.textDark,
-                fontSize: 17,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'All steps have been completed and validated successfully.',
-          style: GoogleFonts.poppins(fontSize: 13, color: RunnerTheme.textMid),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: RunnerTheme.brand,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.pop();
-            },
-            child: Text(
-              'Back to Dashboard',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+    showCompletionDialog(
+      context,
+      onBackToDashboard: () {
+        context.pop();
+      },
     );
   }
 
@@ -619,91 +533,18 @@ class _JourneyRunnerScreenState extends ConsumerState<JourneyRunnerScreen> {
     Map<String, dynamic> formValues,
     bool showSubmit,
   ) {
-    return Column(
-      children: [
-        _buildMobileStepBadge(cfg, activeIdx),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: RunnerFormContent(
-              cfg: cfg,
-              activeStep: activeStep,
-              activeIdx: activeIdx,
-              formValues: formValues,
-              errors: _errors,
-              showSubmit: showSubmit,
-              isMobile: true,
-              isExecuting: _isExecuting,
-              stepHistory: _stepHistory,
-              formKey: _formKey,
-              runAction: _runAction,
-              showSnack: _snack,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMobileStepBadge(JourneyConfig cfg, int activeIdx) {
-    final step = cfg.steps[activeIdx];
-    return Container(
-      color: RunnerTheme.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(color: RunnerTheme.brand, shape: BoxShape.circle),
-            child: Center(
-              child: Text(
-                '${activeIdx + 1}',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  step.title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: RunnerTheme.textDark,
-                  ),
-                ),
-                Text(
-                  'Step ${activeIdx + 1} of ${cfg.steps.length}',
-                  style: GoogleFonts.poppins(fontSize: 11, color: RunnerTheme.textMid),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: const BoxDecoration(
-              color: RunnerTheme.brandSurface,
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            child: Text(
-              '${activeIdx + 1}/${cfg.steps.length}',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: RunnerTheme.brand,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return RunnerMobileShell(
+      cfg: cfg,
+      activeStep: activeStep,
+      activeIdx: activeIdx,
+      formValues: formValues,
+      showSubmit: showSubmit,
+      errors: _errors,
+      isExecuting: _isExecuting,
+      stepHistory: _stepHistory,
+      formKey: _formKey,
+      runAction: _runAction,
+      showSnack: _snack,
     );
   }
 

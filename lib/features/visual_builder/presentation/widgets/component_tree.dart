@@ -18,7 +18,8 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
 
   @override
   Widget build(BuildContext context) {
-    final builderState = ref.watch(visualBuilderProvider);
+    final rootNode = ref.watch(builderRootNodeProvider);
+    final selectedNode = ref.watch(builderSelectedNodeProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
 
     return Container(
@@ -53,7 +54,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              children: _buildTreeNodes(builderState.rootNode, 0, builderState, controller),
+              children: _buildTreeNodes(rootNode, 0, selectedNode, controller),
             ),
           ),
         ],
@@ -64,11 +65,11 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
   List<Widget> _buildTreeNodes(
     ComponentNode node,
     int depth,
-    VisualBuilderState state,
+    ComponentNode? selectedNode,
     VisualBuilderController controller,
   ) {
     final List<Widget> list = [];
-    final isSelected = state.selectedNode?.id == node.id;
+    final isSelected = selectedNode?.id == node.id;
     final isCollapsed = _collapsedNodes.contains(node.id);
     final hasChildren = node.children.isNotEmpty;
 
@@ -182,7 +183,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
 
     if (hasChildren && !isCollapsed) {
       for (final child in node.children) {
-        list.addAll(_buildTreeNodes(child, depth + 1, state, controller));
+        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller));
       }
     }
 

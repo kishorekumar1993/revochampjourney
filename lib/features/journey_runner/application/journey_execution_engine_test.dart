@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../journey_builder/application/controllers/journey_controller.dart';
-import '../../journey_builder/domain/entities/journey_models.dart';
-import '../application/journey_execution_engine.dart';
-import '../application/journey_step_resolver.dart';
-import '../domain/journey_execution_models.dart';
+import 'package:revojourneytryone/features/journey_builder/application/controllers/journey_controller.dart';
+import 'package:revojourneytryone/features/journey_builder/domain/entities/journey_models.dart';
+import 'package:revojourneytryone/features/journey_runner/application/journey_execution_engine.dart';
+import 'package:revojourneytryone/features/journey_runner/application/journey_step_resolver.dart';
+import 'package:revojourneytryone/features/journey_runner/domain/journey_execution_models.dart';
 
 void main() {
   late JourneyConfig config;

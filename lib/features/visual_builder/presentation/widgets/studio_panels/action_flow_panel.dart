@@ -12,8 +12,7 @@ class RevoActionFlowPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final builderState = ref.watch(visualBuilderProvider);
-    final selectedNode = builderState.selectedNode;
+    final selectedNode = ref.watch(builderSelectedNodeProvider);
 
     return RevoStudioPanelWrapper(
       title: "Action Flow Editor",
