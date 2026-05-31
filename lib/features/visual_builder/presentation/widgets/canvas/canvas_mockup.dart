@@ -144,7 +144,7 @@ class DeviceMockup extends ConsumerWidget {
       onDelete: (node) => controller.deleteNode(node.id),
       onDuplicate: (node) => controller.duplicateNode(node.id),
       onMoveChild: controller.moveChildNode,
-      onAddChild: (parent, type, {targetIndex}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex),
+      onAddChild: (parent, type, {targetIndex, slotName}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex, slotName: slotName),
     );
 
     // Only wrap non-Scaffold roots in a scroll view with padding.

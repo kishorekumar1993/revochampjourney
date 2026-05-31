@@ -25,7 +25,7 @@ class RenderContext {
   final void Function(ComponentNode)? onDelete;
   final void Function(ComponentNode)? onDuplicate;
   final void Function(ComponentNode, ComponentNode, int)? onMoveChild;
-  final void Function(ComponentNode, String, {int? targetIndex})? onAddChild;
+  final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild;
   final Map<String, dynamic> formValues;
   final void Function(String, dynamic)? onFormValueChanged;
   final bool insideScrollable;
@@ -88,7 +88,7 @@ class ComponentRendererWidget extends ConsumerWidget {
   final void Function(ComponentNode)? overrideOnDelete;
   final void Function(ComponentNode)? overrideOnDuplicate;
   final void Function(ComponentNode, ComponentNode, int)? overrideOnMoveChild;
-  final void Function(ComponentNode, String, {int? targetIndex})? overrideOnAddChild;
+  final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? overrideOnAddChild;
 
   const ComponentRendererWidget({
     required ValueKey<String> super.key,
@@ -122,7 +122,8 @@ class ComponentRendererWidget extends ConsumerWidget {
     final onDelete = overrideOnDelete ?? (ComponentNode n) => controller.deleteNode(n.id);
     final onDuplicate = overrideOnDuplicate ?? (ComponentNode n) => controller.duplicateNode(n.id);
     final onMoveChild = overrideOnMoveChild ?? (ComponentNode parent, ComponentNode child, int idx) => controller.moveChildNode(parent, child, idx);
-    final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type, {int? targetIndex}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex);
+    // FIX: onAddChild now supports slotName parameter for slot-based widgets
+    final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type, {int? targetIndex, String? slotName}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex, slotName: slotName);
     final onFormValueChanged = overrideOnFormValueChanged ?? (String field, dynamic val) {
       ref.read(formValuesProvider.notifier).updateValue(field, val);
     };
@@ -170,9 +171,9 @@ class ComponentRendererWidget extends ConsumerWidget {
     coreWidget = ComponentRenderer.applyPaddingAndSizing(coreWidget, node);
     coreWidget = ComponentRenderer.applyDecoration(coreWidget, node);
 
-    if (isDesignMode) {
-      coreWidget = AbsorbPointer(child: coreWidget);
-    }
+    // FIX: Do NOT AbsorbPointer the entire coreWidget — that blocks nested DragTargets.
+    // Instead we only block tap gestures at the core level via GestureDetector with
+    // HitTestBehavior. We let pointer events pass through to inner DragTargets.
 
     Widget resultWidget;
 
@@ -254,7 +255,18 @@ class ComponentRendererWidget extends ConsumerWidget {
           node,
         );
       } else {
-        final canAcceptChildren = ComponentRenderer.canAcceptChildren(node.type);
+        final meta = ComponentRegistry.getByType(node.type);
+        final isSlotBased = meta != null && meta.slotNames.isNotEmpty;
+        final isMultiChild = meta != null && !isSlotBased && (meta.maxChildren == null);
+        final canAcceptChildren = meta?.canHaveChildren ?? false;
+
+        // FIX: Use IgnorePointer only for leaf/input widgets that shouldn't intercept
+        // drag events. Container-like widgets must pass pointer events through.
+        Widget displayWidget = coreWidget;
+        // Only block tap-like interactions on leaf widgets, not containers
+        if (!canAcceptChildren) {
+          displayWidget = IgnorePointer(ignoringSemantics: false, child: coreWidget);
+        }
 
         Widget interactiveWrapper = MouseRegion(
           onEnter: (_) {
@@ -269,7 +281,7 @@ class ComponentRendererWidget extends ConsumerWidget {
             onTap: () {
               onSelect(node);
             },
-            behavior: HitTestBehavior.opaque,
+            behavior: HitTestBehavior.translucent,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -284,7 +296,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                       width: isSelected ? 2.0 : 1.5,
                     ),
                   ),
-                  child: coreWidget,
+                  child: displayWidget,
                 ),
                 if (isSelected)
                   Positioned(
@@ -369,12 +381,20 @@ class ComponentRendererWidget extends ConsumerWidget {
 
         Widget designWidget = dragSource;
 
-        if (parentNode != null || canAcceptChildren) {
+        // FIX: Build drop zones properly based on widget type.
+        // - Slot-based single-child (Container, Card, Center, Padding...) → handled by SlotDragTarget
+        //   inside the renderer, so we only show child-area drop if no slot child yet.
+        // - Multi-child (Column, Row, Stack, Wrap...) → full-area drop + top/bottom edge zones.
+        // - Leaf widgets (Button, Text, etc.) → only top/bottom sibling drop zones.
+
+        if (canAcceptChildren || parentNode != null) {
           designWidget = Stack(
             clipBehavior: Clip.none,
             children: [
               designWidget,
-              if (canAcceptChildren)
+
+              // ── Multi-child container drop zone (Column, Row, Stack, Wrap, ListView, etc.) ──
+              if (canAcceptChildren && isMultiChild)
                 Positioned.fill(
                   child: Consumer(
                     builder: (context, ref, child) {
@@ -385,6 +405,8 @@ class ComponentRendererWidget extends ConsumerWidget {
                           final data = details.data;
                           final droppedNode = ComponentRenderer._dropDataToNode(data);
                           if (droppedNode == null) return false;
+                          // Don't accept self
+                          if (data is ComponentNode && data.id == node.id) return false;
                           return NestingValidator.validateDrop(node, droppedNode, null).success;
                         },
                         onAcceptWithDetails: (details) {
@@ -401,15 +423,58 @@ class ComponentRendererWidget extends ConsumerWidget {
                             decoration: BoxDecoration(
                               color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
                               border: isOver
-                                  ? Border.all(color: const Color(0xFF5B4FCF), width: 1.5)
+                                  ? Border.all(color: const Color(0xFF5B4FCF), width: 2, strokeAlign: BorderSide.strokeAlignOutside)
                                   : null,
-                        ),
+                            ),
+                          );
+                        },
                       );
-                    },
-                  );
                     },
                   ),
                 ),
+
+              // ── Single-child slot drop zone (Container, Card, Center, Padding...) ──
+              // Only show when the slot is empty (no child yet)
+              if (canAcceptChildren && isSlotBased && meta.slotNames.contains('child'))
+                Positioned.fill(
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final isDragging = ref.watch(canvasIsDraggingProvider);
+                      // Only show drop overlay when dragging AND the slot is empty
+                      final slotFilled = node.slots['child'] != null;
+                      if (!isDragging || slotFilled) return const SizedBox.shrink();
+                      return DragTarget<Object>(
+                        onWillAcceptWithDetails: (details) {
+                          final data = details.data;
+                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          if (droppedNode == null) return false;
+                          if (data is ComponentNode && data.id == node.id) return false;
+                          return NestingValidator.validateDrop(node, droppedNode, 'child').success;
+                        },
+                        onAcceptWithDetails: (details) {
+                          final data = details.data;
+                          // For String type (from palette), add to the 'child' slot
+                          if (data is String) {
+                            onAddChild.call(node, data, slotName: 'child');
+                          }
+                        },
+                        builder: (context, candidateData, _) {
+                          final isOver = candidateData.isNotEmpty;
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
+                              border: isOver
+                                  ? Border.all(color: const Color(0xFF5B4FCF), width: 2, strokeAlign: BorderSide.strokeAlignOutside)
+                                  : null,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+              // ── Top drop zone: insert BEFORE this node (sibling drop) ──
               if (parentNode != null)
                 Positioned(
                   top: 0,
@@ -424,7 +489,12 @@ class ComponentRendererWidget extends ConsumerWidget {
                         onWillAcceptWithDetails: (details) {
                           final data = details.data;
                           if (data is ComponentNode && data.id == node.id) return false;
-                          return true;
+                          // Only allow sibling drops into multi-child parents
+                          final parentMeta = ComponentRegistry.getByType(parentNode!.type);
+                          if (parentMeta == null) return false;
+                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          if (droppedNode == null) return false;
+                          return NestingValidator.validateDrop(parentNode!, droppedNode, null).success;
                         },
                         onAcceptWithDetails: (details) {
                           final data = details.data;
@@ -455,6 +525,8 @@ class ComponentRendererWidget extends ConsumerWidget {
                     },
                   ),
                 ),
+
+              // ── Bottom drop zone: insert AFTER this node (sibling drop) ──
               if (parentNode != null)
                 Positioned(
                   bottom: 0,
@@ -469,7 +541,11 @@ class ComponentRendererWidget extends ConsumerWidget {
                         onWillAcceptWithDetails: (details) {
                           final data = details.data;
                           if (data is ComponentNode && data.id == node.id) return false;
-                          return true;
+                          final parentMeta = ComponentRegistry.getByType(parentNode!.type);
+                          if (parentMeta == null) return false;
+                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          if (droppedNode == null) return false;
+                          return NestingValidator.validateDrop(parentNode!, droppedNode, null).success;
                         },
                         onAcceptWithDetails: (details) {
                           final data = details.data;
@@ -534,20 +610,20 @@ class ComponentRendererWidget extends ConsumerWidget {
 
       final appTheme = ThemeData(
         brightness: brightness,
-        primaryColor: primary,
-        scaffoldBackgroundColor: bg,
-        cardColor: cardColor,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primary,
+        colorScheme: ColorScheme(
           brightness: brightness,
           primary: primary,
+          onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
           secondary: secondary,
-          surface: cardColor,
+          onSecondary: brightness == Brightness.dark ? Colors.black : Colors.white,
+          surface: bg,
+          onSurface: textColor,
+          error: Colors.red,
+          onError: Colors.white,
         ),
-        textTheme: txtTheme.copyWith(
-          bodyLarge: TextStyle(color: textColor),
-          bodyMedium: TextStyle(color: textColor),
-        ),
+        cardColor: cardColor,
+        textTheme: txtTheme,
+        useMaterial3: true,
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
@@ -587,7 +663,7 @@ class ComponentRenderer {
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild,
-    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
@@ -625,7 +701,7 @@ class ComponentRenderer {
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
     void Function(ComponentNode, ComponentNode, int)? onMoveChild,
-    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
@@ -655,7 +731,10 @@ class ComponentRenderer {
       'Card', 'SizedBox', 'Spacer', 'Expanded', 'Flexible', 'SafeArea',
       'Tabs', 'Drawer', 'NavigationBar', 'Scaffold', 'SingleChildScrollView',
       'Carousel', 'BottomNavigationBar', 'BottomNavigationBarItem',
-      'Table', 'Stepper', 'Timeline', 'Chart'
+      'Table', 'Stepper', 'Timeline', 'Chart',
+      'Center', 'Padding', 'Align', 'Opacity', 'Transform', 'Positioned',
+      'AspectRatio', 'GestureDetector', 'InkWell', 'AppBar',
+      'ListTile', 'AlertDialog', 'TabBarView',
     };
 
     const inputTypes = {
@@ -685,48 +764,70 @@ class ComponentRenderer {
 
   static Widget buildEmptyPlaceholder(
     ComponentNode node, {
-    void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
+    void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild,
   }) {
     final isWrapOrRow = node.type == 'Wrap' || node.type == 'Row';
-    return Container(
-      width: isWrapOrRow ? 150 : double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5B4FCF).withValues(alpha: 0.04),
-        border: Border.all(
-          color: const Color(0xFF5B4FCF).withValues(alpha: 0.2),
-          style: BorderStyle.solid,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.add_to_photos_rounded,
-            color: const Color(0xFF5B4FCF).withValues(alpha: 0.5),
-            size: 24,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Empty ${node.type} Container',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF5B4FCF).withValues(alpha: 0.7),
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (_) => true,
+      onAcceptWithDetails: (details) {
+        if (onAddChild == null) return;
+        final data = details.data;
+        final meta = ComponentRegistry.getByType(node.type);
+        final isSlotBased = meta != null && meta.slotNames.isNotEmpty && meta.slotNames.contains('child');
+        if (data is String) {
+          onAddChild(node, data, slotName: isSlotBased ? 'child' : null);
+        }
+        // ComponentNode drop handled by parent's DragTarget
+      },
+      builder: (context, candidateData, _) {
+        final isOver = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: isWrapOrRow ? 150 : double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isOver
+                ? const Color(0xFF5B4FCF).withValues(alpha: 0.12)
+                : const Color(0xFF5B4FCF).withValues(alpha: 0.04),
+            border: Border.all(
+              color: isOver
+                  ? const Color(0xFF5B4FCF)
+                  : const Color(0xFF5B4FCF).withValues(alpha: 0.2),
+              style: BorderStyle.solid,
+              width: isOver ? 2 : 1,
             ),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Drag components here to add children',
-            style: TextStyle(
-              fontSize: 9,
-              color: const Color(0xFF5B4FCF).withValues(alpha: 0.5),
-            ),
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.add_to_photos_rounded,
+                color: const Color(0xFF5B4FCF).withValues(alpha: isOver ? 0.9 : 0.5),
+                size: 24,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Empty ${node.type}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF5B4FCF).withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Drag components here',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: const Color(0xFF5B4FCF).withValues(alpha: 0.5),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -778,11 +879,13 @@ class ComponentRenderer {
   static ComponentNode? _dropDataToNode(Object? data) {
     if (data is ComponentNode) return data;
     if (data is String) {
-      final meta = ComponentRegistry.getByType(data);
-      if (meta == null) return null;
+      // Handle reusable prefix
+      final typeName = data.startsWith('reusable_') ? data : data;
+      final meta = ComponentRegistry.getByType(typeName);
+      if (meta == null && !data.startsWith('reusable_')) return null;
       return ComponentNode(
         id: '__drag_preview_$data',
-        type: data,
+        type: data.startsWith('reusable_') ? 'Container' : data,
         properties: const {},
         children: const [],
         actions: const [],
@@ -899,104 +1002,52 @@ class ComponentRenderer {
         return Icons.breakfast_dining;
       case 'icecream':
         return Icons.icecream;
-      case 'ramen_dining':
-        return Icons.ramen_dining;
-      case 'rice_bowl':
-        return Icons.rice_bowl;
-      case 'soup_kitchen':
-        return Icons.soup_kitchen;
-      case 'tapas':
-        return Icons.tapas;
-      case 'brunch_dining':
-        return Icons.brunch_dining;
-      case 'location_on':
-        return Icons.location_on;
-      case 'location_off':
-        return Icons.location_off;
-      case 'location_city':
-        return Icons.location_city;
-      case 'my_location':
-        return Icons.my_location;
-      case 'near_me':
-        return Icons.near_me;
-      case 'place':
-        return Icons.place;
-      case 'navigation':
-        return Icons.navigation;
-      case 'directions':
-        return Icons.directions;
-      case 'map':
-        return Icons.map;
-      case 'explore':
-        return Icons.explore;
-      case 'expand_more':
-        return Icons.expand_more;
-      case 'expand_less':
-        return Icons.expand_less;
-      case 'chevron_right':
-        return Icons.chevron_right;
-      case 'chevron_left':
-        return Icons.chevron_left;
-      case 'keyboard_arrow_right':
-        return Icons.keyboard_arrow_right;
-      case 'keyboard_arrow_left':
-        return Icons.keyboard_arrow_left;
-      case 'keyboard_arrow_up':
-        return Icons.keyboard_arrow_up;
-      case 'keyboard_arrow_down':
-        return Icons.keyboard_arrow_down;
-      case 'arrow_forward_ios':
-        return Icons.arrow_forward_ios;
-      case 'arrow_back_ios':
-        return Icons.arrow_back_ios;
-      case 'receipt':
-        return Icons.receipt_outlined;
-      case 'receipt_long':
-        return Icons.receipt_long_outlined;
-      case 'receipt_filled':
-        return Icons.receipt;
-      case 'receipt_long_filled':
-        return Icons.receipt_long;
-      case 'order':
-        return Icons.list_alt;
-      case 'shopping_basket':
-        return Icons.shopping_basket_outlined;
-      case 'shopping_cart_checkout':
-        return Icons.shopping_cart_checkout;
-      case 'event':
-        return Icons.event;
-      case 'event_filled':
-        return Icons.event;
-      case 'event_note':
-        return Icons.event_note;
-      case 'event_available':
-        return Icons.event_available;
-      case 'schedule':
-        return Icons.schedule;
-      case 'access_time':
-        return Icons.access_time;
-      case 'date_range':
-        return Icons.date_range;
-      case 'today':
-        return Icons.today;
-      case 'timer':
-        return Icons.timer;
-      case 'alarm':
-        return Icons.alarm;
-      case 'calendar_month':
-        return Icons.calendar_month;
+      case 'sports':
+        return Icons.sports;
+      case 'fitness_center':
+        return Icons.fitness_center;
+      case 'sports_soccer':
+        return Icons.sports_soccer;
+      case 'sports_basketball':
+        return Icons.sports_basketball;
+      case 'sports_tennis':
+        return Icons.sports_tennis;
+      case 'pool':
+        return Icons.pool;
+      case 'directions_run':
+        return Icons.directions_run;
+      case 'directions_walk':
+        return Icons.directions_walk;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'flight':
+        return Icons.flight;
+      case 'hotel':
+        return Icons.hotel;
+      case 'beach_access':
+        return Icons.beach_access;
+      case 'nature':
+        return Icons.nature;
+      case 'park':
+        return Icons.park;
       case 'chat':
         return Icons.chat_outlined;
       case 'chat_filled':
         return Icons.chat;
-      case 'chat_bubble':
-        return Icons.chat_bubble_outline;
-      case 'message':
-        return Icons.message_outlined;
       case 'forum':
         return Icons.forum_outlined;
-      case 'comment':
-        return Icons.comment_outlined;
+      case 'message':
+        return Icons.message_outlined;
+      case 'mail':
+        return Icons.mail_outlined;
+      case 'contact_mail':
+        return Icons.contact_mail_outlined;
+      case 'contact_phone':
+        return Icons.contact_phone_outlined;
+      case 'call':
+        return Icons.call;
+      case 'video_call':
+        return Icons.video_call;
       case 'sms':
         return Icons.sms_outlined;
       case 'mark_chat_read':
@@ -1099,34 +1150,30 @@ class ComponentRenderer {
         return Icons.battery_full;
       case 'speed':
         return Icons.speed;
+      case 'tune':
+        return Icons.tune;
+      case 'cloud':
+        return Icons.cloud_outlined;
+      case 'cloud_download':
+        return Icons.cloud_download_outlined;
+      case 'cloud_upload':
+        return Icons.cloud_upload_outlined;
+      case 'security':
+        return Icons.security;
+      case 'verified':
+        return Icons.verified;
+      case 'new_releases':
+        return Icons.new_releases;
       case 'trending_up':
         return Icons.trending_up;
       case 'trending_down':
         return Icons.trending_down;
-      case 'star_border':
-        return Icons.star_border;
-      case 'star_half':
-        return Icons.star_half;
-      case 'check_circle_outline':
-        return Icons.check_circle_outline;
-      case 'cancel':
-        return Icons.cancel_outlined;
-      case 'block':
-        return Icons.block;
-      case 'pending':
-        return Icons.pending_outlined;
-      case 'info_outline':
-        return Icons.info_outline;
-      case 'local_offer':
-        return Icons.local_offer;
-      case 'label':
-        return Icons.label_outlined;
-      case 'tag':
-        return Icons.tag;
-      case 'tune':
-        return Icons.tune;
-      case 'add_shopping_cart':
-        return Icons.add_shopping_cart;
+      case 'swap_horiz':
+        return Icons.swap_horiz;
+      case 'swap_vert':
+        return Icons.swap_vert;
+      case 'compare_arrows':
+        return Icons.compare_arrows;
       case 'remove_shopping_cart':
         return Icons.remove_shopping_cart;
       case 'storefront':
