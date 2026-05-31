@@ -728,6 +728,41 @@ class ComponentRenderer {
     );
   }
 
+  static Widget buildSlotPlaceholder(
+    ComponentNode node,
+    String slotName,
+  ) {
+    return Container(
+      height: slotName == 'appBar' ? 56 : (slotName == 'bottomNavigationBar' ? 60 : 80),
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5B4FCF).withValues(alpha: 0.04),
+        border: Border.all(
+          color: const Color(0xFF5B4FCF).withValues(alpha: 0.2),
+          style: BorderStyle.solid,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFF5B4FCF)),
+            const SizedBox(width: 6),
+            Text(
+              'Drop $slotName here',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5B4FCF),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static bool canAcceptChildren(String type) {
     final meta = ComponentRegistry.getByType(type);
     return meta?.canHaveChildren ?? false;
@@ -1353,6 +1388,73 @@ class _DropLineIndicator extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class SlotDragTarget extends ConsumerWidget {
+  final ComponentNode parentNode;
+  final String slotName;
+  final Widget child;
+
+  const SlotDragTarget({
+    required this.parentNode,
+    required this.slotName,
+    required this.child,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isDesignMode = ref.watch(builderDesignModeProvider);
+    if (!isDesignMode) return child;
+
+    final controller = ref.read(visualBuilderProvider.notifier);
+
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data is ComponentNode && data.id == parentNode.id) return false;
+        
+        // Validation rules:
+        if (parentNode.type == 'Scaffold') {
+          if (slotName == 'appBar') {
+            if (data is String && data != 'AppBar') return false;
+            if (data is ComponentNode && data.type != 'AppBar') return false;
+          }
+          if (slotName == 'bottomNavigationBar') {
+            if (data is String && data != 'BottomNavigationBar') return false;
+            if (data is ComponentNode && data.type != 'BottomNavigationBar') return false;
+          }
+        }
+        return true;
+      },
+      onAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data is String) {
+          controller.addChildNode(parentNode.id, data, slotName: slotName);
+        } else if (data is ComponentNode) {
+          controller.moveChildNode(parentNode, data, -1, slotName: slotName);
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isOver = candidateData.isNotEmpty;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            child,
+            if (isOver)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0x225B4FCF),
+                    border: Border.all(color: const Color(0xFF5B4FCF), width: 2),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

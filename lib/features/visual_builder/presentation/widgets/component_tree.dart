@@ -29,6 +29,9 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     for (final child in node.children) {
       if (_doesNodeMatchSearch(child, query)) return true;
     }
+    for (final slotChild in node.slots.values) {
+      if (slotChild != null && _doesNodeMatchSearch(slotChild, query)) return true;
+    }
     return false;
   }
 
@@ -128,7 +131,8 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     final isCollapsed = _searchQuery.isNotEmpty
         ? false
         : _collapsedNodes.contains(node.id);
-    final hasChildren = node.children.isNotEmpty;
+    final meta = ComponentRegistry.getByType(node.type);
+    final hasChildren = node.children.isNotEmpty || (meta != null && meta.slotNames.isNotEmpty);
 
     // Resolve name
     String labelSuffix = '';
@@ -138,7 +142,6 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
       labelSuffix = ' [${node.properties['label']}]';
     }
 
-    final meta = ComponentRegistry.getByType(node.type);
     final icon = meta?.icon ?? Icons.help_outline;
 
     // Drag-and-drop feedback or drop target
@@ -271,6 +274,97 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     list.add(dragTargetWidget);
 
     if (hasChildren && !isCollapsed) {
+      if (meta != null && meta.slotNames.isNotEmpty) {
+        for (final slotName in meta.slotNames) {
+          final slotChild = node.slots[slotName];
+          final slotHeaderWidget = Padding(
+            key: ValueKey('${node.id}_slot_hdr_$slotName'),
+            padding: EdgeInsets.only(left: 12.0 + ((depth + 1) * 16.0), right: 12.0, top: 2, bottom: 2),
+            child: DragTarget<String>(
+              onWillAcceptWithDetails: (details) {
+                final draggedId = details.data;
+                if (draggedId == node.id) return false;
+                if (_isDescendant(draggedId, node)) return false;
+                
+                // Scaffold specific rules
+                if (node.type == 'Scaffold') {
+                  if (slotName == 'appBar') {
+                    final dragNode = controller.findNodeById(draggedId);
+                    if (dragNode != null && dragNode.type != 'AppBar') return false;
+                  }
+                  if (slotName == 'bottomNavigationBar') {
+                    final dragNode = controller.findNodeById(draggedId);
+                    if (dragNode != null && dragNode.type != 'BottomNavigationBar') return false;
+                  }
+                }
+                return true;
+              },
+              onAcceptWithDetails: (details) {
+                final draggedId = details.data;
+                final draggedNode = controller.findNodeById(draggedId);
+                if (draggedNode != null) {
+                  controller.moveChildNode(node, draggedNode, -1, slotName: slotName);
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                final isOver = candidateData.isNotEmpty;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOver ? const Color(0x335B4FCF) : const Color(0x0A5B4FCF),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isOver ? const Color(0xFF5B4FCF) : const Color(0x205B4FCF),
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        slotName == 'appBar'
+                            ? Icons.web_asset_rounded
+                            : (slotName == 'body'
+                                ? Icons.article_outlined
+                                : (slotName == 'bottomNavigationBar'
+                                    ? Icons.menu_rounded
+                                    : Icons.widgets_outlined)),
+                        size: 14,
+                        color: RevoTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        slotName,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: RevoTheme.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (slotChild == null)
+                        Text(
+                          'Empty',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            color: RevoTheme.textSecondary.withValues(alpha: 0.7),
+                          ),
+                        )
+                      else
+                        const Icon(Icons.check_circle_rounded, size: 10, color: Colors.green),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+          list.add(slotHeaderWidget);
+
+          if (slotChild != null) {
+            list.addAll(_buildTreeNodes(slotChild, depth + 2, selectedNode, controller, node));
+          }
+        }
+      }
+
       for (final child in node.children) {
         list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node));
       }
@@ -322,10 +416,16 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
   }
 
   bool _isDescendant(String ancestorId, ComponentNode targetNode) {
-    if (targetNode.children.isEmpty) return false;
+    if (targetNode.children.isEmpty && targetNode.slots.isEmpty) return false;
     for (final child in targetNode.children) {
       if (child.id == ancestorId) return true;
       if (_isDescendant(ancestorId, child)) return true;
+    }
+    for (final slotChild in targetNode.slots.values) {
+      if (slotChild != null) {
+        if (slotChild.id == ancestorId) return true;
+        if (_isDescendant(ancestorId, slotChild)) return true;
+      }
     }
     return false;
   }

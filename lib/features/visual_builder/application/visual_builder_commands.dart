@@ -53,6 +53,12 @@ class ComponentTreeUtils {
       final found = findNode(child, id);
       if (found != null) return found;
     }
+    for (final slotChild in current.slots.values) {
+      if (slotChild != null) {
+        final found = findNode(slotChild, id);
+        if (found != null) return found;
+      }
+    }
     return null;
   }
 
@@ -62,49 +68,102 @@ class ComponentTreeUtils {
       final found = findParentNode(child, childId);
       if (found != null) return found;
     }
+    for (final entry in current.slots.entries) {
+      final slotChild = entry.value;
+      if (slotChild != null) {
+        if (slotChild.id == childId) return current;
+        final found = findParentNode(slotChild, childId);
+        if (found != null) return found;
+      }
+    }
     return null;
   }
 
-  static ComponentNode? insertChildInParent(ComponentNode current, String parentId, ComponentNode newNode, int index) {
+  static ComponentNode? insertChildInParent(ComponentNode current, String parentId, ComponentNode newNode, int index, {String? slotName}) {
     if (current.id == parentId) {
-      final List<ComponentNode> list = List.from(current.children);
-      if (index >= 0 && index <= list.length) {
-        list.insert(index, newNode);
+      if (slotName != null) {
+        final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
+        updatedSlots[slotName] = newNode;
+        return current.copyWith(slots: updatedSlots);
       } else {
-        list.add(newNode);
+        final List<ComponentNode> list = List.from(current.children);
+        if (index >= 0 && index <= list.length) {
+          list.insert(index, newNode);
+        } else {
+          list.add(newNode);
+        }
+        return current.copyWith(children: list);
       }
-      return current.copyWith(children: list);
     }
     final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
+    bool childModified = false;
     for (final child in current.children) {
-      final res = insertChildInParent(child, parentId, newNode, index);
+      final res = insertChildInParent(child, parentId, newNode, index, slotName: slotName);
       if (res != null) {
         updatedChildren.add(res);
-        modified = true;
+        childModified = true;
       } else {
         updatedChildren.add(child);
       }
     }
-    return modified ? current.copyWith(children: updatedChildren) : null;
+    final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
+    bool slotModified = false;
+    for (final entry in current.slots.entries) {
+      final slotChild = entry.value;
+      if (slotChild != null) {
+        final res = insertChildInParent(slotChild, parentId, newNode, index, slotName: slotName);
+        if (res != null) {
+          updatedSlots[entry.key] = res;
+          slotModified = true;
+        }
+      }
+    }
+    if (childModified || slotModified) {
+      return current.copyWith(
+        children: childModified ? updatedChildren : null,
+        slots: slotModified ? updatedSlots : null,
+      );
+    }
+    return null;
   }
 
   static ComponentNode? removeNode(ComponentNode current, String targetId) {
     if (current.id == targetId) return null;
     final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
+    bool childModified = false;
     for (final child in current.children) {
       final res = removeNode(child, targetId);
       if (res == null) {
-        modified = true; // child removed
+        childModified = true;
       } else {
         updatedChildren.add(res);
-        if (res.id != child.id || res.children.length != child.children.length) {
-          modified = true; // modified somewhere below
+        if (res.id != child.id || res.children.length != child.children.length || res.slots.length != child.slots.length) {
+          childModified = true;
         }
       }
     }
-    return modified ? current.copyWith(children: updatedChildren) : current;
+    final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
+    bool slotModified = false;
+    for (final entry in current.slots.entries) {
+      final slotChild = entry.value;
+      if (slotChild != null) {
+        final res = removeNode(slotChild, targetId);
+        if (res == null) {
+          updatedSlots[entry.key] = null;
+          slotModified = true;
+        } else if (res.id != slotChild.id || res.children.length != slotChild.children.length || res.slots.length != slotChild.slots.length) {
+          updatedSlots[entry.key] = res;
+          slotModified = true;
+        }
+      }
+    }
+    if (childModified || slotModified) {
+      return current.copyWith(
+        children: childModified ? updatedChildren : current.children,
+        slots: slotModified ? updatedSlots : current.slots,
+      );
+    }
+    return current;
   }
 
   static ComponentNode? updateNodeInTree(ComponentNode current, String id, ComponentNode Function(ComponentNode) updateFn) {
@@ -112,19 +171,39 @@ class ComponentTreeUtils {
       return updateFn(current);
     }
     final List<ComponentNode> updatedChildren = [];
-    bool modified = false;
+    bool childModified = false;
     for (final child in current.children) {
       final res = updateNodeInTree(child, id, updateFn);
       if (res != null) {
         updatedChildren.add(res);
-        if (res.id != child.id || res.properties != child.properties || res.styles != child.styles || res.actions != child.actions || res.children.length != child.children.length) {
-          modified = true;
+        if (res.id != child.id || res.properties != child.properties || res.styles != child.styles || res.actions != child.actions || res.children.length != child.children.length || res.slots.length != child.slots.length) {
+          childModified = true;
         }
       } else {
         updatedChildren.add(child);
       }
     }
-    return modified ? current.copyWith(children: updatedChildren) : current;
+    final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
+    bool slotModified = false;
+    for (final entry in current.slots.entries) {
+      final slotChild = entry.value;
+      if (slotChild != null) {
+        final res = updateNodeInTree(slotChild, id, updateFn);
+        if (res != null) {
+          updatedSlots[entry.key] = res;
+          if (res.id != slotChild.id || res.properties != slotChild.properties || res.styles != slotChild.styles || res.actions != slotChild.actions || res.children.length != slotChild.children.length || res.slots.length != slotChild.slots.length) {
+            slotModified = true;
+          }
+        }
+      }
+    }
+    if (childModified || slotModified) {
+      return current.copyWith(
+        children: childModified ? updatedChildren : current.children,
+        slots: slotModified ? updatedSlots : current.slots,
+      );
+    }
+    return current;
   }
 }
 
@@ -133,12 +212,14 @@ class AddWidgetCommand extends VisualBuilderCommand {
   final String parentId;
   final ComponentNode node;
   final int? index;
+  final String? slotName;
   int? _actualInsertedIndex;
 
   AddWidgetCommand({
     required this.parentId,
     required this.node,
     this.index,
+    this.slotName,
   });
 
   @override
@@ -152,6 +233,10 @@ class AddWidgetCommand extends VisualBuilderCommand {
 
   @override
   ComponentNode executeTree(ComponentNode root) {
+    if (slotName != null) {
+      final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, 0, slotName: slotName);
+      return updated ?? root;
+    }
     int targetIndex = index ?? 0;
     if (index == null) {
       final parentNode = ComponentTreeUtils.findNode(root, parentId);
@@ -178,6 +263,7 @@ class DeleteWidgetCommand extends VisualBuilderCommand {
   ComponentNode? _deletedNode;
   String? _parentId;
   int? _index;
+  String? _slotName;
 
   DeleteWidgetCommand({required this.nodeId});
 
@@ -204,6 +290,12 @@ class DeleteWidgetCommand extends VisualBuilderCommand {
     _deletedNode = target;
     _parentId = parent.id;
     _index = parent.children.indexWhere((c) => c.id == nodeId);
+    for (final entry in parent.slots.entries) {
+      if (entry.value?.id == nodeId) {
+        _slotName = entry.key;
+        break;
+      }
+    }
 
     final updated = ComponentTreeUtils.removeNode(root, nodeId);
     return updated ?? root;
@@ -211,8 +303,8 @@ class DeleteWidgetCommand extends VisualBuilderCommand {
 
   @override
   ComponentNode undoTree(ComponentNode root) {
-    if (_deletedNode == null || _parentId == null || _index == null) return root;
-    final restored = ComponentTreeUtils.insertChildInParent(root, _parentId!, _deletedNode!, _index!);
+    if (_deletedNode == null || _parentId == null) return root;
+    final restored = ComponentTreeUtils.insertChildInParent(root, _parentId!, _deletedNode!, _index ?? 0, slotName: _slotName);
     return restored ?? root;
   }
 }
@@ -222,15 +314,18 @@ class MoveWidgetCommand extends VisualBuilderCommand {
   final String nodeId;
   final String newParentId;
   final int newIndex;
+  final String? slotName;
 
   String? _oldParentId;
   int? _oldIndex;
+  String? _oldSlotName;
   ComponentNode? _movingNode;
 
   MoveWidgetCommand({
     required this.nodeId,
     required this.newParentId,
     required this.newIndex,
+    this.slotName,
   });
 
   @override
@@ -256,26 +351,32 @@ class MoveWidgetCommand extends VisualBuilderCommand {
 
     _oldParentId = parent.id;
     _oldIndex = parent.children.indexWhere((c) => c.id == nodeId);
+    for (final entry in parent.slots.entries) {
+      if (entry.value?.id == nodeId) {
+        _oldSlotName = entry.key;
+        break;
+      }
+    }
 
     // Remove from old parent
     final cleanRoot = ComponentTreeUtils.removeNode(root, nodeId);
     if (cleanRoot == null) return root;
 
     // Insert into new parent
-    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, newIndex);
+    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, newIndex, slotName: slotName);
     return updated ?? root;
   }
 
   @override
   ComponentNode undoTree(ComponentNode root) {
-    if (_oldParentId == null || _oldIndex == null || _movingNode == null) return root;
+    if (_oldParentId == null || _movingNode == null) return root;
 
     // Remove from new parent
     final cleanRoot = ComponentTreeUtils.removeNode(root, nodeId);
     if (cleanRoot == null) return root;
 
     // Insert back to old parent
-    final restored = ComponentTreeUtils.insertChildInParent(cleanRoot, _oldParentId!, _movingNode!, _oldIndex!);
+    final restored = ComponentTreeUtils.insertChildInParent(cleanRoot, _oldParentId!, _movingNode!, _oldIndex ?? 0, slotName: _oldSlotName);
     return restored ?? root;
   }
 }

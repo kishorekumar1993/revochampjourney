@@ -299,15 +299,15 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     }
   }
 
-  void addChildNode(String parentId, String componentType, {int? targetIndex}) {
+  void addChildNode(String parentId, String componentType, {int? targetIndex, String? slotName}) {
     if (componentType.startsWith('reusable_')) {
       final componentId = componentType.replaceFirst('reusable_', '');
-      final template = state.reusableComponents.firstWhere(
+      final ComponentNode? template = state.reusableComponents.firstWhere(
         (c) => c.id == componentId,
         orElse: () => null as dynamic,
       );
       if (template != null) {
-        addReusableComponentToCanvas(parentId, template, targetIndex: targetIndex);
+        addReusableComponentToCanvas(parentId, template, targetIndex: targetIndex, slotName: slotName);
       }
       return;
     }
@@ -326,16 +326,18 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       parentId: parentId,
       node: newNode,
       index: targetIndex,
+      slotName: slotName,
     ));
   }
 
   static int newNodeIndex = 0;
 
-  void moveChildNode(ComponentNode parent, ComponentNode child, int targetIndex) {
+  void moveChildNode(ComponentNode parent, ComponentNode child, int targetIndex, {String? slotName}) {
     executeCommand(MoveWidgetCommand(
       nodeId: child.id,
       newParentId: parent.id,
       newIndex: targetIndex,
+      slotName: slotName,
     ));
   }
 
@@ -394,7 +396,7 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     VisualBuilderLogger.log('Component', 'Deleted reusable component $id');
   }
 
-  void addReusableComponentToCanvas(String parentId, ComponentNode templateNode, {int? targetIndex}) {
+  void addReusableComponentToCanvas(String parentId, ComponentNode templateNode, {int? targetIndex, String? slotName}) {
     final clone = _deepCloneNodeWithNewIds(templateNode);
     clone.isReusable = false;
 
@@ -402,6 +404,7 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       parentId: parentId,
       node: clone,
       index: targetIndex,
+      slotName: slotName,
     ));
     VisualBuilderLogger.log('Component', 'Added reusable component instance ${clone.id} to parent $parentId');
   }

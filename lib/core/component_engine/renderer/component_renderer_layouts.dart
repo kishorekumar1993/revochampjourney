@@ -4,6 +4,42 @@ import '../models/component_property.dart';
 import 'component_renderer.dart';
 
 class ComponentRendererLayouts {
+  static Widget? _renderSlot(
+    ComponentNode parentNode,
+    String slotName,
+    RenderContext ctx,
+  ) {
+    final slotNode = parentNode.slots[slotName];
+    if (slotNode != null) {
+      return ComponentRenderer.render(
+        slotNode,
+        isDesignMode: ctx.isDesignMode,
+        parentNode: parentNode,
+        selectedNode: ctx.selectedNode,
+        hoveredNode: ctx.hoveredNode,
+        onSelect: ctx.onSelect,
+        onHover: ctx.onHover,
+        onDelete: ctx.onDelete,
+        onDuplicate: ctx.onDuplicate,
+        onMoveChild: ctx.onMoveChild,
+        onAddChild: ctx.onAddChild,
+        formValues: ctx.formValues,
+        onFormValueChanged: ctx.onFormValueChanged,
+        insideScrollable: ctx.insideScrollable,
+      );
+    }
+    if (ctx.isDesignMode) {
+      if (slotName == 'body' || slotName == 'appBar' || slotName == 'bottomNavigationBar' || slotName == 'child' || slotName == 'title' || slotName == 'leading' || slotName == 'actions') {
+        return SlotDragTarget(
+          parentNode: parentNode,
+          slotName: slotName,
+          child: ComponentRenderer.buildSlotPlaceholder(parentNode, slotName),
+        );
+      }
+    }
+    return null;
+  }
+
   static Widget buildLayout(ComponentNode node, RenderContext ctx) {
     final properties = node.properties;
     final isDesignMode = ctx.isDesignMode;
@@ -80,31 +116,7 @@ class ComponentRendererLayouts {
             boxShadow: boxShadows,
             borderRadius: BorderRadius.circular(radius),
           ),
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? ComponentRenderer.buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : null)
-              : node.children.length == 1
-              ? ComponentRenderer.render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: ctx.renderChildren(node),
-                ),
+          child: _renderSlot(node, 'child', ctx),
         );
 
       case 'Row':
@@ -446,11 +458,7 @@ class ComponentRendererLayouts {
           ),
           child: Padding(
             padding: pad,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: ctx.renderChildren(node),
-            ),
+            child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
           ),
         );
 
@@ -460,26 +468,7 @@ class ComponentRendererLayouts {
         return SizedBox(
           width: width,
           height: height,
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? ComponentRenderer.buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : ComponentRenderer.render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                ),
+          child: _renderSlot(node, 'child', ctx),
         );
 
       case 'Spacer':
@@ -504,49 +493,17 @@ class ComponentRendererLayouts {
         return const Spacer();
 
       case 'Expanded':
+        return Expanded(
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
       case 'Flexible':
-        return node.children.isEmpty
-              ? (isDesignMode
-                    ? ComponentRenderer.buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : ComponentRenderer.render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                );
+        return Flexible(
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
 
       case 'SafeArea':
         return SafeArea(
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? ComponentRenderer.buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : ComponentRenderer.render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                ),
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
         );
 
       case 'Tabs':
@@ -633,58 +590,40 @@ class ComponentRendererLayouts {
             PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
             PropertyParser.parseColor(themeTokens?.backgroundColor) ??
             Colors.white;
-        final bottomNavNode = node.children
-            .where((c) => c.type == 'BottomNavigationBar')
-            .firstOrNull;
-        final bodyChildren = node.children
-            .where((c) => c.type != 'BottomNavigationBar')
-            .toList();
 
-        Widget? bottomNavWidget;
-        if (bottomNavNode != null) {
-          bottomNavWidget = ComponentRenderer.render(
-            bottomNavNode,
-            isDesignMode: isDesignMode,
-            parentNode: node,
-            selectedNode: selectedNode,
-            hoveredNode: hoveredNode,
-            onSelect: onSelect,
-            onHover: onHover,
-            onDelete: onDelete,
-            onDuplicate: onDuplicate,
-            onMoveChild: onMoveChild,
-            onAddChild: onAddChild,
-            formValues: formValues,
-            onFormValueChanged: onFormValueChanged,
-          );
-        }
+        final appBarWidget = _renderSlot(node, 'appBar', ctx);
+        final bodyWidget = _renderSlot(node, 'body', ctx);
+        final bottomNavWidget = _renderSlot(node, 'bottomNavigationBar', ctx);
+        final drawerWidget = _renderSlot(node, 'drawer', ctx);
+        final fabWidget = _renderSlot(node, 'floatingActionButton', ctx);
 
         return Scaffold(
           backgroundColor: bg,
+          appBar: appBarWidget != null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(56.0),
+                  child: appBarWidget,
+                )
+              : null,
           bottomNavigationBar: bottomNavWidget,
+          drawer: drawerWidget,
+          floatingActionButton: fabWidget,
           body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: bodyChildren.map((childNode) {
-                return ComponentRenderer.render(
-                  childNode,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: true,
-                );
-              }).toList(),
-            ),
+            child: bodyWidget ?? const SizedBox.shrink(),
           ),
+        );
+
+      case 'AppBar':
+        final bg = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor'));
+        final titleText = properties['title']?.toString() ?? 'App Title';
+        final titleWidget = _renderSlot(node, 'title', ctx) ?? Text(titleText);
+        final leadingWidget = _renderSlot(node, 'leading', ctx);
+        final actionWidget = _renderSlot(node, 'actions', ctx);
+        return AppBar(
+          backgroundColor: bg,
+          title: titleWidget,
+          leading: leadingWidget,
+          actions: actionWidget != null ? [actionWidget] : null,
         );
 
       case 'SingleChildScrollView':

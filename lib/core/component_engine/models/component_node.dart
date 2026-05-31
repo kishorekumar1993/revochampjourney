@@ -1,4 +1,5 @@
 import 'component_action.dart';
+import '../registry/component_registry.dart';
 
 class ComponentNode {
   String id;
@@ -17,6 +18,7 @@ class ComponentNode {
   Map<String, dynamic> animations;
 
   List<ComponentNode> children;
+  Map<String, ComponentNode?> slots;
   List<ComponentAction> actions;
 
   ComponentNode({
@@ -25,6 +27,7 @@ class ComponentNode {
     required this.properties,
     required this.children,
     required this.actions,
+    this.slots = const {},
     this.displayName,
     this.parentId,
     this.sortOrder,
@@ -108,6 +111,39 @@ class ComponentNode {
     var childrenList = json['children'] is List ? (json['children'] as List) : [];
     var actionsList = json['actions'] is List ? (json['actions'] as List) : [];
 
+    final meta = ComponentRegistry.getByType(type);
+    
+    Map<String, ComponentNode?> slotsMap = {};
+    if (json['slots'] is Map) {
+      final rawSlots = Map<String, dynamic>.from(json['slots'] as Map);
+      rawSlots.forEach((key, val) {
+        slotsMap[key] = val != null ? ComponentNode.fromJson(Map<String, dynamic>.from(val as Map)) : null;
+      });
+    }
+
+    var childrenNodes = childrenList
+        .whereType<Map>()
+        .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child)))
+        .toList();
+
+    if (meta != null) {
+      if (meta.slotNames.isNotEmpty && childrenNodes.isNotEmpty) {
+        if (meta.type == 'Scaffold') {
+          for (final child in childrenNodes) {
+            if (child.type == 'BottomNavigationBar') {
+              slotsMap['bottomNavigationBar'] = child;
+            } else {
+              slotsMap['body'] = child;
+            }
+          }
+          childrenNodes = [];
+        } else if (meta.slotNames.contains('child')) {
+          slotsMap['child'] = childrenNodes.first;
+          childrenNodes = [];
+        }
+      }
+    }
+
     return ComponentNode(
       id: id,
       type: type,
@@ -122,10 +158,8 @@ class ComponentNode {
       responsive: rawResponsive,
       bindings: rawBindings,
       animations: rawAnimations,
-      children: childrenList
-          .whereType<Map>()
-          .map((child) => ComponentNode.fromJson(Map<String, dynamic>.from(child)))
-          .toList(),
+      children: childrenNodes,
+      slots: slotsMap,
       actions: actionsList
           .whereType<Map>()
           .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action)))
@@ -149,6 +183,7 @@ class ComponentNode {
       'bindings': bindings,
       'animations': animations,
       'children': children.map((child) => child.toJson()).toList(),
+      'slots': slots.map((key, child) => MapEntry(key, child?.toJson())),
       'actions': actions.map((action) => action.toJson()).toList(),
     };
   }
@@ -168,6 +203,7 @@ class ComponentNode {
     Map<String, dynamic>? bindings,
     Map<String, dynamic>? animations,
     List<ComponentNode>? children,
+    Map<String, ComponentNode?>? slots,
     List<ComponentAction>? actions,
   }) {
     return ComponentNode(
@@ -185,6 +221,7 @@ class ComponentNode {
       bindings: bindings ?? Map<String, dynamic>.from(this.bindings),
       animations: animations ?? Map<String, dynamic>.from(this.animations),
       children: children ?? this.children.map((c) => c.copyWith()).toList(),
+      slots: slots ?? this.slots.map((key, val) => MapEntry(key, val?.copyWith())),
       actions: actions ?? this.actions.map((a) => a.copyWith()).toList(),
     );
   }

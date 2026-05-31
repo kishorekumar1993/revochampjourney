@@ -9,6 +9,8 @@ class ComponentMetadata {
   final ComponentCategory category;
   final bool canHaveChildren;
   final Map<String, dynamic> defaultProperties;
+  final int? maxChildren;
+  final List<String> slotNames;
 
   const ComponentMetadata({
     required this.type,
@@ -17,6 +19,8 @@ class ComponentMetadata {
     required this.category,
     required this.canHaveChildren,
     required this.defaultProperties,
+    this.maxChildren,
+    this.slotNames = const [],
   });
 }
 
@@ -29,6 +33,8 @@ class ComponentRegistry {
       icon: Icons.crop_square_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {
         'width': null,
         'height': null,
@@ -106,6 +112,8 @@ class ComponentRegistry {
       icon: Icons.picture_in_picture_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {
         'elevation': 2.0,
         'backgroundColor': '#FFFFFF',
@@ -139,6 +147,8 @@ class ComponentRegistry {
       icon: Icons.aspect_ratio_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {
         'width': null,
         'height': null,
@@ -373,6 +383,8 @@ class ComponentRegistry {
       icon: Icons.expand_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -381,6 +393,8 @@ class ComponentRegistry {
       icon: Icons.fit_screen_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -389,6 +403,8 @@ class ComponentRegistry {
       icon: Icons.security_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -502,6 +518,28 @@ class ComponentRegistry {
       canHaveChildren: false,
       defaultProperties: {
         'items': ['Home', 'Search', 'Profile'],
+      },
+    ),
+    const ComponentMetadata(
+      type: 'Scaffold',
+      label: 'Scaffold',
+      icon: Icons.splitscreen_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      slotNames: ['appBar', 'body', 'drawer', 'floatingActionButton', 'bottomNavigationBar'],
+      defaultProperties: {
+        'backgroundColor': '#FFFFFF',
+      },
+    ),
+    const ComponentMetadata(
+      type: 'AppBar',
+      label: 'AppBar',
+      icon: Icons.web_asset_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      slotNames: ['title', 'leading', 'actions'],
+      defaultProperties: {
+        'title': 'App Title',
       },
     ),
   ];

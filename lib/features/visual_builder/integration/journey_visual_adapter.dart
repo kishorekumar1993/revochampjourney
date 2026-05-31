@@ -190,6 +190,11 @@ class JourneyVisualAdapter {
       for (final child in node.children) {
         _extractJourneyFieldsRecursive(child, childrenFields);
       }
+      for (final slotChild in node.slots.values) {
+        if (slotChild != null) {
+          _extractJourneyFieldsRecursive(slotChild, childrenFields);
+        }
+      }
       fields.add(LayoutComponent(
         id: node.id,
         label: node.type,
@@ -200,6 +205,11 @@ class JourneyVisualAdapter {
       // For any other layout or display widgets, traverse children
       for (final child in node.children) {
         _extractJourneyFieldsRecursive(child, fields);
+      }
+      for (final slotChild in node.slots.values) {
+        if (slotChild != null) {
+          _extractJourneyFieldsRecursive(slotChild, fields);
+        }
       }
     }
   }
