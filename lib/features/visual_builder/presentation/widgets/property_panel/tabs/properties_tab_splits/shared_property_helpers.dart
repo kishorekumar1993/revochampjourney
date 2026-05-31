@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:revojourneytryone/core/theme.dart';
 import 'package:revojourneytryone/core/component_engine/models/component_node.dart';
-import 'package:revojourneytryone/core/component_engine/models/component_property.dart';
 import 'package:revojourneytryone/core/component_engine/registry/component_registry.dart';
 import 'package:revojourneytryone/features/visual_builder/application/visual_builder_controller.dart';
 

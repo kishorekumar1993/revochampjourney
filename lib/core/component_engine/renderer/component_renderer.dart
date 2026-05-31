@@ -30,6 +30,9 @@ class RenderContext {
   final void Function(String, dynamic)? onFormValueChanged;
   final bool insideScrollable;
   final ThemeTokens? themeTokens;
+  final bool isMobile;
+  final bool isTablet;
+  final double? overrideWidth;
 
   RenderContext({
     required this.isDesignMode,
@@ -46,6 +49,9 @@ class RenderContext {
     this.onFormValueChanged,
     required this.insideScrollable,
     this.themeTokens,
+    this.isMobile = false,
+    this.isTablet = false,
+    this.overrideWidth,
   });
 
   List<Widget> renderChildren(ComponentNode node, {bool propagateScrollable = false}) {
@@ -69,6 +75,7 @@ class RenderContext {
             formValues: formValues,
             onFormValueChanged: onFormValueChanged,
             insideScrollable: propagateScrollable ? true : insideScrollable,
+            overrideWidth: overrideWidth,
           ),
         )
         .toList();
@@ -90,6 +97,8 @@ class ComponentRendererWidget extends ConsumerWidget {
   final void Function(ComponentNode, ComponentNode, int, {String? slotName})? overrideOnMoveChild;
   final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? overrideOnAddChild;
 
+  final double? overrideWidth;
+
   const ComponentRendererWidget({
     required ValueKey<String> super.key,
     required this.node,
@@ -104,6 +113,7 @@ class ComponentRendererWidget extends ConsumerWidget {
     this.overrideOnDuplicate,
     this.overrideOnMoveChild,
     this.overrideOnAddChild,
+    this.overrideWidth,
   });
 
   @override
@@ -144,12 +154,16 @@ class ComponentRendererWidget extends ConsumerWidget {
     };
 
     double currentWidth = MediaQuery.of(context).size.width;
-    try {
-      final simulatedWidth = ref.watch(visualBuilderProvider.select((s) => s.canvasWidth));
-      if (simulatedWidth > 0) {
-        currentWidth = simulatedWidth;
-      }
-    } catch (_) {}
+    if (overrideWidth != null) {
+      currentWidth = overrideWidth!;
+    } else {
+      try {
+        final simulatedWidth = ref.watch(visualBuilderProvider.select((s) => s.canvasWidth));
+        if (simulatedWidth > 0) {
+          currentWidth = simulatedWidth;
+        }
+      } catch (_) {}
+    }
 
     final isMobile = currentWidth < 600;
     final isTablet = currentWidth >= 600 && currentWidth < 1024;
@@ -181,10 +195,13 @@ class ComponentRendererWidget extends ConsumerWidget {
       onFormValueChanged: onFormValueChanged,
       insideScrollable: insideScrollable,
       themeTokens: themeTokens,
+      isMobile: isMobile,
+      isTablet: isTablet,
+      overrideWidth: overrideWidth,
     );
 
-    coreWidget = ComponentRenderer.applyPaddingAndSizing(coreWidget, node);
-    coreWidget = ComponentRenderer.applyDecoration(coreWidget, node);
+    coreWidget = ComponentRenderer.applyPaddingAndSizing(coreWidget, node, isMobile: isMobile, isTablet: isTablet);
+    coreWidget = ComponentRenderer.applyDecoration(coreWidget, node, isMobile: isMobile, isTablet: isTablet);
 
     // FIX: Do NOT AbsorbPointer the entire coreWidget — that blocks nested DragTargets.
     // Instead we only block tap gestures at the core level via GestureDetector with
@@ -557,10 +574,10 @@ class ComponentRendererWidget extends ConsumerWidget {
           );
         }
 
-        resultWidget = ComponentRenderer.applyMargin(designWidget, node);
+        resultWidget = ComponentRenderer.applyMargin(designWidget, node, isMobile: isMobile, isTablet: isTablet);
       }
     } else {
-      resultWidget = ComponentRenderer.applyMargin(coreWidget, node);
+      resultWidget = ComponentRenderer.applyMargin(coreWidget, node, isMobile: isMobile, isTablet: isTablet);
     }
 
     if (parentNode == null || node.type == 'Scaffold') {
@@ -644,6 +661,7 @@ class ComponentRenderer {
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
+    double? overrideWidth,
   }) {
     return ComponentRendererWidget(
       key: ValueKey(node.id),
@@ -659,10 +677,23 @@ class ComponentRenderer {
       overrideOnDuplicate: onDuplicate,
       overrideOnMoveChild: onMoveChild,
       overrideOnAddChild: onAddChild,
+      overrideWidth: overrideWidth,
     );
   }
 
-  static dynamic getStyle(ComponentNode node, String key) {
+  static dynamic getStyle(ComponentNode node, String key, [RenderContext? ctx, bool isMobile = false, bool isTablet = false]) {
+    final mob = ctx?.isMobile ?? isMobile;
+    final tab = ctx?.isTablet ?? isTablet;
+    if (mob) {
+      final mobileKey = '${key}Mobile';
+      if (node.styles.containsKey(mobileKey)) return node.styles[mobileKey];
+      if (node.properties.containsKey(mobileKey)) return node.properties[mobileKey];
+    }
+    if (tab) {
+      final tabletKey = '${key}Tablet';
+      if (node.styles.containsKey(tabletKey)) return node.styles[tabletKey];
+      if (node.properties.containsKey(tabletKey)) return node.properties[tabletKey];
+    }
     if (node.styles.containsKey(key)) return node.styles[key];
     return node.properties[key];
   }
@@ -683,6 +714,9 @@ class ComponentRenderer {
     void Function(String, dynamic)? onFormValueChanged,
     bool insideScrollable = false,
     ThemeTokens? themeTokens,
+    bool isMobile = false,
+    bool isTablet = false,
+    double? overrideWidth,
   }) {
     final ctx = RenderContext(
       isDesignMode: isDesignMode,
@@ -699,6 +733,9 @@ class ComponentRenderer {
       onFormValueChanged: onFormValueChanged,
       insideScrollable: insideScrollable,
       themeTokens: themeTokens,
+      isMobile: isMobile,
+      isTablet: isTablet,
+      overrideWidth: overrideWidth,
     );
 
     final type = node.type;
@@ -1226,7 +1263,7 @@ class ComponentRenderer {
     }
   }
 
-  static Widget applyPaddingAndSizing(Widget widget, ComponentNode node) {
+  static Widget applyPaddingAndSizing(Widget widget, ComponentNode node, {bool isMobile = false, bool isTablet = false}) {
     const selfSizedTypes = {
       'Container', 'Card', 'Scaffold', 'SizedBox',
       'TextField', 'Dropdown', 'DatePicker', 'Search', 'FilePicker',
@@ -1236,15 +1273,11 @@ class ComponentRenderer {
 
     Widget result = widget;
 
-    final width = double.tryParse(
-      node.styles['width']?.toString() ??
-          node.properties['width']?.toString() ??
-          '',
+    final width = PropertyParser.tryParseDouble(
+      getStyle(node, 'width', null, isMobile, isTablet),
     );
-    final height = double.tryParse(
-      node.styles['height']?.toString() ??
-          node.properties['height']?.toString() ??
-          '',
+    final height = PropertyParser.tryParseDouble(
+      getStyle(node, 'height', null, isMobile, isTablet),
     );
 
     final safeWidth = (width != null && width.isFinite && width > 0)
@@ -1259,7 +1292,7 @@ class ComponentRenderer {
     }
 
     final pad = PropertyParser.parsePadding(
-      node.styles['padding'] ?? node.properties['padding'],
+      getStyle(node, 'padding', null, isMobile, isTablet),
     );
     if (pad != EdgeInsets.zero) {
       result = Padding(padding: pad, child: result);
@@ -1268,7 +1301,7 @@ class ComponentRenderer {
     return result;
   }
 
-  static Widget applyDecoration(Widget widget, ComponentNode node) {
+  static Widget applyDecoration(Widget widget, ComponentNode node, {bool isMobile = false, bool isTablet = false}) {
     if (node.type == 'Scaffold' ||
         node.type == 'Container' ||
         node.type == 'Card' ||
@@ -1277,12 +1310,10 @@ class ComponentRenderer {
     }
 
     final bg = PropertyParser.parseColor(
-      node.styles['backgroundColor'] ?? node.properties['backgroundColor'],
+      getStyle(node, 'backgroundColor', null, isMobile, isTablet),
     );
-    final radius = double.tryParse(
-      node.styles['borderRadius']?.toString() ??
-          node.properties['borderRadius']?.toString() ??
-          '',
+    final radius = PropertyParser.tryParseDouble(
+      getStyle(node, 'borderRadius', null, isMobile, isTablet),
     );
 
     if (bg != null || radius != null) {
@@ -1298,7 +1329,7 @@ class ComponentRenderer {
     return widget;
   }
 
-  static Widget applyMargin(Widget widget, ComponentNode node) {
+  static Widget applyMargin(Widget widget, ComponentNode node, {bool isMobile = false, bool isTablet = false}) {
     if (node.type == 'Container' ||
         node.type == 'Card' ||
         node.type == 'Scaffold') {
@@ -1306,7 +1337,7 @@ class ComponentRenderer {
     }
 
     final marg = PropertyParser.parsePadding(
-      node.styles['margin'] ?? node.properties['margin'],
+      getStyle(node, 'margin', null, isMobile, isTablet),
     );
     if (marg != EdgeInsets.zero) {
       return Padding(padding: marg, child: widget);

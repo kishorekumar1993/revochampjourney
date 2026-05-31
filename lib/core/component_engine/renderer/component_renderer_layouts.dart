@@ -26,6 +26,7 @@ class ComponentRendererLayouts {
         formValues: ctx.formValues,
         onFormValueChanged: ctx.onFormValueChanged,
         insideScrollable: ctx.insideScrollable,
+        overrideWidth: ctx.overrideWidth,
       );
     }
     if (ctx.isDesignMode) {
@@ -56,34 +57,42 @@ class ComponentRendererLayouts {
     final onFormValueChanged = ctx.onFormValueChanged;
     final insideScrollable = ctx.insideScrollable;
     final themeTokens = ctx.themeTokens;
+    final overrideWidth = ctx.overrideWidth;
 
     switch (node.type) {
       // ================== LAYOUTS ==================
       case 'Container':
-        final width = double.tryParse(ComponentRenderer.getStyle(node, 'width')?.toString() ?? '');
-        final height = double.tryParse(ComponentRenderer.getStyle(node, 'height')?.toString() ?? '');
-        final bg = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor'));
-        final pad = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'padding'));
-        final marg = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'margin'));
-        final radius =
-            double.tryParse(ComponentRenderer.getStyle(node, 'borderRadius')?.toString() ?? '') ?? 0.0;
-        final gradientStart = PropertyParser.parseColor(
-          ComponentRenderer.getStyle(node, 'gradientStart'),
-        );
-        final gradientEnd = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'gradientEnd'));
-        final borderColor = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'borderColor'));
-        final borderWidth =
-            double.tryParse(ComponentRenderer.getStyle(node, 'borderWidth')?.toString() ?? '') ?? 1.0;
-        final elevation =
-            double.tryParse(ComponentRenderer.getStyle(node, 'elevation')?.toString() ?? '') ?? 0.0;
+        final width = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'width', ctx));
+        final height = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'height', ctx));
+        final minWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'minWidth', ctx));
+        final maxWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'maxWidth', ctx));
+        final minHeight = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'minHeight', ctx));
+        final maxHeight = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'maxHeight', ctx));
 
-        Gradient? gradient;
-        if (gradientStart != null && gradientEnd != null) {
-          gradient = LinearGradient(
+        final bg = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx));
+        final pad = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'padding', ctx));
+        final marg = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'margin', ctx));
+        final radius = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'borderRadius', ctx)) ?? 0.0;
+        final borderColor = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'borderColor', ctx));
+        final borderWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'borderWidth', ctx)) ?? 1.0;
+        final elevation = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'elevation', ctx)) ?? 0.0;
+
+        final gradientStart = PropertyParser.parseColor(
+          ComponentRenderer.getStyle(node, 'gradientStart', ctx),
+        );
+        final gradientEnd = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'gradientEnd', ctx));
+
+        List<Gradient> gradients = PropertyParser.parseGradients(
+          ComponentRenderer.getStyle(node, 'backgroundImage', ctx) ??
+              ComponentRenderer.getStyle(node, 'gradient', ctx),
+        );
+
+        if (gradients.isEmpty && gradientStart != null && gradientEnd != null) {
+          gradients.add(LinearGradient(
             colors: [gradientStart, gradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-          );
+          ));
         }
 
         BoxBorder? border;
@@ -103,20 +112,67 @@ class ComponentRendererLayouts {
           ];
         }
 
+        BoxConstraints? constraints;
+        if (minWidth != null || maxWidth != null || minHeight != null || maxHeight != null) {
+          constraints = BoxConstraints(
+            minWidth: minWidth ?? 0.0,
+            maxWidth: maxWidth ?? double.infinity,
+            minHeight: minHeight ?? 0.0,
+            maxHeight: maxHeight ?? double.infinity,
+          );
+        }
+
+        Widget? bgLayers;
+        if (gradients.length > 1) {
+          bgLayers = Stack(
+            children: [
+              for (int i = 1; i < gradients.length; i++)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: gradients[i],
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }
+
+        final parentPad = bgLayers != null ? EdgeInsets.zero : pad;
+        Widget contentWidget = _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink();
+
+        if (bgLayers != null) {
+          contentWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                bgLayers,
+                Padding(
+                  padding: pad,
+                  child: contentWidget,
+                ),
+              ],
+            ),
+          );
+        }
+
         return Container(
           width: width,
           height: height,
-          padding: pad,
+          constraints: constraints,
+          padding: parentPad,
           margin: marg,
-          alignment: PropertyParser.parseAlignment(ComponentRenderer.getStyle(node, 'alignment')),
+          alignment: PropertyParser.parseAlignment(ComponentRenderer.getStyle(node, 'alignment', ctx)),
           decoration: BoxDecoration(
-            color: gradient == null ? bg : null,
-            gradient: gradient,
+            color: gradients.isEmpty ? bg : null,
+            gradient: gradients.isNotEmpty ? gradients.first : null,
             border: border,
             boxShadow: boxShadows,
             borderRadius: BorderRadius.circular(radius),
           ),
-          child: _renderSlot(node, 'child', ctx),
+          child: bgLayers != null ? contentWidget : _renderSlot(node, 'child', ctx),
         );
 
       case 'Row':
@@ -156,6 +212,7 @@ class ComponentRendererLayouts {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
               insideScrollable: insideScrollable,
+              overrideWidth: overrideWidth,
             );
             final flexVal = int.tryParse(
               childNode.styles['flex']?.toString() ??
@@ -269,6 +326,7 @@ class ComponentRendererLayouts {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
               insideScrollable: insideScrollable,
+              overrideWidth: overrideWidth,
             );
             // Support flex on direct Column children (same as Row)
             final flexVal = int.tryParse(
@@ -378,6 +436,7 @@ class ComponentRendererLayouts {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
               insideScrollable: insideScrollable,
+              overrideWidth: overrideWidth,
             );
             double? posTop = double.tryParse(
               childNode.styles['top']?.toString() ??
@@ -500,21 +559,46 @@ class ComponentRendererLayouts {
               formValues: formValues,
               onFormValueChanged: onFormValueChanged,
               insideScrollable: true,
+              overrideWidth: overrideWidth,
             );
           },
         );
 
       case 'Card':
-        final elevation =
-            double.tryParse(ComponentRenderer.getStyle(node, 'elevation')?.toString() ?? '') ?? 2.0;
-        final bg = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
-            PropertyParser.parseColor(themeTokens?.cardColor);
-        final pad = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'padding'));
-        final marg = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'margin'));
-        final radius =
-            double.tryParse(ComponentRenderer.getStyle(node, 'borderRadius')?.toString() ?? '') ??
-            themeTokens?.borderRadius ?? 12.0;
-        return Card(
+        final elevation = PropertyParser.tryParseDouble(
+          ComponentRenderer.getStyle(node, 'elevation', ctx),
+        ) ?? 2.0;
+        final bg = PropertyParser.parseColor(
+          ComponentRenderer.getStyle(node, 'backgroundColor', ctx),
+        ) ?? PropertyParser.parseColor(themeTokens?.cardColor);
+        final pad = PropertyParser.parsePadding(
+          ComponentRenderer.getStyle(node, 'padding', ctx),
+        );
+        final marg = PropertyParser.parsePadding(
+          ComponentRenderer.getStyle(node, 'margin', ctx),
+        );
+        final radius = PropertyParser.tryParseDouble(
+          ComponentRenderer.getStyle(node, 'borderRadius', ctx),
+        ) ?? themeTokens?.borderRadius ?? 12.0;
+
+        final width = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'width', ctx));
+        final height = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'height', ctx));
+        final minWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'minWidth', ctx));
+        final maxWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'maxWidth', ctx));
+        final minHeight = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'minHeight', ctx));
+        final maxHeight = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'maxHeight', ctx));
+
+        BoxConstraints? cardConstraints;
+        if (minWidth != null || maxWidth != null || minHeight != null || maxHeight != null) {
+          cardConstraints = BoxConstraints(
+            minWidth: minWidth ?? 0.0,
+            maxWidth: maxWidth ?? double.infinity,
+            minHeight: minHeight ?? 0.0,
+            maxHeight: maxHeight ?? double.infinity,
+          );
+        }
+
+        Widget cardWidget = Card(
           elevation: elevation,
           color: bg,
           margin: marg,
@@ -526,6 +610,16 @@ class ComponentRendererLayouts {
             child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
           ),
         );
+
+        if (width != null || height != null || cardConstraints != null) {
+          cardWidget = Container(
+            width: width,
+            height: height,
+            constraints: cardConstraints,
+            child: cardWidget,
+          );
+        }
+        return cardWidget;
 
       case 'SizedBox':
         final width = double.tryParse(ComponentRenderer.getStyle(node, 'width')?.toString() ?? '');
@@ -789,6 +883,7 @@ class ComponentRendererLayouts {
                 formValues: formValues,
                 onFormValueChanged: onFormValueChanged,
                 insideScrollable: true,
+                overrideWidth: overrideWidth,
               ),
             )
             .toList();
@@ -847,6 +942,7 @@ class ComponentRendererLayouts {
             onAddChild: onAddChild,
             formValues: formValues,
             onFormValueChanged: onFormValueChanged,
+            overrideWidth: overrideWidth,
           );
         }).toList();
 

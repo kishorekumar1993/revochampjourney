@@ -50,9 +50,19 @@ class ComponentPropertyKeys {
 }
 
 class PropertyParser {
+  static double? tryParseDouble(dynamic val) {
+    if (val == null) return null;
+    final str = val.toString().trim().toLowerCase();
+    if (str.isEmpty) return null;
+    if (str == '100%' || str == '100vh' || str == '100vw') {
+      return double.infinity;
+    }
+    final cleanStr = str.replaceAll(RegExp(r'(px|vh|vw|%)'), '');
+    return double.tryParse(cleanStr);
+  }
+
   static double parseDouble(dynamic val, [double defaultValue = 0.0]) {
-    if (val == null) return defaultValue;
-    return double.tryParse(val.toString()) ?? defaultValue;
+    return tryParseDouble(val) ?? defaultValue;
   }
 
   static EdgeInsetsGeometry parsePadding(dynamic val) {
@@ -66,59 +76,59 @@ class PropertyParser {
       if (str.isEmpty) return EdgeInsets.zero;
       
       // Try to parse single number first
-      final singleNum = double.tryParse(str);
+      final singleNum = tryParseDouble(str);
       if (singleNum != null) {
-        return EdgeInsets.all(singleNum < 0.0 ? 0.0 : singleNum);
+        return EdgeInsets.all(singleNum < 0.0 ? 0.0 : (singleNum == double.infinity ? 0.0 : singleNum));
       }
       
       // Try space-separated values
       final parts = str.split(RegExp(r'\s+'));
       if (parts.length == 2) {
-        final vertical = double.tryParse(parts[0]) ?? 0.0;
-        final horizontal = double.tryParse(parts[1]) ?? 0.0;
+        final vertical = tryParseDouble(parts[0]) ?? 0.0;
+        final horizontal = tryParseDouble(parts[1]) ?? 0.0;
         return EdgeInsets.symmetric(
-          vertical: vertical < 0.0 ? 0.0 : vertical,
-          horizontal: horizontal < 0.0 ? 0.0 : horizontal,
+          vertical: vertical < 0.0 ? 0.0 : (vertical == double.infinity ? 0.0 : vertical),
+          horizontal: horizontal < 0.0 ? 0.0 : (horizontal == double.infinity ? 0.0 : horizontal),
         );
       } else if (parts.length == 4) {
         // CSS style padding: top right bottom left
-        final top = double.tryParse(parts[0]) ?? 0.0;
-        final right = double.tryParse(parts[1]) ?? 0.0;
-        final bottom = double.tryParse(parts[2]) ?? 0.0;
-        final left = double.tryParse(parts[3]) ?? 0.0;
+        final top = tryParseDouble(parts[0]) ?? 0.0;
+        final right = tryParseDouble(parts[1]) ?? 0.0;
+        final bottom = tryParseDouble(parts[2]) ?? 0.0;
+        final left = tryParseDouble(parts[3]) ?? 0.0;
         return EdgeInsets.fromLTRB(
-          left < 0.0 ? 0.0 : left,
-          top < 0.0 ? 0.0 : top,
-          right < 0.0 ? 0.0 : right,
-          bottom < 0.0 ? 0.0 : bottom,
+          left < 0.0 ? 0.0 : (left == double.infinity ? 0.0 : left),
+          top < 0.0 ? 0.0 : (top == double.infinity ? 0.0 : top),
+          right < 0.0 ? 0.0 : (right == double.infinity ? 0.0 : right),
+          bottom < 0.0 ? 0.0 : (bottom == double.infinity ? 0.0 : bottom),
         );
       }
       
       // Try comma-separated values (left, top, right, bottom)
       final commaParts = str.split(',');
       if (commaParts.length == 4) {
-        final left = double.tryParse(commaParts[0].trim()) ?? 0.0;
-        final top = double.tryParse(commaParts[1].trim()) ?? 0.0;
-        final right = double.tryParse(commaParts[2].trim()) ?? 0.0;
-        final bottom = double.tryParse(commaParts[3].trim()) ?? 0.0;
+        final left = tryParseDouble(commaParts[0].trim()) ?? 0.0;
+        final top = tryParseDouble(commaParts[1].trim()) ?? 0.0;
+        final right = tryParseDouble(commaParts[2].trim()) ?? 0.0;
+        final bottom = tryParseDouble(commaParts[3].trim()) ?? 0.0;
         return EdgeInsets.fromLTRB(
-          left < 0.0 ? 0.0 : left,
-          top < 0.0 ? 0.0 : top,
-          right < 0.0 ? 0.0 : right,
-          bottom < 0.0 ? 0.0 : bottom,
+          left < 0.0 ? 0.0 : (left == double.infinity ? 0.0 : left),
+          top < 0.0 ? 0.0 : (top == double.infinity ? 0.0 : top),
+          right < 0.0 ? 0.0 : (right == double.infinity ? 0.0 : right),
+          bottom < 0.0 ? 0.0 : (bottom == double.infinity ? 0.0 : bottom),
         );
       }
     }
     if (val is Map) {
-      final left = double.tryParse(val['left']?.toString() ?? '0') ?? 0.0;
-      final top = double.tryParse(val['top']?.toString() ?? '0') ?? 0.0;
-      final right = double.tryParse(val['right']?.toString() ?? '0') ?? 0.0;
-      final bottom = double.tryParse(val['bottom']?.toString() ?? '0') ?? 0.0;
+      final left = tryParseDouble(val['left']) ?? 0.0;
+      final top = tryParseDouble(val['top']) ?? 0.0;
+      final right = tryParseDouble(val['right']) ?? 0.0;
+      final bottom = tryParseDouble(val['bottom']) ?? 0.0;
       return EdgeInsets.fromLTRB(
-        left < 0.0 ? 0.0 : left,
-        top < 0.0 ? 0.0 : top,
-        right < 0.0 ? 0.0 : right,
-        bottom < 0.0 ? 0.0 : bottom,
+        left < 0.0 ? 0.0 : (left == double.infinity ? 0.0 : left),
+        top < 0.0 ? 0.0 : (top == double.infinity ? 0.0 : top),
+        right < 0.0 ? 0.0 : (right == double.infinity ? 0.0 : right),
+        bottom < 0.0 ? 0.0 : (bottom == double.infinity ? 0.0 : bottom),
       );
     }
     return EdgeInsets.zero;
@@ -126,44 +136,168 @@ class PropertyParser {
 
   static Color? parseColor(dynamic val) {
     if (val == null) return null;
-    final str = val.toString().trim().replaceAll('#', '');
+    final str = val.toString().trim();
     if (str.isEmpty) return null;
+
+    if (str.startsWith('rgba') || str.startsWith('rgb')) {
+      final digits = RegExp(r'[\d\.]+')
+          .allMatches(str)
+          .map((m) => double.tryParse(m.group(0) ?? '') ?? 0.0)
+          .toList();
+      if (digits.length >= 3) {
+        final r = digits[0].toInt().clamp(0, 255);
+        final g = digits[1].toInt().clamp(0, 255);
+        final b = digits[2].toInt().clamp(0, 255);
+        final double a = digits.length >= 4 ? digits[3].clamp(0.0, 1.0) : 1.0;
+        return Color.fromARGB((a * 255).toInt(), r, g, b);
+      }
+    }
+    
+    if (str.toLowerCase() == 'transparent') {
+      return Colors.transparent;
+    }
+
+    final cleanHex = str.replaceAll('#', '');
     try {
-      if (str.length == 6) {
-        return Color(int.parse('FF$str', radix: 16));
-      } else if (str.length == 8) {
-        return Color(int.parse(str, radix: 16));
+      if (cleanHex.length == 6) {
+        return Color(int.parse('FF$cleanHex', radix: 16));
+      } else if (cleanHex.length == 8) {
+        return Color(int.parse(cleanHex, radix: 16));
       }
     } catch (_) {}
     return null;
+  }
+
+  static List<Gradient> parseGradients(dynamic val) {
+    if (val == null) return [];
+    final str = val.toString().trim();
+    if (str.isEmpty) return [];
+
+    final List<Gradient> list = [];
+    final parts = splitCssGradients(str);
+    
+    for (var part in parts) {
+      if (!part.startsWith('linear-gradient') && !part.startsWith('radial-gradient')) {
+        continue;
+      }
+      
+      final firstParen = part.indexOf('(');
+      final lastParen = part.lastIndexOf(')');
+      if (firstParen == -1 || lastParen == -1 || lastParen <= firstParen) {
+        continue;
+      }
+      
+      final content = part.substring(firstParen + 1, lastParen);
+      final args = splitCssArgs(content);
+      
+      final List<Color> colors = [];
+      for (var arg in args) {
+        final cleanArg = arg.trim();
+        final hexMatch = RegExp(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})').firstMatch(cleanArg);
+        if (hexMatch != null) {
+          final color = parseColor(hexMatch.group(0));
+          if (color != null) {
+            colors.add(color);
+            continue;
+          }
+        }
+        
+        final rgbaMatch = RegExp(r'rgba?\([^\)]+\)').firstMatch(cleanArg);
+        if (rgbaMatch != null) {
+          final color = parseColor(rgbaMatch.group(0));
+          if (color != null) {
+            colors.add(color);
+            continue;
+          }
+        }
+        
+        if (cleanArg.contains('transparent')) {
+          colors.add(Colors.transparent);
+          continue;
+        }
+      }
+      
+      if (colors.isEmpty) continue;
+      final gColors = colors.length == 1 ? [colors[0], Colors.transparent] : colors;
+
+      if (part.startsWith('linear-gradient')) {
+        list.add(LinearGradient(
+          colors: gColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ));
+      } else if (part.startsWith('radial-gradient')) {
+        final alignment = part.contains('100% 100%')
+            ? Alignment.bottomRight
+            : (part.contains('0% 0%') ? Alignment.topLeft : Alignment.center);
+        list.add(RadialGradient(
+          center: alignment,
+          radius: 1.5,
+          colors: gColors,
+        ));
+      }
+    }
+    
+    return list;
+  }
+
+  static List<String> splitCssGradients(String str) {
+    final List<String> parts = [];
+    int depth = 0;
+    int start = 0;
+    for (int i = 0; i < str.length; i++) {
+      final char = str[i];
+      if (char == '(') {
+        depth++;
+      } else if (char == ')') {
+        depth--;
+      } else if (char == ',' && depth == 0) {
+        parts.add(str.substring(start, i).trim());
+        start = i + 1;
+      }
+    }
+    if (start < str.length) {
+      parts.add(str.substring(start).trim());
+    }
+    return parts;
+  }
+
+  static List<String> splitCssArgs(String str) {
+    final List<String> parts = [];
+    int depth = 0;
+    int start = 0;
+    for (int i = 0; i < str.length; i++) {
+      final char = str[i];
+      if (char == '(') {
+        depth++;
+      } else if (char == ')') {
+        depth--;
+      } else if (char == ',' && depth == 0) {
+        parts.add(str.substring(start, i).trim());
+        start = i + 1;
+      }
+    }
+    if (start < str.length) {
+      parts.add(str.substring(start).trim());
+    }
+    return parts;
   }
 
   static FontWeight parseFontWeight(dynamic val) {
     if (val == null) return FontWeight.normal;
     final str = val.toString().toLowerCase();
     switch (str) {
-      case 'bold':
-        return FontWeight.bold;
-      case 'w100':
-        return FontWeight.w100;
-      case 'w200':
-        return FontWeight.w200;
-      case 'w300':
-        return FontWeight.w300;
-      case 'w400':
-        return FontWeight.w400;
-      case 'w500':
-        return FontWeight.w500;
-      case 'w600':
-        return FontWeight.w600;
-      case 'w700':
-        return FontWeight.w700;
-      case 'w800':
-        return FontWeight.w800;
-      case 'w900':
-        return FontWeight.w900;
-      default:
-        return FontWeight.normal;
+      case 'bold': return FontWeight.bold;
+      case 'w100': return FontWeight.w100;
+      case 'w200': return FontWeight.w200;
+      case 'w300': return FontWeight.w300;
+      case 'w400': return FontWeight.w400;
+      case 'w500': return FontWeight.w500;
+      case 'w600': return FontWeight.w600;
+      case 'w700': return FontWeight.w700;
+      case 'w800': return FontWeight.w800;
+      case 'w900': return FontWeight.w900;
+      default: return FontWeight.normal;
     }
   }
 
@@ -171,10 +305,8 @@ class PropertyParser {
     if (val == null) return MainAxisAlignment.start;
     final str = val.toString().toLowerCase();
     switch (str) {
-      case 'center':
-        return MainAxisAlignment.center;
-      case 'end':
-        return MainAxisAlignment.end;
+      case 'center': return MainAxisAlignment.center;
+      case 'end': return MainAxisAlignment.end;
       case 'spacebetween':
       case 'space_between':
         return MainAxisAlignment.spaceBetween;
@@ -184,8 +316,7 @@ class PropertyParser {
       case 'spaceevenly':
       case 'space_evenly':
         return MainAxisAlignment.spaceEvenly;
-      default:
-        return MainAxisAlignment.start;
+      default: return MainAxisAlignment.start;
     }
   }
 
@@ -193,16 +324,11 @@ class PropertyParser {
     if (val == null) return CrossAxisAlignment.center;
     final str = val.toString().toLowerCase();
     switch (str) {
-      case 'start':
-        return CrossAxisAlignment.start;
-      case 'end':
-        return CrossAxisAlignment.end;
-      case 'stretch':
-        return CrossAxisAlignment.stretch;
-      case 'baseline':
-        return CrossAxisAlignment.baseline;
-      default:
-        return CrossAxisAlignment.center;
+      case 'start': return CrossAxisAlignment.start;
+      case 'end': return CrossAxisAlignment.end;
+      case 'stretch': return CrossAxisAlignment.stretch;
+      case 'baseline': return CrossAxisAlignment.baseline;
+      default: return CrossAxisAlignment.center;
     }
   }
 
@@ -210,23 +336,19 @@ class PropertyParser {
     if (val == null) return BoxFit.cover;
     final str = val.toString().toLowerCase();
     switch (str) {
-      case 'fill':
-        return BoxFit.fill;
-      case 'contain':
-        return BoxFit.contain;
+      case 'fill': return BoxFit.fill;
+      case 'contain': return BoxFit.contain;
       case 'fitwidth':
       case 'fit_width':
         return BoxFit.fitWidth;
       case 'fitheight':
       case 'fit_height':
         return BoxFit.fitHeight;
-      case 'none':
-        return BoxFit.none;
+      case 'none': return BoxFit.none;
       case 'scaledown':
       case 'scale_down':
         return BoxFit.scaleDown;
-      default:
-        return BoxFit.cover;
+      default: return BoxFit.cover;
     }
   }
 

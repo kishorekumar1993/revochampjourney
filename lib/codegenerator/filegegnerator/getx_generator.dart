@@ -1,6 +1,8 @@
 
 
 // GetX generators
+import 'package:revojourneytryone/codegenerator/getx/getx_layout_generator.dart';
+import 'package:revojourneytryone/core/component_engine/models/component_node.dart';
 import 'package:revojourneytryone/codegenerator/filegegnerator/revochamp_bloc_generator.dart';
 import 'package:revojourneytryone/codegenerator/getx/binding.dart';
 import 'package:revojourneytryone/codegenerator/getx/controller.dart';
@@ -98,6 +100,24 @@ List<Map<String, String>> generateGetxFiles({
       'fileName':    '${modelFile}_model.dart',
       'textContent': generated,
     });
+  }
+
+  // ── Designed Layout GetX Compiler ─────────────────────────────────────────
+  if (stepJson != null && stepJson.containsKey('screenLayout') && stepJson['screenLayout'] is Map) {
+    try {
+      final layoutMap = Map<String, dynamic>.from(stepJson['screenLayout'] as Map);
+      final rootNode = ComponentNode.fromJson(layoutMap);
+      final layoutView = GetxLayoutGenerator.generateView(rootNode, className, fileName);
+      final layoutController = GetxLayoutGenerator.generateController(rootNode, className);
+      
+      final layoutBase = 'lib/getx_layout/features/$journeyNamespace/$baseName';
+      result.addAll([
+        {'folderPath': '$layoutBase/controllers',  'fileName': '${fileName}_controller.dart', 'textContent': layoutController},
+        {'folderPath': '$layoutBase/presentation', 'fileName': '${fileName}_view.dart',       'textContent': layoutView},
+      ]);
+    } catch (e) {
+      // Fallback/ignore if parsing fails
+    }
   }
 
   return result;

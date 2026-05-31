@@ -13,8 +13,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:js' as js;
+import '../../web_file_exporter.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:revojourneytryone/codegenerator/generators/bloc/generators/di_generator.dart';
@@ -235,7 +234,7 @@ Future<void> generateAndSaveAllFiles({
   }
 
   debugPrint('📦 Total files: ${allFiles.length}');
-  js.context.callMethod('saveMultipleFilesToFolders', [jsonEncode(allFiles)]);
+  WebFileExporter.exportFiles(allFiles);
 }
 
 /// Isolate wrapper: runs the *pure* generation work off the UI thread.

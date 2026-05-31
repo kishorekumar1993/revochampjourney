@@ -21,6 +21,7 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
     final builderState = ref.watch(visualBuilderProvider);
     final rootNode = builderState.rootNode;
     final controller = ref.read(visualBuilderProvider.notifier);
+    final isFullPage = rootNode.type == 'Scaffold' || rootNode.type == 'Container';
 
     // Resolve mockup frame sizes
     double deviceW;
@@ -205,19 +206,17 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
                                       bottom: _deviceMode == 'desktop' ? 0 : 24,
                                       child: MediaQuery(
                                         data: MediaQuery.of(context).copyWith(size: Size(deviceW, deviceH)),
-                                        child: rootNode.type == 'Scaffold'
-                                            ? Padding(
-                                                padding: const EdgeInsets.all(16),
-                                                child: ComponentRenderer.render(
-                                                  rootNode,
-                                                  isDesignMode: false,
-                                                  formValues: _formValues,
-                                                  onFormValueChanged: (field, val) {
-                                                    setState(() {
-                                                      _formValues[field] = val;
-                                                    });
-                                                  },
-                                                ),
+                                        child: isFullPage
+                                            ? ComponentRenderer.render(
+                                                rootNode,
+                                                isDesignMode: false,
+                                                formValues: _formValues,
+                                                onFormValueChanged: (field, val) {
+                                                  setState(() {
+                                                    _formValues[field] = val;
+                                                  });
+                                                },
+                                                overrideWidth: deviceW,
                                               )
                                             : SingleChildScrollView(
                                                 padding: const EdgeInsets.all(16),
@@ -233,6 +232,7 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
                                                           _formValues[field] = val;
                                                         });
                                                       },
+                                                      overrideWidth: deviceW,
                                                     ),
                                                   ],
                                                 ),

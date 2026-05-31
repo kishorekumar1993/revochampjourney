@@ -145,11 +145,14 @@ class DeviceMockup extends ConsumerWidget {
       onDuplicate: (node) => controller.duplicateNode(node.id),
       onMoveChild: controller.moveChildNode,
       onAddChild: (parent, type, {targetIndex, slotName}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex, slotName: slotName),
+      overrideWidth: canvasWidth,
     );
 
-    // Only wrap non-Scaffold roots in a scroll view with padding.
+    // Treat Scaffold and Container roots as full-page layouts that fill the viewport
+    final isFullPage = rootNode.type == 'Scaffold' || rootNode.type == 'Container';
+
     Widget bodyContent;
-    if (isScaffold) {
+    if (isFullPage) {
       bodyContent = renderedContent;
     } else {
       bodyContent = SingleChildScrollView(

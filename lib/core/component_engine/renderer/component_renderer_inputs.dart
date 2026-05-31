@@ -23,10 +23,10 @@ class ComponentRendererInputs {
 
         final currentValue = formValues[fieldName]?.toString() ?? '';
         final bg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx)) ??
             (isEnabled ? Colors.white : Colors.grey[200]);
         final radius =
-            double.tryParse(ComponentRenderer.getStyle(node, 'borderRadius')?.toString() ?? '') ??
+            PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'borderRadius', ctx)) ??
             themeTokens?.borderRadius ?? 4.0;
         final inputStyle = themeTokens?.inputStyle ?? 'outline';
 
@@ -142,8 +142,12 @@ class ComponentRendererInputs {
             formValues[fieldName] == true ||
             formValues[fieldName]?.toString().toLowerCase() == 'true';
 
+        final fontSize = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'fontSize', ctx)) ?? 14.0;
+        final textColor = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor', ctx) ?? ComponentRenderer.getStyle(node, 'color', ctx));
+        final titleStyle = TextStyle(fontSize: fontSize, color: textColor);
+
         return CheckboxListTile(
-          title: Text(label),
+          title: Text(label, style: titleStyle),
           value: isChecked,
           controlAffinity: ListTileControlAffinity.leading,
           onChanged: isDesignMode
@@ -191,8 +195,12 @@ class ComponentRendererInputs {
             formValues[fieldName] == true ||
             formValues[fieldName]?.toString().toLowerCase() == 'true';
 
+        final fontSize = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'fontSize', ctx)) ?? 14.0;
+        final textColor = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor', ctx) ?? ComponentRenderer.getStyle(node, 'color', ctx));
+        final titleStyle = TextStyle(fontSize: fontSize, color: textColor);
+
         return SwitchListTile(
-          title: Text(label),
+          title: Text(label, style: titleStyle),
           value: isSwitched,
           onChanged: isDesignMode
               ? null

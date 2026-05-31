@@ -14,23 +14,23 @@ class ComponentRendererBasic {
       case 'Button':
         final text = properties['label'] ?? 'Click Me';
         final bg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx)) ??
             PropertyParser.parseColor(themeTokens?.primaryColor) ??
             const Color(0xFF5B4FCF);
         final fg =
             PropertyParser.parseColor(
-              ComponentRenderer.getStyle(node, 'textColor') ?? ComponentRenderer.getStyle(node, 'color'),
+              ComponentRenderer.getStyle(node, 'textColor', ctx) ?? ComponentRenderer.getStyle(node, 'color', ctx),
             ) ??
             PropertyParser.parseColor(themeTokens?.secondaryColor) ??
             Colors.white;
         final radius = PropertyParser.parseDouble(
-          ComponentRenderer.getStyle(node, 'borderRadius'),
+          ComponentRenderer.getStyle(node, 'borderRadius', ctx),
           themeTokens?.borderRadius ?? 8.0,
         );
-        final btnWidth = double.tryParse(ComponentRenderer.getStyle(node, 'width')?.toString() ?? '');
-        final btnHeight = double.tryParse(ComponentRenderer.getStyle(node, 'height')?.toString() ?? '');
+        final btnWidth = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'width', ctx));
+        final btnHeight = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'height', ctx));
         final btnFontSize = PropertyParser.parseDouble(
-          ComponentRenderer.getStyle(node, 'fontSize'),
+          ComponentRenderer.getStyle(node, 'fontSize', ctx),
           14.0,
         );
         final iconStr = properties['icon']?.toString();
@@ -83,7 +83,7 @@ class ComponentRendererBasic {
       case 'IconButton':
         final iconStr = properties['icon'] ?? 'star';
         final col =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color', ctx)) ??
             const Color(0xFF5B4FCF);
         return IconButton(
           icon: Icon(ComponentRenderer.getIconByName(iconStr)),
@@ -94,10 +94,10 @@ class ComponentRendererBasic {
       case 'FloatingButton':
         final iconStr = properties['icon'] ?? 'add';
         final bg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx)) ??
             const Color(0xFF5B4FCF);
         final fg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor')) ?? Colors.white;
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor', ctx)) ?? Colors.white;
 
         return FloatingActionButton(
           onPressed: () {},
@@ -112,28 +112,28 @@ class ComponentRendererBasic {
             properties['text'] ??
             node.bindings['label']?.toString() ??
             'Sample Text';
-        final size = PropertyParser.parseDouble(ComponentRenderer.getStyle(node, 'fontSize'), 14.0);
-        final weight = PropertyParser.parseFontWeight(ComponentRenderer.getStyle(node, 'fontWeight'));
-        final fontStyle = PropertyParser.parseFontStyle(ComponentRenderer.getStyle(node, 'fontStyle'));
+        final size = PropertyParser.parseDouble(ComponentRenderer.getStyle(node, 'fontSize', ctx), 14.0);
+        final weight = PropertyParser.parseFontWeight(ComponentRenderer.getStyle(node, 'fontWeight', ctx));
+        final fontStyle = PropertyParser.parseFontStyle(ComponentRenderer.getStyle(node, 'fontStyle', ctx));
         final col =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color', ctx)) ??
             PropertyParser.parseColor(themeTokens?.textPrimaryColor) ??
             const Color(0xFF1A1A2E);
-        final textAlign = PropertyParser.parseTextAlign(ComponentRenderer.getStyle(node, 'textAlign'));
-        final maxLines = int.tryParse(ComponentRenderer.getStyle(node, 'maxLines')?.toString() ?? '');
+        final textAlign = PropertyParser.parseTextAlign(ComponentRenderer.getStyle(node, 'textAlign', ctx));
+        final maxLines = int.tryParse(ComponentRenderer.getStyle(node, 'maxLines', ctx)?.toString() ?? '');
         final overflow = maxLines != null
             ? PropertyParser.parseTextOverflow(
-                ComponentRenderer.getStyle(node, 'overflow') ?? 'ellipsis',
+                ComponentRenderer.getStyle(node, 'overflow', ctx) ?? 'ellipsis',
               )
             : null;
-        final letterSpacing = double.tryParse(
-          ComponentRenderer.getStyle(node, 'letterSpacing')?.toString() ?? '',
+        final letterSpacing = PropertyParser.tryParseDouble(
+          ComponentRenderer.getStyle(node, 'letterSpacing', ctx),
         );
-        final lineHeight = double.tryParse(
-          ComponentRenderer.getStyle(node, 'lineHeight')?.toString() ?? '',
+        final lineHeight = PropertyParser.tryParseDouble(
+          ComponentRenderer.getStyle(node, 'lineHeight', ctx),
         );
         final decoration = PropertyParser.parseTextDecoration(
-          ComponentRenderer.getStyle(node, 'textDecoration'),
+          ComponentRenderer.getStyle(node, 'textDecoration', ctx),
         );
 
         return Text(
@@ -157,15 +157,15 @@ class ComponentRendererBasic {
 
       case 'Image':
         final src =
-            ComponentRenderer.getStyle(node, 'src') ??
+            ComponentRenderer.getStyle(node, 'src', ctx) ??
             'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500';
-        final width = double.tryParse(ComponentRenderer.getStyle(node, 'width')?.toString() ?? '');
-        final height = double.tryParse(
-          ComponentRenderer.getStyle(node, 'height')?.toString() ?? '200.0',
+        final width = PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'width', ctx));
+        final height = PropertyParser.tryParseDouble(
+          ComponentRenderer.getStyle(node, 'height', ctx) ?? '200.0',
         );
-        final fit = PropertyParser.parseBoxFit(ComponentRenderer.getStyle(node, 'fit'));
+        final fit = PropertyParser.parseBoxFit(ComponentRenderer.getStyle(node, 'fit', ctx));
         final radius =
-            double.tryParse(ComponentRenderer.getStyle(node, 'borderRadius')?.toString() ?? '') ?? 8.0;
+            PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'borderRadius', ctx)) ?? 8.0;
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(radius),
@@ -188,16 +188,18 @@ class ComponentRendererBasic {
       case 'Icon':
         final iconStr = properties['icon'] ?? 'info';
         final size =
-            double.tryParse(ComponentRenderer.getStyle(node, 'fontSize')?.toString() ?? '') ?? 24.0;
+            PropertyParser.tryParseDouble(
+              ComponentRenderer.getStyle(node, 'size', ctx) ?? ComponentRenderer.getStyle(node, 'fontSize', ctx),
+            ) ?? 24.0;
         final col =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color', ctx)) ??
             const Color(0xFF1A1A2E);
         return Icon(ComponentRenderer.getIconByName(iconStr), size: size, color: col);
 
       case 'Divider':
         final height =
-            double.tryParse(ComponentRenderer.getStyle(node, 'height')?.toString() ?? '') ?? 1.0;
-        final color = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color'));
+            PropertyParser.tryParseDouble(ComponentRenderer.getStyle(node, 'height', ctx)) ?? 1.0;
+        final color = PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color', ctx));
         return Divider(height: height * 4, thickness: height, color: color);
 
       case 'Avatar':
@@ -205,16 +207,16 @@ class ComponentRendererBasic {
             properties['src'] ??
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
         final radius =
-            double.tryParse(properties['radius']?.toString() ?? '24.0') ?? 24.0;
+            PropertyParser.tryParseDouble(properties['radius']?.toString()) ?? 24.0;
         return CircleAvatar(radius: radius, backgroundImage: NetworkImage(src));
 
       case 'Chip':
         final label = properties['label'] ?? 'Tag';
         final bg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx)) ??
             const Color(0xFFE8E7FD);
         final fg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor', ctx)) ??
             const Color(0xFF5B4FCF);
         return Chip(
           label: Text(label, style: TextStyle(color: fg, fontSize: 12)),
@@ -225,10 +227,10 @@ class ComponentRendererBasic {
       case 'Badge':
         final label = properties['label'] ?? 'New';
         final bg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'backgroundColor', ctx)) ??
             const Color(0xFFFF3B30);
         final fg =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor')) ?? Colors.white;
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'textColor', ctx)) ?? Colors.white;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -247,7 +249,7 @@ class ComponentRendererBasic {
 
       case 'Progress':
         final col =
-            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color')) ??
+            PropertyParser.parseColor(ComponentRenderer.getStyle(node, 'color', ctx)) ??
             const Color(0xFF5B4FCF);
         final isCircular = properties['isCircular'] != false;
         return Padding(
