@@ -153,6 +153,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     // Drag-and-drop feedback or drop target
     final dragTargetWidget = DragTarget<String>(
       onWillAcceptWithDetails: (details) {
+        if (meta != null && meta.slotNames.isNotEmpty) return false;
         final draggedId = details.data;
         final draggedNode = controller.findNodeById(draggedId);
         if (draggedNode == null) return false;

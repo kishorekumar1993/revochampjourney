@@ -28,36 +28,6 @@ class ComponentRendererLayouts {
         insideScrollable: ctx.insideScrollable,
       );
     }
-    if (slotName == 'child' && parentNode.children.isNotEmpty) {
-      final legacyChild = parentNode.children.length == 1
-          ? parentNode.children.first
-          : ComponentNode(
-              id: '${parentNode.id}_legacy_child_column',
-              type: 'Column',
-              properties: const {
-                'mainAxisAlignment': 'start',
-                'crossAxisAlignment': 'stretch',
-              },
-              children: parentNode.children,
-              actions: const [],
-            );
-      return ComponentRenderer.render(
-        legacyChild,
-        isDesignMode: ctx.isDesignMode,
-        parentNode: parentNode,
-        selectedNode: ctx.selectedNode,
-        hoveredNode: ctx.hoveredNode,
-        onSelect: ctx.onSelect,
-        onHover: ctx.onHover,
-        onDelete: ctx.onDelete,
-        onDuplicate: ctx.onDuplicate,
-        onMoveChild: ctx.onMoveChild,
-        onAddChild: ctx.onAddChild,
-        formValues: ctx.formValues,
-        onFormValueChanged: ctx.onFormValueChanged,
-        insideScrollable: ctx.insideScrollable,
-      );
-    }
     if (ctx.isDesignMode) {
       if (slotName == 'body' || slotName == 'appBar' || slotName == 'drawer' || slotName == 'endDrawer' || slotName == 'bottomNavigationBar' || slotName == 'floatingActionButton' || slotName == 'bottomSheet' || slotName == 'child' || slotName == 'title' || slotName == 'leading' || slotName == 'actions') {
         return SlotDragTarget(

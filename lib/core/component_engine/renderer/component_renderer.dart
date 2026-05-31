@@ -434,47 +434,7 @@ class ComponentRendererWidget extends ConsumerWidget {
                 ),
 
               // ── Single-child slot drop zone (Container, Card, Center, Padding...) ──
-              // Only show when the slot is empty (no child yet)
-              if (canAcceptChildren && isSlotBased && meta.slotNames.contains('child'))
-                Positioned.fill(
-                  child: Consumer(
-                    builder: (context, ref, child) {
-                      final isDragging = ref.watch(canvasIsDraggingProvider);
-                      // Only show drop overlay when dragging AND the slot is empty.
-                      // Treat legacy direct children as a filled child slot for single-child widgets.
-                      final slotFilled = node.hasSlotChild('child');
-                      if (!isDragging || slotFilled) return const SizedBox.shrink();
-                      return DragTarget<Object>(
-                        onWillAcceptWithDetails: (details) {
-                          final data = details.data;
-                          final droppedNode = ComponentRenderer._dropDataToNode(data);
-                          if (droppedNode == null) return false;
-                          if (data is ComponentNode && data.id == node.id) return false;
-                          return NestingValidator.validateDrop(node, droppedNode, 'child').success;
-                        },
-                        onAcceptWithDetails: (details) {
-                          final data = details.data;
-                          if (data is String) {
-                            onAddChild.call(node, data, slotName: 'child');
-                          } else if (data is ComponentNode) {
-                            onMoveChild(node, data, -1, slotName: 'child');
-                          }
-                        },
-                        builder: (context, candidateData, _) {
-                          final isOver = candidateData.isNotEmpty;
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: isOver ? const Color(0x1F5B4FCF) : Colors.transparent,
-                              border: isOver
-                                  ? Border.all(color: const Color(0xFF5B4FCF), width: 2, strokeAlign: BorderSide.strokeAlignOutside)
-                                  : null,
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
+              // Handled by SlotDragTarget inside the component's layout to avoid nested drag targets.
 
               // ── Top drop zone: insert BEFORE this node (sibling drop) ──
               if (parentNode != null)

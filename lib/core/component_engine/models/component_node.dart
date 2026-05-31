@@ -165,7 +165,7 @@ class ComponentNode {
             }
           }
           childrenNodes = [];
-        } else if (meta.maxChildren == 0) {
+        } else {
           for (final extra in childrenNodes) {
             migrationWarnings.add('Migrated ${meta.type}: extra legacy child ${extra.type} (${extra.id}) was not inserted because ${meta.type} only uses named slots.');
           }

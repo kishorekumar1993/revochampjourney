@@ -98,6 +98,7 @@ class ComponentTreeUtils {
         final updatedChildren = meta.slotNames.isNotEmpty ? <ComponentNode>[] : current.children;
         return current.copyWith(slots: updatedSlots, children: updatedChildren);
       } else {
+        if (meta != null && meta.slotNames.isNotEmpty) return current; // Enforce strict slots
         final List<ComponentNode> list = List.from(current.children);
         if (meta?.maxChildren != null && list.length >= meta!.maxChildren! && !list.any((child) => child.id == newNode.id)) {
           return current;

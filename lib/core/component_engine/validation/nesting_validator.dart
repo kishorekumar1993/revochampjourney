@@ -55,7 +55,7 @@ class NestingValidator {
         return ValidationResult.failure('${parent.type} requires one of these slots: ${meta.slotNames.join(', ')}.');
       }
 
-      if (!meta.slotNames.contains('child') && directChildCount > 0) {
+      if (directChildCount > 0) {
         return ValidationResult.failure('${parent.type} only supports named slots and cannot contain direct children.');
       }
 
@@ -113,7 +113,7 @@ class NestingValidator {
       warnings.add('${node.type} does not accept children');
     }
 
-    if (meta.slotNames.isNotEmpty && !meta.slotNames.contains('child') && node.children.isNotEmpty) {
+    if (meta.slotNames.isNotEmpty && node.children.isNotEmpty) {
       warnings.add('${node.type} only supports named slots and cannot contain direct children');
     }
 
