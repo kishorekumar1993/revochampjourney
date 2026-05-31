@@ -202,6 +202,38 @@ class ComponentRendererLayouts {
             return childWidget;
           }).toList();
 
+          // In design mode: interleave CanvasDropSeparator (vertical bars) between
+          // children so the user can drop precisely between items without the parent
+          // Row's overlay blocking drops into nested containers.
+          if (isDesignMode) {
+            final List<Widget> withSeps = [
+              CanvasDropSeparator(
+                key: ValueKey('${node.id}_sep_0'),
+                parentNode: node,
+                insertIndex: 0,
+                isRow: true,
+                onAddChild: onAddChild,
+                onMoveChild: onMoveChild,
+              ),
+            ];
+            for (int i = 0; i < renderedChildren.length; i++) {
+              withSeps.add(renderedChildren[i]);
+              withSeps.add(CanvasDropSeparator(
+                key: ValueKey('${node.id}_sep_${i + 1}'),
+                parentNode: node,
+                insertIndex: i + 1,
+                isRow: true,
+                onAddChild: onAddChild,
+                onMoveChild: onMoveChild,
+              ));
+            }
+            return Row(
+              mainAxisAlignment: mainAlign,
+              crossAxisAlignment: effectiveCrossAlign,
+              children: withSeps,
+            );
+          }
+
           final List<Widget> spacedChildren = [];
           for (int i = 0; i < renderedChildren.length; i++) {
             spacedChildren.add(renderedChildren[i]);
@@ -283,6 +315,39 @@ class ComponentRendererLayouts {
             }
             return childWidget;
           }).toList();
+
+          // In design mode: interleave CanvasDropSeparator (horizontal bars) between
+          // children so the user can drop at any position in the Column without the
+          // parent's overlay intercepting drops into nested containers.
+          if (isDesignMode) {
+            final List<Widget> withSeps = [
+              CanvasDropSeparator(
+                key: ValueKey('${node.id}_sep_0'),
+                parentNode: node,
+                insertIndex: 0,
+                isRow: false,
+                onAddChild: onAddChild,
+                onMoveChild: onMoveChild,
+              ),
+            ];
+            for (int i = 0; i < renderedChildren.length; i++) {
+              withSeps.add(renderedChildren[i]);
+              withSeps.add(CanvasDropSeparator(
+                key: ValueKey('${node.id}_sep_${i + 1}'),
+                parentNode: node,
+                insertIndex: i + 1,
+                isRow: false,
+                onAddChild: onAddChild,
+                onMoveChild: onMoveChild,
+              ));
+            }
+            return Column(
+              mainAxisAlignment: mainAlign,
+              crossAxisAlignment: effectiveCrossAlign,
+              mainAxisSize: mainSize,
+              children: withSeps,
+            );
+          }
 
           final List<Widget> spacedChildren = [];
           for (int i = 0; i < renderedChildren.length; i++) {

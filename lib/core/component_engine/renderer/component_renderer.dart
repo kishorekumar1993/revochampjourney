@@ -393,8 +393,9 @@ class ComponentRendererWidget extends ConsumerWidget {
             children: [
               designWidget,
 
-              // ── Multi-child container drop zone (Column, Row, Stack, Wrap, ListView, etc.) ──
-              if (canAcceptChildren && isMultiChild)
+              // ── Stack full-area drop zone (Stack only: children overlap so no between-item zones) ──
+              // Row/Column use inline CanvasDropSeparator widgets between children instead.
+              if (canAcceptChildren && isMultiChild && node.type == 'Stack')
                 Positioned.fill(
                   child: Consumer(
                     builder: (context, ref, child) {
@@ -405,7 +406,6 @@ class ComponentRendererWidget extends ConsumerWidget {
                           final data = details.data;
                           final droppedNode = ComponentRenderer._dropDataToNode(data);
                           if (droppedNode == null) return false;
-                          // Don't accept self
                           if (data is ComponentNode && data.id == node.id) return false;
                           return NestingValidator.validateDrop(node, droppedNode, null).success;
                         },
@@ -1422,6 +1422,89 @@ class _RevoCarouselWidgetState extends State<RevoCarouselWidget> {
           );
         },
       ),
+    );
+  }
+}
+
+/// Inline drop-zone separator rendered between children of Row and Column.
+/// Expands visually when a drag is active and the pointer hovers over it,
+/// giving the user a clear insertion point without blocking nested drop targets.
+class CanvasDropSeparator extends ConsumerWidget {
+  final ComponentNode parentNode;
+  final int insertIndex;
+
+  /// true = vertical bar (used inside a Row), false = horizontal bar (Column)
+  final bool isRow;
+  final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild;
+  final void Function(ComponentNode, ComponentNode, int, {String? slotName})? onMoveChild;
+
+  const CanvasDropSeparator({
+    required this.parentNode,
+    required this.insertIndex,
+    required this.isRow,
+    this.onAddChild,
+    this.onMoveChild,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDragging = ref.watch(canvasIsDraggingProvider);
+
+    // Invisible gap when nothing is being dragged.
+    if (!isDragging) {
+      return SizedBox(
+        width: isRow ? 6 : null,
+        height: isRow ? null : 6,
+      );
+    }
+
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (details) {
+        final data = details.data;
+        final droppedNode = ComponentRenderer._dropDataToNode(data);
+        if (droppedNode == null) return false;
+        if (data is ComponentNode && data.id == parentNode.id) return false;
+        return NestingValidator.validateDrop(parentNode, droppedNode, null).success;
+      },
+      onAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data is String) {
+          onAddChild?.call(parentNode, data, targetIndex: insertIndex);
+        } else if (data is ComponentNode) {
+          onMoveChild?.call(parentNode, data, insertIndex);
+        }
+      },
+      builder: (context, candidateData, _) {
+        final isOver = candidateData.isNotEmpty;
+        if (isRow) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: isOver ? 36 : 8,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isOver ? const Color(0xFF5B4FCF) : const Color(0x335B4FCF),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: isOver
+                ? const Icon(Icons.add_rounded, size: 14, color: Colors.white)
+                : null,
+          );
+        } else {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: isOver ? 22 : 8,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isOver ? const Color(0xFF5B4FCF) : const Color(0x335B4FCF),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: isOver
+                ? const Icon(Icons.add_rounded, size: 14, color: Colors.white)
+                : null,
+          );
+        }
+      },
     );
   }
 }
