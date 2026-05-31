@@ -95,7 +95,8 @@ class ComponentTreeUtils {
         final existing = updatedSlots[effectiveSlotName];
         if (existing != null && existing.id != newNode.id) return current;
         updatedSlots[effectiveSlotName] = newNode;
-        return current.copyWith(slots: updatedSlots);
+        final updatedChildren = meta.slotNames.isNotEmpty ? <ComponentNode>[] : current.children;
+        return current.copyWith(slots: updatedSlots, children: updatedChildren);
       } else {
         final List<ComponentNode> list = List.from(current.children);
         if (meta?.maxChildren != null && list.length >= meta!.maxChildren! && !list.any((child) => child.id == newNode.id)) {

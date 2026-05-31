@@ -76,12 +76,15 @@ class RevoGeneratedCodePanel extends ConsumerWidget {
     final meta = ComponentRegistry.getByType(node.type);
     if (meta != null && meta.slotNames.isNotEmpty) {
       for (final slotName in meta.slotNames) {
-        final slotChild = node.slots[slotName];
+        final slotChild = node.slots[slotName] ?? (slotName == 'child' ? (node.children.isNotEmpty ? node.children.first : null) : null);
         if (slotChild == null) continue;
         buffer.writeln("$indent  $slotName: ");
         _dumpNodeCode(slotChild, buffer, "$indent    ");
+        if (slotName == 'child' && node.slots['child'] == null && node.children.length > 1) {
+          buffer.writeln("$indent  // Warning: ${node.type} had ${node.children.length} legacy children; only the first was emitted.");
+        }
       }
-    } else if (node.children.isNotEmpty) {
+    } else if ((meta == null || meta.slotNames.isEmpty || !meta.slotNames.contains('child')) && node.children.isNotEmpty) {
       buffer.writeln("$indent  children: [");
       for (final child in node.children) {
         _dumpNodeCode(child, buffer, "$indent    ");

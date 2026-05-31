@@ -134,7 +134,10 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
         ? false
         : _collapsedNodes.contains(node.id);
     final meta = ComponentRegistry.getByType(node.type);
-    final hasChildren = node.children.isNotEmpty || (meta != null && meta.slotNames.isNotEmpty);
+    final isMultiChildWidget = meta != null && meta.canHaveChildren && meta.slotNames.isEmpty;
+    final hasChildren = node.children.isNotEmpty ||
+        (meta != null && meta.slotNames.isNotEmpty) ||
+        isMultiChildWidget;
 
     // Resolve name
     String labelSuffix = '';
@@ -278,6 +281,8 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
       if (meta != null && meta.slotNames.isNotEmpty) {
         for (final slotName in meta.slotNames) {
           final slotChild = node.slots[slotName];
+          final isLegacyChildSlot = slotName == 'child' && slotChild == null && node.children.isNotEmpty;
+          final hasSlotContent = slotChild != null || isLegacyChildSlot;
           final slotHeaderWidget = Padding(
             key: ValueKey('${node.id}_slot_hdr_$slotName'),
             padding: EdgeInsets.only(left: 12.0 + ((depth + 1) * 16.0), right: 12.0, top: 2, bottom: 2),
@@ -330,7 +335,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
                         ),
                       ),
                       const Spacer(),
-                      if (slotChild == null)
+                      if (!hasSlotContent)
                         Text(
                           'Drop Widget Here',
                           style: GoogleFonts.inter(
@@ -350,12 +355,22 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
 
           if (slotChild != null) {
             list.addAll(_buildTreeNodes(slotChild, depth + 2, selectedNode, controller, node, treeRoot));
+          } else if (isLegacyChildSlot) {
+            for (final child in node.children) {
+              list.addAll(_buildTreeNodes(child, depth + 2, selectedNode, controller, node, treeRoot));
+            }
           }
         }
       }
 
-      for (final child in node.children) {
-        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node, treeRoot));
+      final renderDirectChildren = meta == null || meta.slotNames.isEmpty || !meta.slotNames.contains('child');
+      if (renderDirectChildren) {
+        if (isMultiChildWidget) {
+          list.add(_buildChildrenSlotHeader(node, depth, controller, treeRoot));
+        }
+        for (final child in node.children) {
+          list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node, treeRoot));
+        }
       }
       if (_draggingNodeId != null) {
         final isChildDragged = node.children.any((c) => c.id == _draggingNodeId);
@@ -420,6 +435,66 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
       }
     }
     return false;
+  }
+
+  Widget _buildChildrenSlotHeader(
+    ComponentNode node,
+    int depth,
+    VisualBuilderController controller,
+    ComponentNode treeRoot,
+  ) {
+    final hasChildContent = node.children.isNotEmpty;
+    return Padding(
+      key: ValueKey('${node.id}_children_hdr'),
+      padding: EdgeInsets.only(left: 12.0 + ((depth + 1) * 16.0), right: 12.0, top: 2, bottom: 2),
+      child: DragTarget<String>(
+        onWillAcceptWithDetails: (details) {
+          final draggedNode = controller.findNodeById(details.data);
+          if (draggedNode == null) return false;
+          return NestingValidator.validateDrop(node, draggedNode, null, root: treeRoot).success;
+        },
+        onAcceptWithDetails: (details) {
+          final draggedNode = controller.findNodeById(details.data);
+          if (draggedNode != null) {
+            controller.moveChildNode(node, draggedNode, node.children.length);
+          }
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isOver = candidateData.isNotEmpty;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isOver ? const Color(0x335B4FCF) : const Color(0x0A5B4FCF),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: isOver ? const Color(0xFF5B4FCF) : const Color(0x205B4FCF),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.list_rounded, size: 14, color: RevoTheme.textSecondary),
+                const SizedBox(width: 6),
+                Text(
+                  '[children]',
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: RevoTheme.textPrimary),
+                ),
+                const Spacer(),
+                if (!hasChildContent)
+                  Text(
+                    'Drop Widgets Here',
+                    style: GoogleFonts.inter(fontSize: 9, color: RevoTheme.textSecondary.withValues(alpha: 0.7)),
+                  )
+                else
+                  Text(
+                    '${node.children.length} item${node.children.length == 1 ? '' : 's'}',
+                    style: GoogleFonts.inter(fontSize: 9, color: Colors.green),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildNodeRow(

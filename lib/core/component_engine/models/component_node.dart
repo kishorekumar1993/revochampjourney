@@ -220,6 +220,17 @@ class ComponentNode {
     };
   }
 
+  ComponentNode? getSlotChild(String slotName) {
+    final slotNode = slots[slotName];
+    if (slotNode != null) return slotNode;
+    if (slotName == 'child' && children.isNotEmpty) {
+      return children.first;
+    }
+    return null;
+  }
+
+  bool hasSlotChild(String slotName) => getSlotChild(slotName) != null;
+
   ComponentNode copyWith({
     String? id,
     String? type,

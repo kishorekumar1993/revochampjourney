@@ -126,6 +126,37 @@ void main() {
       expect(afterUndo.children[1].id, 'child-2');
     });
 
+    test('legacy direct container child can be converted into a named child slot', () {
+      final legacyParent = ComponentNode(
+        id: 'legacy-container',
+        type: 'Container',
+        properties: {},
+        children: [
+          ComponentNode(
+            id: 'legacy-child',
+            type: 'Text',
+            properties: {'text': 'Legacy'},
+            children: [],
+            actions: [],
+          ),
+        ],
+        slots: {'child': null},
+        actions: [],
+      );
+
+      final updated = ComponentTreeUtils.insertChildInParent(
+        legacyParent,
+        'legacy-container',
+        legacyParent.children.first,
+        -1,
+        slotName: 'child',
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.children, isEmpty);
+      expect(updated.slots['child']?.id, 'legacy-child');
+    });
+
     test('MoveWidgetCommand preserves nested child changes below grandchildren', () {
       final nestedRoot = ComponentNode(
         id: 'root',

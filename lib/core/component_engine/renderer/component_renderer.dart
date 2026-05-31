@@ -440,8 +440,9 @@ class ComponentRendererWidget extends ConsumerWidget {
                   child: Consumer(
                     builder: (context, ref, child) {
                       final isDragging = ref.watch(canvasIsDraggingProvider);
-                      // Only show drop overlay when dragging AND the slot is empty
-                      final slotFilled = node.slots['child'] != null;
+                      // Only show drop overlay when dragging AND the slot is empty.
+                      // Treat legacy direct children as a filled child slot for single-child widgets.
+                      final slotFilled = node.hasSlotChild('child');
                       if (!isDragging || slotFilled) return const SizedBox.shrink();
                       return DragTarget<Object>(
                         onWillAcceptWithDetails: (details) {

@@ -17,6 +17,7 @@ class NestingValidator {
     if (slotName != null) return slotName;
     final meta = ComponentRegistry.getByType(parent.type);
     if (meta == null || meta.slotNames.isEmpty) return null;
+    if (meta.slotNames.length == 1) return meta.slotNames.first;
     if (meta.slotNames.contains('child')) return 'child';
     if (parent.type == 'Scaffold' && meta.slotNames.contains('body')) return 'body';
     return null;
@@ -46,9 +47,16 @@ class NestingValidator {
     }
 
     final effectiveSlot = effectiveSlotName(parent, slotName);
+    final alreadyChild = parent.children.any((node) => node.id == child.id) || parent.slots.values.any((slot) => slot?.id == child.id);
+    final directChildCount = parent.children.length;
+
     if (meta.slotNames.isNotEmpty) {
       if (effectiveSlot == null || !meta.slotNames.contains(effectiveSlot)) {
         return ValidationResult.failure('${parent.type} requires one of these slots: ${meta.slotNames.join(', ')}.');
+      }
+
+      if (!meta.slotNames.contains('child') && directChildCount > 0) {
+        return ValidationResult.failure('${parent.type} only supports named slots and cannot contain direct children.');
       }
 
       final allowed = meta.slotRestrictions?[effectiveSlot];
@@ -59,6 +67,14 @@ class NestingValidator {
       final existing = parent.slots[effectiveSlot];
       if (existing != null && existing.id != child.id) {
         return ValidationResult.failure('${parent.type}.$effectiveSlot already contains ${existing.type}.');
+      }
+
+      if (meta.singleChildWidget) {
+        final slotChild = parent.slots['child'];
+        final totalChildren = parent.children.length + (slotChild == null ? 0 : 1);
+        if (!alreadyChild && totalChildren >= 1) {
+          return ValidationResult.failure('${parent.type} can contain only one child widget.');
+        }
       }
 
       return const ValidationResult.success();
@@ -75,7 +91,6 @@ class NestingValidator {
 
     final maxChildren = meta.maxChildren;
     if (maxChildren != null) {
-      final alreadyChild = parent.children.any((node) => node.id == child.id);
       final currentCount = parent.children.length;
       if (!alreadyChild && currentCount >= maxChildren) {
         return ValidationResult.failure('${parent.type} can contain at most $maxChildren child widget${maxChildren == 1 ? '' : 's'}.');
@@ -96,6 +111,10 @@ class NestingValidator {
 
     if (!meta.allowsChildren && (node.children.isNotEmpty || node.slots.values.any((slot) => slot != null))) {
       warnings.add('${node.type} does not accept children');
+    }
+
+    if (meta.slotNames.isNotEmpty && !meta.slotNames.contains('child') && node.children.isNotEmpty) {
+      warnings.add('${node.type} only supports named slots and cannot contain direct children');
     }
 
     if (meta.maxChildren != null && meta.slotNames.isEmpty && node.children.length > meta.maxChildren!) {
