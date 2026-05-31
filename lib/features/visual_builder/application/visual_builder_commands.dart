@@ -151,7 +151,7 @@ class ComponentTreeUtils {
         childModified = true;
       } else {
         updatedChildren.add(res);
-        if (res.id != child.id || res.children.length != child.children.length || res.slots.length != child.slots.length) {
+        if (!identical(res, child)) {
           childModified = true;
         }
       }
@@ -165,7 +165,7 @@ class ComponentTreeUtils {
         if (res == null) {
           updatedSlots[entry.key] = null;
           slotModified = true;
-        } else if (res.id != slotChild.id || res.children.length != slotChild.children.length || res.slots.length != slotChild.slots.length) {
+        } else if (!identical(res, slotChild)) {
           updatedSlots[entry.key] = res;
           slotModified = true;
         }
@@ -190,7 +190,7 @@ class ComponentTreeUtils {
       final res = updateNodeInTree(child, id, updateFn);
       if (res != null) {
         updatedChildren.add(res);
-        if (res.id != child.id || res.properties != child.properties || res.styles != child.styles || res.actions != child.actions || res.children.length != child.children.length || res.slots.length != child.slots.length) {
+        if (!identical(res, child)) {
           childModified = true;
         }
       } else {
@@ -205,7 +205,7 @@ class ComponentTreeUtils {
         final res = updateNodeInTree(slotChild, id, updateFn);
         if (res != null) {
           updatedSlots[entry.key] = res;
-          if (res.id != slotChild.id || res.properties != slotChild.properties || res.styles != slotChild.styles || res.actions != slotChild.actions || res.children.length != slotChild.children.length || res.slots.length != slotChild.slots.length) {
+          if (!identical(res, slotChild)) {
             slotModified = true;
           }
         }
@@ -382,8 +382,13 @@ class MoveWidgetCommand extends VisualBuilderCommand {
     final cleanRoot = ComponentTreeUtils.removeNode(root, nodeId);
     if (cleanRoot == null) return root;
 
+    var targetIndex = newIndex;
+    if (effectiveSlot == null && _oldParentId == newParentId && _oldIndex != null && _oldIndex! < newIndex) {
+      targetIndex = newIndex - 1;
+    }
+
     // Insert into new parent
-    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, newIndex, slotName: effectiveSlot);
+    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, targetIndex, slotName: effectiveSlot);
     return updated ?? root;
   }
 

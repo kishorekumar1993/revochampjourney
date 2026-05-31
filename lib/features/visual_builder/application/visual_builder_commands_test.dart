@@ -103,8 +103,78 @@ void main() {
       // Undo: moves child-inner back to child-1
       final afterUndo = cmd.undoTree(afterExec);
       expect(afterUndo.children.length, 2);
-      expect(afterUndo.children[0].children.length, 1);
-      expect(afterUndo.children[0].children[0].id, 'child-inner');
+      expect(afterUndo.children[0].slots['child']?.id, 'child-inner');
+      expect(afterUndo.children[0].children.length, 0);
+    });
+
+    test('MoveWidgetCommand can move an existing node into a child slot', () {
+      final cmd = MoveWidgetCommand(
+        nodeId: 'child-2',
+        newParentId: 'child-1',
+        newIndex: -1,
+        slotName: 'child',
+      );
+
+      final afterExec = cmd.executeTree(root);
+      expect(afterExec.children.length, 1);
+      expect(afterExec.children[0].id, 'child-1');
+      expect(afterExec.children[0].slots['child']?.id, 'child-2');
+
+      final afterUndo = cmd.undoTree(afterExec);
+      expect(afterUndo.children.length, 2);
+      expect(afterUndo.children[0].slots['child'], isNull);
+      expect(afterUndo.children[1].id, 'child-2');
+    });
+
+    test('MoveWidgetCommand preserves nested child changes below grandchildren', () {
+      final nestedRoot = ComponentNode(
+        id: 'root',
+        type: 'Column',
+        properties: {},
+        actions: [],
+        children: [
+          ComponentNode(
+            id: 'outer',
+            type: 'Column',
+            properties: {},
+            actions: [],
+            children: [
+              ComponentNode(
+                id: 'inner',
+                type: 'Column',
+                properties: {},
+                actions: [],
+                children: [
+                  ComponentNode(
+                    id: 'leaf',
+                    type: 'Text',
+                    properties: {},
+                    children: [],
+                    actions: [],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ComponentNode(
+            id: 'target',
+            type: 'Column',
+            properties: {},
+            children: [],
+            actions: [],
+          ),
+        ],
+      );
+
+      final cmd = MoveWidgetCommand(
+        nodeId: 'leaf',
+        newParentId: 'target',
+        newIndex: 0,
+      );
+
+      final afterExec = cmd.executeTree(nestedRoot);
+      expect(afterExec.children[0].children[0].children, isEmpty);
+      expect(afterExec.children[1].children.single.id, 'leaf');
     });
 
     test('UpdatePropertyCommand updates and undoes correctly', () {

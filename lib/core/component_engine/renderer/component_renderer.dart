@@ -24,7 +24,7 @@ class RenderContext {
   final void Function(ComponentNode?)? onHover;
   final void Function(ComponentNode)? onDelete;
   final void Function(ComponentNode)? onDuplicate;
-  final void Function(ComponentNode, ComponentNode, int)? onMoveChild;
+  final void Function(ComponentNode, ComponentNode, int, {String? slotName})? onMoveChild;
   final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild;
   final Map<String, dynamic> formValues;
   final void Function(String, dynamic)? onFormValueChanged;
@@ -87,7 +87,7 @@ class ComponentRendererWidget extends ConsumerWidget {
   final void Function(ComponentNode?)? overrideOnHover;
   final void Function(ComponentNode)? overrideOnDelete;
   final void Function(ComponentNode)? overrideOnDuplicate;
-  final void Function(ComponentNode, ComponentNode, int)? overrideOnMoveChild;
+  final void Function(ComponentNode, ComponentNode, int, {String? slotName})? overrideOnMoveChild;
   final void Function(ComponentNode, String, {int? targetIndex, String? slotName})? overrideOnAddChild;
 
   const ComponentRendererWidget({
@@ -121,7 +121,7 @@ class ComponentRendererWidget extends ConsumerWidget {
     final onHover = overrideOnHover ?? (ComponentNode? n) => controller.hoverNode(n);
     final onDelete = overrideOnDelete ?? (ComponentNode n) => controller.deleteNode(n.id);
     final onDuplicate = overrideOnDuplicate ?? (ComponentNode n) => controller.duplicateNode(n.id);
-    final onMoveChild = overrideOnMoveChild ?? (ComponentNode parent, ComponentNode child, int idx) => controller.moveChildNode(parent, child, idx);
+    final onMoveChild = overrideOnMoveChild ?? (ComponentNode parent, ComponentNode child, int idx, {String? slotName}) => controller.moveChildNode(parent, child, idx, slotName: slotName);
     // FIX: onAddChild now supports slotName parameter for slot-based widgets
     final onAddChild = overrideOnAddChild ?? (ComponentNode parent, String type, {int? targetIndex, String? slotName}) => controller.addChildNode(parent.id, type, targetIndex: targetIndex, slotName: slotName);
     final onFormValueChanged = overrideOnFormValueChanged ?? (String field, dynamic val) {
@@ -453,9 +453,10 @@ class ComponentRendererWidget extends ConsumerWidget {
                         },
                         onAcceptWithDetails: (details) {
                           final data = details.data;
-                          // For String type (from palette), add to the 'child' slot
                           if (data is String) {
                             onAddChild.call(node, data, slotName: 'child');
+                          } else if (data is ComponentNode) {
+                            onMoveChild(node, data, -1, slotName: 'child');
                           }
                         },
                         builder: (context, candidateData, _) {
@@ -662,7 +663,7 @@ class ComponentRenderer {
     void Function(ComponentNode?)? onHover,
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
-    void Function(ComponentNode, ComponentNode, int)? onMoveChild,
+    void Function(ComponentNode, ComponentNode, int, {String? slotName})? onMoveChild,
     void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
@@ -700,7 +701,7 @@ class ComponentRenderer {
     void Function(ComponentNode?)? onHover,
     void Function(ComponentNode)? onDelete,
     void Function(ComponentNode)? onDuplicate,
-    void Function(ComponentNode, ComponentNode, int)? onMoveChild,
+    void Function(ComponentNode, ComponentNode, int, {String? slotName})? onMoveChild,
     void Function(ComponentNode, String, {int? targetIndex, String? slotName})? onAddChild,
     Map<String, dynamic> formValues = const {},
     void Function(String, dynamic)? onFormValueChanged,
@@ -776,8 +777,17 @@ class ComponentRenderer {
         final isSlotBased = meta != null && meta.slotNames.isNotEmpty && meta.slotNames.contains('child');
         if (data is String) {
           onAddChild(node, data, slotName: isSlotBased ? 'child' : null);
+        } else if (data is ComponentNode) {
+          final controller = VisualBuilderController.activeInstance;
+          if (controller != null) {
+            controller.moveChildNode(
+              node,
+              data,
+              node.children.length,
+              slotName: isSlotBased ? 'child' : null,
+            );
+          }
         }
-        // ComponentNode drop handled by parent's DragTarget
       },
       builder: (context, candidateData, _) {
         final isOver = candidateData.isNotEmpty;
