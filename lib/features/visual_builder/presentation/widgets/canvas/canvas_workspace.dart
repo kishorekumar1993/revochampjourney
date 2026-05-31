@@ -135,16 +135,31 @@ class CanvasWorkspace extends ConsumerWidget {
       );
     }
 
+    if (isDesignMode) {
+      return Container(
+        color: const Color(0xFFF1F5F9),
+        alignment: Alignment.center,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+            child: canvasChild,
+          ),
+        ),
+      );
+    }
+
     return InteractiveViewer(
-      minScale: 0.1, // Zoom out more to see all preview frames
+      minScale: 0.1,
       maxScale: 3.0,
       boundaryMargin: const EdgeInsets.all(2000),
-      constrained: false, // Turn off constraint forcing so the canvas lays out unconstrained!
+      constrained: false,
+      panEnabled: true,
+      scaleEnabled: true,
       child: Center(
         child: Transform.scale(
           scale: canvasSize.scale,
           child: Padding(
-            padding: const EdgeInsets.all(80.0), // Generous padding so we can pan around comfortably
+            padding: const EdgeInsets.all(80.0),
             child: canvasChild,
           ),
         ),

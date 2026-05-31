@@ -1,5 +1,6 @@
 import '../../../core/component_engine/models/component_node.dart';
 import '../../../core/component_engine/models/component_action.dart';
+import '../../../core/component_engine/registry/component_registry.dart';
 
 /// The requested parameterless command pattern interface.
 abstract class StudioCommand {
@@ -81,9 +82,19 @@ class ComponentTreeUtils {
 
   static ComponentNode? insertChildInParent(ComponentNode current, String parentId, ComponentNode newNode, int index, {String? slotName}) {
     if (current.id == parentId) {
-      if (slotName != null) {
+      final meta = ComponentRegistry.getByType(current.type);
+      String? effectiveSlotName = slotName;
+      if (effectiveSlotName == null && meta != null && meta.slotNames.isNotEmpty) {
+        if (meta.slotNames.contains('child')) {
+          effectiveSlotName = 'child';
+        } else if (meta.type == 'Scaffold' && meta.slotNames.contains('body')) {
+          effectiveSlotName = 'body';
+        }
+      }
+
+      if (effectiveSlotName != null) {
         final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
-        updatedSlots[slotName] = newNode;
+        updatedSlots[effectiveSlotName] = newNode;
         return current.copyWith(slots: updatedSlots);
       } else {
         final List<ComponentNode> list = List.from(current.children);
