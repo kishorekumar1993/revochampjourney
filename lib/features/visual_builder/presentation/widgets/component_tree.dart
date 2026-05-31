@@ -108,7 +108,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              children: _buildTreeNodes(rootNode, 0, selectedNode, controller, null),
+              children: _buildTreeNodes(rootNode, 0, selectedNode, controller, null, rootNode),
             ),
           ),
         ],
@@ -122,6 +122,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     ComponentNode? selectedNode,
     VisualBuilderController controller,
     ComponentNode? parentNode,
+    ComponentNode treeRoot,
   ) {
     if (_searchQuery.isNotEmpty && !_doesNodeMatchSearch(node, _searchQuery)) {
       return [];
@@ -152,7 +153,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
         final draggedId = details.data;
         final draggedNode = controller.findNodeById(draggedId);
         if (draggedNode == null) return false;
-        return NestingValidator.validateDrop(node, draggedNode, null, root: controller.state.rootNode).success;
+        return NestingValidator.validateDrop(node, draggedNode, null, root: treeRoot).success;
       },
       onAcceptWithDetails: (details) {
         final draggedId = details.data;
@@ -285,7 +286,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
                 final draggedId = details.data;
                 final draggedNode = controller.findNodeById(draggedId);
                 if (draggedNode == null) return false;
-                return NestingValidator.validateDrop(node, draggedNode, slotName, root: controller.state.rootNode).success;
+                return NestingValidator.validateDrop(node, draggedNode, slotName, root: treeRoot).success;
               },
               onAcceptWithDetails: (details) {
                 final draggedId = details.data;
@@ -321,7 +322,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        slotName,
+                        '[$slotName]',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -348,13 +349,13 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           list.add(slotHeaderWidget);
 
           if (slotChild != null) {
-            list.addAll(_buildTreeNodes(slotChild, depth + 2, selectedNode, controller, node));
+            list.addAll(_buildTreeNodes(slotChild, depth + 2, selectedNode, controller, node, treeRoot));
           }
         }
       }
 
       for (final child in node.children) {
-        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node));
+        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node, treeRoot));
       }
       if (_draggingNodeId != null) {
         final isChildDragged = node.children.any((c) => c.id == _draggingNodeId);
@@ -365,7 +366,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
                 if (details.data == _draggingNodeId) return false;
                 final draggedNode = controller.findNodeById(details.data);
                 if (draggedNode == null) return false;
-                return NestingValidator.validateDrop(node, draggedNode, null, root: controller.state.rootNode).success;
+                return NestingValidator.validateDrop(node, draggedNode, null, root: treeRoot).success;
               },
               onAcceptWithDetails: (details) {
                 final draggedId = details.data;

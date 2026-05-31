@@ -212,7 +212,7 @@ class _RevoComponentPaletteState extends ConsumerState<RevoComponentPalette> {
                       ),
                     ],
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),

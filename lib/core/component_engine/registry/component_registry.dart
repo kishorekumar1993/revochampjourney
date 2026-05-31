@@ -715,6 +715,41 @@ class ComponentRegistry {
         'title': 'App Title',
       },
     ),
+    const ComponentMetadata(
+      type: 'ListTile',
+      label: 'ListTile',
+      icon: Icons.dns_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 0,
+      slotNames: ['leading', 'title', 'subtitle', 'trailing'],
+      defaultProperties: {
+        'title': 'List Title',
+        'subtitle': 'List Subtitle',
+      },
+    ),
+    const ComponentMetadata(
+      type: 'AlertDialog',
+      label: 'AlertDialog',
+      icon: Icons.ad_units_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 0,
+      slotNames: ['title', 'content', 'actions'],
+      defaultProperties: {
+        'title': 'Alert Title',
+      },
+    ),
+    const ComponentMetadata(
+      type: 'TabBarView',
+      label: 'TabBarView',
+      icon: Icons.view_carousel_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 0,
+      slotNames: ['tab1', 'tab2', 'tab3'],
+      defaultProperties: {},
+    ),
   ];
 
   static ComponentMetadata? getByType(String type) {

@@ -1067,6 +1067,56 @@ class ComponentRendererLayouts {
           ),
         );
 
+      case 'ListTile':
+        final titleText = properties['title']?.toString() ?? 'List Title';
+        final subtitleText = properties['subtitle']?.toString() ?? 'List Subtitle';
+        return ListTile(
+          leading: _renderSlot(node, 'leading', ctx),
+          title: _renderSlot(node, 'title', ctx) ?? Text(titleText),
+          subtitle: _renderSlot(node, 'subtitle', ctx) ?? Text(subtitleText),
+          trailing: _renderSlot(node, 'trailing', ctx),
+        );
+
+      case 'AlertDialog':
+        final titleText = properties['title']?.toString() ?? 'Alert Title';
+        final contentWidget = _renderSlot(node, 'content', ctx);
+        final actionWidget = _renderSlot(node, 'actions', ctx);
+        return AlertDialog(
+          title: _renderSlot(node, 'title', ctx) ?? Text(titleText),
+          content: contentWidget,
+          actions: actionWidget != null ? [actionWidget] : null,
+        );
+
+      case 'TabBarView':
+        return DefaultTabController(
+          length: 3,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const TabBar(
+                labelColor: Color(0xFF5B4FCF),
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Color(0xFF5B4FCF),
+                tabs: [
+                  Tab(text: 'Tab 1'),
+                  Tab(text: 'Tab 2'),
+                  Tab(text: 'Tab 3'),
+                ],
+              ),
+              SizedBox(
+                height: 180,
+                child: TabBarView(
+                  children: [
+                    _renderSlot(node, 'tab1', ctx) ?? const Center(child: Text('Tab 1 Content')),
+                    _renderSlot(node, 'tab2', ctx) ?? const Center(child: Text('Tab 2 Content')),
+                    _renderSlot(node, 'tab3', ctx) ?? const Center(child: Text('Tab 3 Content')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
       default:
         return const SizedBox.shrink();
     }

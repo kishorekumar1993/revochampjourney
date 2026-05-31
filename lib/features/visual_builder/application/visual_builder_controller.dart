@@ -302,9 +302,9 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   void addChildNode(String parentId, String componentType, {int? targetIndex, String? slotName}) {
     if (componentType.startsWith('reusable_')) {
       final componentId = componentType.replaceFirst('reusable_', '');
-      final ComponentNode? template = state.reusableComponents.firstWhere(
-        (c) => c.id == componentId,
-        orElse: () => null as dynamic,
+      final ComponentNode? template = state.reusableComponents.cast<ComponentNode?>().firstWhere(
+        (c) => c?.id == componentId,
+        orElse: () => null,
       );
       if (template != null) {
         addReusableComponentToCanvas(parentId, template, targetIndex: targetIndex, slotName: slotName);

@@ -232,16 +232,16 @@ class _RevoCodePreviewPanelState extends ConsumerState<RevoCodePreviewPanel> {
                           // Left Side File Explorer Sidebar
                           Container(
                             width: 280,
-decoration: BoxDecoration(                            color: RevoTheme.sidebarBackground,
-                            border: Border(right: BorderSide(color: RevoTheme.cardBorder)),
-),
+                            decoration: BoxDecoration(
+                              color: RevoTheme.sidebarBackground,
+                              border: Border(right: BorderSide(color: RevoTheme.cardBorder)),
+                            ),
                             child: ListView.builder(
                               itemCount: _generatedFiles.length,
                               itemBuilder: (context, index) {
                                 final file = _generatedFiles[index];
                                 final filePath = file['folderPath'] ?? '';
                                 final fileName = file['fileName'] ?? '';
-                                final fullPath = '$filePath/$fileName';
                                 final isSelected = _selectedFile == file;
 
                                 return InkWell(

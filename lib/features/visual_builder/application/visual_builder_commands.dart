@@ -227,8 +227,6 @@ class AddWidgetCommand extends VisualBuilderCommand {
   final ComponentNode node;
   final int? index;
   final String? slotName;
-  int? _actualInsertedIndex;
-
   AddWidgetCommand({
     required this.parentId,
     required this.node,
@@ -261,7 +259,6 @@ class AddWidgetCommand extends VisualBuilderCommand {
     if (index == null) {
       targetIndex = parentNode.children.length;
     }
-    _actualInsertedIndex = targetIndex;
 
     final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, targetIndex, slotName: effectiveSlot);
     return updated ?? root;
