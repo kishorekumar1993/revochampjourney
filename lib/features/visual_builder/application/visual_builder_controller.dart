@@ -490,6 +490,10 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   // --- Tree Traversals Helper Functions ---
 
+  ComponentNode? findNodeById(String id) {
+    return _findNode(state.rootNode, id);
+  }
+
   ComponentNode? _findNode(ComponentNode current, String id) {
     if (current.id == id) return current;
     for (final child in current.children) {

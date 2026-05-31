@@ -21,29 +21,29 @@ class RevoResponsiveTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text("Responsive View Breakpoints", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+        Text("Responsive View Visibility", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
         const SizedBox(height: 12),
         buildPropertySwitch(
-          label: "Visible on Mobile",
-          value: responsive['mobile'] != false,
+          label: "Visible on Mobile 📱",
+          value: responsive['visibleOnMobile'] != false,
           onChanged: (val) {
-            final upd = Map<String, dynamic>.from(responsive)..['mobile'] = val;
+            final upd = Map<String, dynamic>.from(responsive)..['visibleOnMobile'] = val;
             controller.updateNodeProperties(node.id, {'responsive': upd});
           },
         ),
         buildPropertySwitch(
-          label: "Visible on Tablet",
-          value: responsive['tablet'] != false,
+          label: "Visible on Tablet 📟",
+          value: responsive['visibleOnTablet'] != false,
           onChanged: (val) {
-            final upd = Map<String, dynamic>.from(responsive)..['tablet'] = val;
+            final upd = Map<String, dynamic>.from(responsive)..['visibleOnTablet'] = val;
             controller.updateNodeProperties(node.id, {'responsive': upd});
           },
         ),
         buildPropertySwitch(
-          label: "Visible on Desktop",
-          value: responsive['desktop'] != false,
+          label: "Visible on Desktop 💻",
+          value: responsive['visibleOnDesktop'] != false,
           onChanged: (val) {
-            final upd = Map<String, dynamic>.from(responsive)..['desktop'] = val;
+            final upd = Map<String, dynamic>.from(responsive)..['visibleOnDesktop'] = val;
             controller.updateNodeProperties(node.id, {'responsive': upd});
           },
         ),
@@ -51,3 +51,4 @@ class RevoResponsiveTab extends ConsumerWidget {
     );
   }
 }
+

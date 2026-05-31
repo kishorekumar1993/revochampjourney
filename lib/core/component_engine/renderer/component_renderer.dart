@@ -140,9 +140,9 @@ class ComponentRendererWidget extends ConsumerWidget {
 
     final resp = node.responsive;
     if (resp.isNotEmpty) {
-      final isVisible = (isMobile && resp['mobile'] != false) ||
-                        (isTablet && resp['tablet'] != false) ||
-                        (isDesktop && resp['desktop'] != false);
+      final isVisible = (isMobile && resp['visibleOnMobile'] != false) ||
+                        (isTablet && resp['visibleOnTablet'] != false) ||
+                        (isDesktop && resp['visibleOnDesktop'] != false);
       if (!isVisible) {
         return const SizedBox.shrink();
       }

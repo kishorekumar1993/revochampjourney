@@ -14,153 +14,267 @@ class RevoPreviewPanel extends ConsumerStatefulWidget {
 
 class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
   final Map<String, dynamic> _formValues = {};
+  String _deviceMode = 'mobile'; // 'mobile', 'tablet', 'desktop'
 
   @override
   Widget build(BuildContext context) {
     final builderState = ref.watch(visualBuilderProvider);
     final rootNode = builderState.rootNode;
+    final controller = ref.read(visualBuilderProvider.notifier);
+
+    // Resolve mockup frame sizes
+    double deviceW;
+    double deviceH;
+    double borderRadius;
+    double borderWidth;
+
+    switch (_deviceMode) {
+      case 'tablet':
+        deviceW = 768.0;
+        deviceH = 1024.0;
+        borderRadius = 24.0;
+        borderWidth = 12.0;
+        break;
+      case 'desktop':
+        deviceW = 1280.0;
+        deviceH = 800.0;
+        borderRadius = 12.0;
+        borderWidth = 8.0;
+        break;
+      case 'mobile':
+      default:
+        deviceW = 390.0;
+        deviceH = 844.0;
+        borderRadius = 36.0;
+        borderWidth = 12.0;
+        break;
+    }
 
     return Scaffold(
       backgroundColor: RevoTheme.background,
       body: Row(
         children: [
-          // Left Side: Live Preview Device
+          // Left Side: Live Preview Device Workspace
           Expanded(
             flex: 3,
-            child: Container(
-              color: RevoTheme.background,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  const deviceW = 412.0;
-                  const deviceH = 915.0;
-                  final availableH = constraints.maxHeight - 32;
-                  final availableW = constraints.maxWidth - 32;
-                  final scale = (availableH / deviceH).clamp(0.3, 1.0).clamp(0.0, availableW / deviceW);
+            child: Column(
+              children: [
+                // Device Toolbar Selector
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  color: RevoTheme.sidebarBackground,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _deviceSelectorTab(
+                        label: "Mobile 📱",
+                        mode: 'mobile',
+                        controller: controller,
+                        deviceW: deviceW,
+                        deviceH: deviceH,
+                      ),
+                      const SizedBox(width: 12),
+                      _deviceSelectorTab(
+                        label: "Tablet 📟",
+                        mode: 'tablet',
+                        controller: controller,
+                        deviceW: deviceW,
+                        deviceH: deviceH,
+                      ),
+                      const SizedBox(width: 12),
+                      _deviceSelectorTab(
+                        label: "Desktop 💻",
+                        mode: 'desktop',
+                        controller: controller,
+                        deviceW: deviceW,
+                        deviceH: deviceH,
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
 
-                  return Center(
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: deviceW,
-                        height: deviceH,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(36),
-                          border: Border.all(color: const Color(0xFF1E1E2F), width: 12),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 24,
-                              offset: Offset(0, 12),
-                            )
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Stack(
-                            children: [
-                              // Explicit white background so ClipRRect never shows dark canvas
-                              const Positioned.fill(child: ColoredBox(color: Colors.white)),
+                // Frame Viewport Canvas
+                Expanded(
+                  child: Container(
+                    color: RevoTheme.background,
+                    padding: const EdgeInsets.all(16),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final availableH = constraints.maxHeight;
+                        final availableW = constraints.maxWidth;
+                        final scale = (availableH / deviceH).clamp(0.2, 1.0).clamp(0.0, availableW / deviceW);
 
-                              // Status Bar Mockup
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: Container(
-                                  height: 32,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  color: Colors.white,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "9:30",
-                                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
-                                      ),
-                                      Row(
-                                        children: const [
-                                          Icon(Icons.wifi, size: 14, color: Colors.black),
-                                          SizedBox(width: 4),
-                                          Icon(Icons.signal_cellular_4_bar, size: 14, color: Colors.black),
-                                          SizedBox(width: 4),
-                                          Icon(Icons.battery_full, size: 14, color: Colors.black),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                        return Center(
+                          child: Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              width: deviceW,
+                              height: deviceH,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(borderRadius),
+                                border: Border.all(color: const Color(0xFF1E1E2F), width: borderWidth),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 24,
+                                    offset: Offset(0, 12),
+                                  )
+                                ],
                               ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(borderRadius - 4),
+                                child: Stack(
+                                  children: [
+                                    // Base Screen Background
+                                    const Positioned.fill(child: ColoredBox(color: Colors.white)),
 
-                              // Rendered Interactive Screen
-                              Positioned.fill(
-                                top: 32,
-                                bottom: 24,
-                                child: rootNode.type == 'Scaffold'
-                                    ? Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: ComponentRenderer.render(
-                                          rootNode,
-                                          isDesignMode: false,
-                                          formValues: _formValues,
-                                          onFormValueChanged: (field, val) {
-                                            setState(() {
-                                              _formValues[field] = val;
-                                            });
-                                          },
+                                    // Device OS Header Mockups
+                                    if (_deviceMode == 'desktop')
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          height: 36,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                          color: const Color(0xFFF1F1F5),
+                                          child: Row(
+                                            children: [
+                                              // Close/Min/Max browser dots
+                                              const Icon(Icons.circle, size: 8, color: Colors.redAccent),
+                                              const SizedBox(width: 4),
+                                              const Icon(Icons.circle, size: 8, color: Colors.amberAccent),
+                                              const SizedBox(width: 4),
+                                              const Icon(Icons.circle, size: 8, color: Colors.greenAccent),
+                                              const SizedBox(width: 12),
+                                              // Simulated Browser Address Bar
+                                              Expanded(
+                                                child: Container(
+                                                  height: 22,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  alignment: Alignment.centerLeft,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                  child: Text(
+                                                    "https://revochamp.dev/preview",
+                                                    style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[600]),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       )
-                                    : SingleChildScrollView(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                                          children: [
-                                            ComponentRenderer.render(
-                                              rootNode,
-                                              isDesignMode: false,
-                                              formValues: _formValues,
-                                              onFormValueChanged: (field, val) {
-                                                setState(() {
-                                                  _formValues[field] = val;
-                                                });
-                                              },
-                                            ),
-                                          ],
+                                    else
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          height: 32,
+                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          color: Colors.white,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "9:30",
+                                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+                                              ),
+                                              Row(
+                                                children: const [
+                                                  Icon(Icons.wifi, size: 14, color: Colors.black),
+                                                  SizedBox(width: 4),
+                                                  Icon(Icons.signal_cellular_4_bar, size: 14, color: Colors.black),
+                                                  SizedBox(width: 4),
+                                                  Icon(Icons.battery_full, size: 14, color: Colors.black),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                              ),
 
-                              // Home Indicator Mockup
-                              Positioned(
-                                bottom: 6,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: Container(
-                                    width: 140,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.8),
-                                      borderRadius: BorderRadius.circular(2),
+                                    // Main Render Frame Viewport (MediaQuery Overridden so ComponentRenderer responds layout-wise)
+                                    Positioned.fill(
+                                      top: _deviceMode == 'desktop' ? 36 : 32,
+                                      bottom: _deviceMode == 'desktop' ? 0 : 24,
+                                      child: MediaQuery(
+                                        data: MediaQuery.of(context).copyWith(size: Size(deviceW, deviceH)),
+                                        child: rootNode.type == 'Scaffold'
+                                            ? Padding(
+                                                padding: const EdgeInsets.all(16),
+                                                child: ComponentRenderer.render(
+                                                  rootNode,
+                                                  isDesignMode: false,
+                                                  formValues: _formValues,
+                                                  onFormValueChanged: (field, val) {
+                                                    setState(() {
+                                                      _formValues[field] = val;
+                                                    });
+                                                  },
+                                                ),
+                                              )
+                                            : SingleChildScrollView(
+                                                padding: const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                  children: [
+                                                    ComponentRenderer.render(
+                                                      rootNode,
+                                                      isDesignMode: false,
+                                                      formValues: _formValues,
+                                                      onFormValueChanged: (field, val) {
+                                                        setState(() {
+                                                          _formValues[field] = val;
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                      ),
                                     ),
-                                  ),
+
+                                    // OS Home Indicators (Mobile & Tablet)
+                                    if (_deviceMode != 'desktop')
+                                      Positioned(
+                                        bottom: 6,
+                                        left: 0,
+                                        right: 0,
+                                        child: Center(
+                                          child: Container(
+                                            width: 140,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.8),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Vertical divider
+          // Vertical Divider
           VerticalDivider(color: RevoTheme.cardBorder, width: 1),
 
-          // Right Side: Form State Diagnostic Panel
+          // Right Side: Form Diagnostic Panel
           Container(
             width: 320,
             color: RevoTheme.sidebarBackground,
@@ -236,6 +350,41 @@ class _RevoPreviewPanelState extends ConsumerState<RevoPreviewPanel> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _deviceSelectorTab({
+    required String label,
+    required String mode,
+    required VisualBuilderController controller,
+    required double deviceW,
+    required double deviceH,
+  }) {
+    final isSelected = _deviceMode == mode;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _deviceMode = mode;
+        });
+        controller.setCanvasSize(deviceW, deviceH);
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF5B4FCF) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? const Color(0xFF5B4FCF) : RevoTheme.cardBorder),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : RevoTheme.textSecondary,
+          ),
+        ),
       ),
     );
   }

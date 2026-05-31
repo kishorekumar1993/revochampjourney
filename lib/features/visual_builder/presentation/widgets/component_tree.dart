@@ -15,6 +15,7 @@ class RevoComponentTree extends ConsumerStatefulWidget {
 
 class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
   final Set<String> _collapsedNodes = {};
+  String? _draggingNodeId;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +38,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Component Tree",
+                  "Widget Tree Explorer",
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -54,7 +55,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              children: _buildTreeNodes(rootNode, 0, selectedNode, controller),
+              children: _buildTreeNodes(rootNode, 0, selectedNode, controller, null),
             ),
           ),
         ],
@@ -67,6 +68,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     int depth,
     ComponentNode? selectedNode,
     VisualBuilderController controller,
+    ComponentNode? parentNode,
   ) {
     final List<Widget> list = [];
     final isSelected = selectedNode?.id == node.id;
@@ -84,109 +86,258 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     final meta = ComponentRegistry.getByType(node.type);
     final icon = meta?.icon ?? Icons.help_outline;
 
-    list.add(
-      MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: InkWell(
-          onTap: () => controller.selectNode(node),
-          hoverColor: const Color(0x0C5B4FCF),
-          child: Container(
-            color: isSelected ? const Color(0x1F5B4FCF) : Colors.transparent,
-            padding: EdgeInsets.only(
-              left: 12.0 + (depth * 16.0),
-              right: 12.0,
-              top: 6.0,
-              bottom: 6.0,
-            ),
+    // Drag-and-drop feedback or drop target
+    final dragTargetWidget = DragTarget<String>(
+      onWillAcceptWithDetails: (details) {
+        final draggedId = details.data;
+        // Don't drop on self or parent to avoid cycles or redundant operations
+        if (draggedId == node.id) return false;
+        // Also don't accept if target is a descendant of dragged node
+        if (_isDescendant(draggedId, node)) return false;
+        return true;
+      },
+      onAcceptWithDetails: (details) {
+        final draggedId = details.data;
+        final draggedNode = controller.findNodeById(draggedId);
+        if (draggedNode != null) {
+          controller.moveChildNode(node, draggedNode, node.children.length);
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isOver = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: isOver ? 32 : 0,
+          margin: EdgeInsets.only(left: 12.0 + (depth * 16.0)),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: const Color(0x1F5B4FCF),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: const Color(0xFF5B4FCF), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                // Expand / Collapse arrow
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (isCollapsed) {
-                        _collapsedNodes.remove(node.id);
-                      } else {
-                        _collapsedNodes.add(node.id);
-                      }
-                    });
-                  },
-                  child: Opacity(
-                    opacity: hasChildren ? 1.0 : 0.0,
-                    child: Icon(
-                      isCollapsed ? Icons.keyboard_arrow_right : Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: RevoTheme.textSecondary,
-                    ),
-                  ),
+                const Icon(Icons.subdirectory_arrow_right_rounded, size: 14, color: Color(0xFF5B4FCF)),
+                const SizedBox(width: 6),
+                Text(
+                  "Move into ${node.type}",
+                  style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF5B4FCF), fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 4),
-
-                // Icon type
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isSelected ? const Color(0xFF5B4FCF) : RevoTheme.textSecondary,
-                ),
-                const SizedBox(width: 8),
-
-                // Label
-                Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        node.type,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? const Color(0xFF5B4FCF) : RevoTheme.textPrimary,
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          labelSuffix,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: RevoTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Quick operations
-                if (isSelected) ...[
-                  GestureDetector(
-                    onTap: () => controller.duplicateNode(node.id),
-                    child: Tooltip(
-                      message: "Duplicate",
-                      child: Icon(Icons.copy_rounded, color: RevoTheme.textSecondary, size: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => controller.deleteNode(node.id),
-                    child: Tooltip(
-                      message: "Delete",
-                      child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 14),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
+        );
+      },
+    );
+
+    final nodeItemWidget = LongPressDraggable<String>(
+      data: node.id,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF5B4FCF),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                node.type,
+                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
         ),
       ),
+      childWhenDragging: Opacity(
+        opacity: 0.4,
+        child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller),
+      ),
+      onDragStarted: () {
+        setState(() {
+          _draggingNodeId = node.id;
+        });
+      },
+      onDragEnd: (details) {
+        setState(() {
+          _draggingNodeId = null;
+        });
+      },
+      child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller),
     );
+
+    // If dragging another node, show drop indicators between nodes
+    if (_draggingNodeId != null && _draggingNodeId != node.id && parentNode != null) {
+      final indexInParent = parentNode.children.indexOf(node);
+      list.add(
+        DragTarget<String>(
+          onWillAcceptWithDetails: (details) {
+            return details.data != _draggingNodeId;
+          },
+          onAcceptWithDetails: (details) {
+            final draggedId = details.data;
+            final draggedNode = controller.findNodeById(draggedId);
+            if (draggedNode != null) {
+              controller.moveChildNode(parentNode, draggedNode, indexInParent);
+            }
+          },
+          builder: (context, candidateData, rejectedData) {
+            final isOver = candidateData.isNotEmpty;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: isOver ? 16 : 4,
+              margin: EdgeInsets.only(left: 12.0 + (depth * 16.0), right: 12.0),
+              decoration: BoxDecoration(
+                color: isOver ? const Color(0xFF5B4FCF) : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    list.add(nodeItemWidget);
+    list.add(dragTargetWidget);
 
     if (hasChildren && !isCollapsed) {
       for (final child in node.children) {
-        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller));
+        list.addAll(_buildTreeNodes(child, depth + 1, selectedNode, controller, node));
       }
     }
 
     return list;
+  }
+
+  bool _isDescendant(String ancestorId, ComponentNode targetNode) {
+    if (targetNode.children.isEmpty) return false;
+    for (final child in targetNode.children) {
+      if (child.id == ancestorId) return true;
+      if (_isDescendant(ancestorId, child)) return true;
+    }
+    return false;
+  }
+
+  Widget _buildNodeRow(
+    ComponentNode node,
+    int depth,
+    bool isSelected,
+    bool isCollapsed,
+    bool hasChildren,
+    IconData icon,
+    String labelSuffix,
+    VisualBuilderController controller,
+  ) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: InkWell(
+        onTap: () => controller.selectNode(node),
+        hoverColor: const Color(0x0C5B4FCF),
+        child: Container(
+          color: isSelected ? const Color(0x1F5B4FCF) : Colors.transparent,
+          padding: EdgeInsets.only(
+            left: 12.0 + (depth * 16.0),
+            right: 12.0,
+            top: 6.0,
+            bottom: 6.0,
+          ),
+          child: Row(
+            children: [
+              // Expand / Collapse arrow
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isCollapsed) {
+                      _collapsedNodes.remove(node.id);
+                    } else {
+                      _collapsedNodes.add(node.id);
+                    }
+                  });
+                },
+                child: Opacity(
+                  opacity: hasChildren ? 1.0 : 0.0,
+                  child: Icon(
+                    isCollapsed ? Icons.keyboard_arrow_right : Icons.keyboard_arrow_down,
+                    size: 16,
+                    color: RevoTheme.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+
+              // Drag Handle
+              Icon(Icons.drag_indicator_rounded, size: 14, color: RevoTheme.textSecondary.withValues(alpha: 0.5)),
+              const SizedBox(width: 4),
+
+              // Icon type
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? const Color(0xFF5B4FCF) : RevoTheme.textSecondary,
+              ),
+              const SizedBox(width: 8),
+
+              // Label
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      node.type,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? const Color(0xFF5B4FCF) : RevoTheme.textPrimary,
+                      ),
+                    ),
+                    Flexible(
+                      child: Text(
+                        labelSuffix,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: RevoTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Quick operations
+              if (isSelected) ...[
+                GestureDetector(
+                  onTap: () => controller.duplicateNode(node.id),
+                  child: Tooltip(
+                    message: "Duplicate",
+                    child: Icon(Icons.copy_rounded, color: RevoTheme.textSecondary, size: 12),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => controller.deleteNode(node.id),
+                  child: Tooltip(
+                    message: "Delete",
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 14),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
