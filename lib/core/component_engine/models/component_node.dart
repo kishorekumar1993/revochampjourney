@@ -20,6 +20,7 @@ class ComponentNode {
   List<ComponentNode> children;
   Map<String, ComponentNode?> slots;
   List<ComponentAction> actions;
+  List<String> migrationWarnings;
 
   ComponentNode({
     required this.id,
@@ -28,6 +29,7 @@ class ComponentNode {
     required this.children,
     required this.actions,
     this.slots = const {},
+    this.migrationWarnings = const [],
     this.displayName,
     this.parentId,
     this.sortOrder,
@@ -114,6 +116,11 @@ class ComponentNode {
     final meta = ComponentRegistry.getByType(type);
     
     Map<String, ComponentNode?> slotsMap = {};
+    final migrationWarnings = <String>[];
+    if (json['migrationWarnings'] is List) {
+      migrationWarnings.addAll((json['migrationWarnings'] as List).map((item) => item.toString()));
+    }
+
     if (json['slots'] is Map) {
       final rawSlots = Map<String, dynamic>.from(json['slots'] as Map);
       rawSlots.forEach((key, val) {
@@ -127,18 +134,41 @@ class ComponentNode {
         .toList();
 
     if (meta != null) {
+      for (final slotName in meta.slotNames) {
+        slotsMap.putIfAbsent(slotName, () => null);
+      }
       if (meta.slotNames.isNotEmpty && childrenNodes.isNotEmpty) {
         if (meta.type == 'Scaffold') {
+          ComponentNode? firstBody;
           for (final child in childrenNodes) {
-            if (child.type == 'BottomNavigationBar') {
+            if (child.type == 'AppBar' && slotsMap['appBar'] == null) {
+              slotsMap['appBar'] = child;
+            } else if ((child.type == 'BottomNavigationBar' || child.type == 'NavigationBar') && slotsMap['bottomNavigationBar'] == null) {
               slotsMap['bottomNavigationBar'] = child;
+            } else if ((child.type == 'FloatingActionButton' || child.type == 'FloatingButton') && slotsMap['floatingActionButton'] == null) {
+              slotsMap['floatingActionButton'] = child;
+            } else if (child.type == 'Drawer' && slotsMap['drawer'] == null) {
+              slotsMap['drawer'] = child;
+            } else if (firstBody == null && slotsMap['body'] == null) {
+              firstBody = child;
             } else {
-              slotsMap['body'] = child;
+              migrationWarnings.add('Migrated ${meta.type}: extra legacy child ${child.type} (${child.id}) was not inserted because Scaffold uses named slots.');
+            }
+          }
+          slotsMap['body'] ??= firstBody;
+          childrenNodes = [];
+        } else if (meta.slotNames.contains('child')) {
+          slotsMap['child'] ??= childrenNodes.first;
+          if (childrenNodes.length > 1) {
+            for (final extra in childrenNodes.skip(1)) {
+              migrationWarnings.add('Migrated ${meta.type}: extra legacy child ${extra.type} (${extra.id}) was not inserted because ${meta.type} supports one child.');
             }
           }
           childrenNodes = [];
-        } else if (meta.slotNames.contains('child')) {
-          slotsMap['child'] = childrenNodes.first;
+        } else if (meta.maxChildren == 0) {
+          for (final extra in childrenNodes) {
+            migrationWarnings.add('Migrated ${meta.type}: extra legacy child ${extra.type} (${extra.id}) was not inserted because ${meta.type} only uses named slots.');
+          }
           childrenNodes = [];
         }
       }
@@ -160,6 +190,7 @@ class ComponentNode {
       animations: rawAnimations,
       children: childrenNodes,
       slots: slotsMap,
+      migrationWarnings: migrationWarnings,
       actions: actionsList
           .whereType<Map>()
           .map((action) => ComponentAction.fromJson(Map<String, dynamic>.from(action)))
@@ -184,6 +215,7 @@ class ComponentNode {
       'animations': animations,
       'children': children.map((child) => child.toJson()).toList(),
       'slots': slots.map((key, child) => MapEntry(key, child?.toJson())),
+      if (migrationWarnings.isNotEmpty) 'migrationWarnings': migrationWarnings,
       'actions': actions.map((action) => action.toJson()).toList(),
     };
   }
@@ -205,6 +237,7 @@ class ComponentNode {
     List<ComponentNode>? children,
     Map<String, ComponentNode?>? slots,
     List<ComponentAction>? actions,
+    List<String>? migrationWarnings,
   }) {
     return ComponentNode(
       id: id ?? this.id,
@@ -223,6 +256,7 @@ class ComponentNode {
       children: children ?? this.children.map((c) => c.copyWith()).toList(),
       slots: slots ?? this.slots.map((key, val) => MapEntry(key, val?.copyWith())),
       actions: actions ?? this.actions.map((a) => a.copyWith()).toList(),
+      migrationWarnings: migrationWarnings ?? List<String>.from(this.migrationWarnings),
     );
   }
 }

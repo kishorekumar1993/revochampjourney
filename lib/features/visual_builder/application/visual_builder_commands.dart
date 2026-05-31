@@ -1,6 +1,7 @@
 import '../../../core/component_engine/models/component_node.dart';
 import '../../../core/component_engine/models/component_action.dart';
 import '../../../core/component_engine/registry/component_registry.dart';
+import '../../../core/component_engine/validation/nesting_validator.dart';
 
 /// The requested parameterless command pattern interface.
 abstract class StudioCommand {
@@ -83,21 +84,23 @@ class ComponentTreeUtils {
   static ComponentNode? insertChildInParent(ComponentNode current, String parentId, ComponentNode newNode, int index, {String? slotName}) {
     if (current.id == parentId) {
       final meta = ComponentRegistry.getByType(current.type);
-      String? effectiveSlotName = slotName;
-      if (effectiveSlotName == null && meta != null && meta.slotNames.isNotEmpty) {
-        if (meta.slotNames.contains('child')) {
-          effectiveSlotName = 'child';
-        } else if (meta.type == 'Scaffold' && meta.slotNames.contains('body')) {
-          effectiveSlotName = 'body';
-        }
-      }
+      final effectiveSlotName = NestingValidator.effectiveSlotName(current, slotName);
+
+      final validation = NestingValidator.validateDrop(current, newNode, effectiveSlotName);
+      if (!validation.success) return current;
 
       if (effectiveSlotName != null) {
+        if (meta == null || !meta.slotNames.contains(effectiveSlotName)) return current;
         final Map<String, ComponentNode?> updatedSlots = Map.from(current.slots);
+        final existing = updatedSlots[effectiveSlotName];
+        if (existing != null && existing.id != newNode.id) return current;
         updatedSlots[effectiveSlotName] = newNode;
         return current.copyWith(slots: updatedSlots);
       } else {
         final List<ComponentNode> list = List.from(current.children);
+        if (meta?.maxChildren != null && list.length >= meta!.maxChildren! && !list.any((child) => child.id == newNode.id)) {
+          return current;
+        }
         if (index >= 0 && index <= list.length) {
           list.insert(index, newNode);
         } else {
@@ -244,20 +247,23 @@ class AddWidgetCommand extends VisualBuilderCommand {
 
   @override
   ComponentNode executeTree(ComponentNode root) {
+    final parentNode = ComponentTreeUtils.findNode(root, parentId);
+    if (parentNode == null) return root;
+    final effectiveSlot = NestingValidator.effectiveSlotName(parentNode, slotName);
+    final validation = NestingValidator.validateDrop(parentNode, node, effectiveSlot, root: root);
+    if (!validation.success) return root;
+
     if (slotName != null) {
-      final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, 0, slotName: slotName);
+      final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, 0, slotName: effectiveSlot);
       return updated ?? root;
     }
     int targetIndex = index ?? 0;
     if (index == null) {
-      final parentNode = ComponentTreeUtils.findNode(root, parentId);
-      if (parentNode != null) {
-        targetIndex = parentNode.children.length;
-      }
+      targetIndex = parentNode.children.length;
     }
     _actualInsertedIndex = targetIndex;
 
-    final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, targetIndex);
+    final updated = ComponentTreeUtils.insertChildInParent(root, parentId, node, targetIndex, slotName: effectiveSlot);
     return updated ?? root;
   }
 
@@ -357,6 +363,12 @@ class MoveWidgetCommand extends VisualBuilderCommand {
     if (target == null) return root;
     _movingNode = target;
 
+    final newParent = ComponentTreeUtils.findNode(root, newParentId);
+    if (newParent == null) return root;
+    final effectiveSlot = NestingValidator.effectiveSlotName(newParent, slotName);
+    final validation = NestingValidator.validateDrop(newParent, target, effectiveSlot, root: root);
+    if (!validation.success) return root;
+
     final parent = ComponentTreeUtils.findParentNode(root, nodeId);
     if (parent == null) return root;
 
@@ -374,7 +386,7 @@ class MoveWidgetCommand extends VisualBuilderCommand {
     if (cleanRoot == null) return root;
 
     // Insert into new parent
-    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, newIndex, slotName: slotName);
+    final updated = ComponentTreeUtils.insertChildInParent(cleanRoot, newParentId, target, newIndex, slotName: effectiveSlot);
     return updated ?? root;
   }
 
@@ -527,4 +539,3 @@ class ImportLayoutCommand extends VisualBuilderCommand {
     return _oldRoot ?? root;
   }
 }
-

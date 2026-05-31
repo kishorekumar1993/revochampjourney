@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/component_node.dart';
 import '../models/component_property.dart';
 import '../registry/component_registry.dart';
+import '../validation/nesting_validator.dart';
 import '../../../features/visual_builder/application/visual_builder_controller.dart';
 import '../../../features/visual_builder/application/studio_providers.dart';
 import '../../../features/journey_builder/application/controllers/journey_controller.dart';
@@ -382,14 +383,9 @@ class ComponentRendererWidget extends ConsumerWidget {
                       return DragTarget<Object>(
                         onWillAcceptWithDetails: (details) {
                           final data = details.data;
-                          if (data is ComponentNode && data.id == node.id) return false;
-                          
-                          final meta = ComponentRegistry.getByType(node.type);
-                          if (meta != null && meta.maxChildren != null) {
-                            final int count = node.children.length + node.slots.values.where((c) => c != null).length;
-                            if (count >= meta.maxChildren!) return false;
-                          }
-                          return true;
+                          final droppedNode = ComponentRenderer._dropDataToNode(data);
+                          if (droppedNode == null) return false;
+                          return NestingValidator.validateDrop(node, droppedNode, null).success;
                         },
                         onAcceptWithDetails: (details) {
                           final data = details.data;
@@ -756,7 +752,7 @@ class ComponentRenderer {
             const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFF5B4FCF)),
             const SizedBox(width: 6),
             Text(
-              'Drop $slotName here',
+              '${_slotLabel(slotName)} Slot - Drop Widget Here',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -772,6 +768,27 @@ class ComponentRenderer {
   static bool canAcceptChildren(String type) {
     final meta = ComponentRegistry.getByType(type);
     return meta?.canHaveChildren ?? false;
+  }
+
+  static String _slotLabel(String slotName) {
+    if (slotName.isEmpty) return slotName;
+    return '${slotName[0].toUpperCase()}${slotName.substring(1)}';
+  }
+
+  static ComponentNode? _dropDataToNode(Object? data) {
+    if (data is ComponentNode) return data;
+    if (data is String) {
+      final meta = ComponentRegistry.getByType(data);
+      if (meta == null) return null;
+      return ComponentNode(
+        id: '__drag_preview_$data',
+        type: data,
+        properties: const {},
+        children: const [],
+        actions: const [],
+      );
+    }
+    return null;
   }
 
   static IconData getIconByName(String name) {
@@ -1420,20 +1437,9 @@ class SlotDragTarget extends ConsumerWidget {
     return DragTarget<Object>(
       onWillAcceptWithDetails: (details) {
         final data = details.data;
-        if (data is ComponentNode && data.id == parentNode.id) return false;
-        
-        // Validation rules:
-        if (parentNode.type == 'Scaffold') {
-          if (slotName == 'appBar') {
-            if (data is String && data != 'AppBar') return false;
-            if (data is ComponentNode && data.type != 'AppBar') return false;
-          }
-          if (slotName == 'bottomNavigationBar') {
-            if (data is String && data != 'BottomNavigationBar') return false;
-            if (data is ComponentNode && data.type != 'BottomNavigationBar') return false;
-          }
-        }
-        return true;
+        final droppedNode = ComponentRenderer._dropDataToNode(data);
+        if (droppedNode == null) return false;
+        return NestingValidator.validateDrop(parentNode, droppedNode, slotName).success;
       },
       onAcceptWithDetails: (details) {
         final data = details.data;

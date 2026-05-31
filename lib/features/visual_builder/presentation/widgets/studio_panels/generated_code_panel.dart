@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../../../core/component_engine/models/component_node.dart';
+import '../../../../../../core/component_engine/registry/component_registry.dart';
 
 import '../../../application/visual_builder_controller.dart';
 import 'studio_panel_wrapper.dart';
@@ -68,10 +69,19 @@ class RevoGeneratedCodePanel extends ConsumerWidget {
     buffer.writeln("$indent${node.type}(");
     node.properties.forEach((key, val) {
       if (val != null && val is! List && val is! Map) {
-        buffer.writeln("$indent  $key: ${val is String ? "'$val'" : val},");
+        final valStr = val is String ? "'${val.replaceAll("'", "\\'")}'" : val;
+        buffer.writeln("$indent  $key: $valStr,");
       }
     });
-    if (node.children.isNotEmpty) {
+    final meta = ComponentRegistry.getByType(node.type);
+    if (meta != null && meta.slotNames.isNotEmpty) {
+      for (final slotName in meta.slotNames) {
+        final slotChild = node.slots[slotName];
+        if (slotChild == null) continue;
+        buffer.writeln("$indent  $slotName: ");
+        _dumpNodeCode(slotChild, buffer, "$indent    ");
+      }
+    } else if (node.children.isNotEmpty) {
       buffer.writeln("$indent  children: [");
       for (final child in node.children) {
         _dumpNodeCode(child, buffer, "$indent    ");

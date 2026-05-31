@@ -355,6 +355,7 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     if (parent == null) return;
 
     final index = parent.children.indexWhere((c) => c.id == nodeId);
+    if (index < 0) return;
     executeCommand(AddWidgetCommand(
       parentId: parent.id,
       node: duplicate,
@@ -555,11 +556,22 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       final found = _findNode(child, id);
       if (found != null) return found;
     }
+    for (final child in current.slots.values) {
+      if (child == null) continue;
+      final found = _findNode(child, id);
+      if (found != null) return found;
+    }
     return null;
   }
 
   ComponentNode? _findParentNode(ComponentNode current, String childId) {
     for (final child in current.children) {
+      if (child.id == childId) return current;
+      final found = _findParentNode(child, childId);
+      if (found != null) return found;
+    }
+    for (final child in current.slots.values) {
+      if (child == null) continue;
       if (child.id == childId) return current;
       final found = _findParentNode(child, childId);
       if (found != null) return found;
@@ -573,7 +585,12 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       id: newId,
       type: origin.type,
       properties: Map<String, dynamic>.from(origin.properties),
+      styles: Map<String, dynamic>.from(origin.styles),
+      responsive: Map<String, dynamic>.from(origin.responsive),
+      bindings: Map<String, dynamic>.from(origin.bindings),
+      animations: Map<String, dynamic>.from(origin.animations),
       children: origin.children.map((c) => _deepCloneNodeWithNewIds(c)).toList(),
+      slots: origin.slots.map((key, child) => MapEntry(key, child == null ? null : _deepCloneNodeWithNewIds(child))),
       actions: origin.actions.map((a) => a.copyWith()).toList(),
     );
   }
@@ -622,4 +639,3 @@ final builderHistoryProvider = Provider<({bool canUndo, bool canRedo})>((ref) {
 final builderReusableComponentsProvider = Provider<List<ComponentNode>>((ref) {
   return ref.watch(visualBuilderProvider.select((s) => s.reusableComponents));
 });
-

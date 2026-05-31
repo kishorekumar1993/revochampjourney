@@ -11,6 +11,9 @@ class ComponentMetadata {
   final Map<String, dynamic> defaultProperties;
   final int? maxChildren;
   final List<String> slotNames;
+  final bool singleChildWidget;
+  final List<String>? allowedChildTypes;
+  final Map<String, List<String>>? slotRestrictions;
 
   const ComponentMetadata({
     required this.type,
@@ -21,7 +24,12 @@ class ComponentMetadata {
     required this.defaultProperties,
     this.maxChildren,
     this.slotNames = const [],
+    this.singleChildWidget = false,
+    this.allowedChildTypes,
+    this.slotRestrictions,
   });
+
+  bool get allowsChildren => canHaveChildren;
 }
 
 class ComponentRegistry {
@@ -35,6 +43,7 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {
         'width': null,
         'height': null,
@@ -45,11 +54,50 @@ class ComponentRegistry {
       },
     ),
     const ComponentMetadata(
+      type: 'Center',
+      label: 'Center',
+      icon: Icons.center_focus_strong_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {},
+    ),
+    const ComponentMetadata(
+      type: 'Padding',
+      label: 'Padding',
+      icon: Icons.padding_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {
+        'padding': 16.0,
+      },
+    ),
+    const ComponentMetadata(
+      type: 'Align',
+      label: 'Align',
+      icon: Icons.align_horizontal_center_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {
+        'alignment': 'center',
+      },
+    ),
+    const ComponentMetadata(
       type: 'Row',
       label: 'Row',
       icon: Icons.reorder_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'mainAxisAlignment': 'start',
         'crossAxisAlignment': 'center',
@@ -61,6 +109,8 @@ class ComponentRegistry {
       icon: Icons.view_week_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'mainAxisAlignment': 'start',
         'crossAxisAlignment': 'stretch',
@@ -72,6 +122,8 @@ class ComponentRegistry {
       icon: Icons.layers_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -80,6 +132,8 @@ class ComponentRegistry {
       icon: Icons.wrap_text_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'spacing': 8.0,
         'runSpacing': 8.0,
@@ -91,6 +145,8 @@ class ComponentRegistry {
       icon: Icons.grid_on_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'spacing': 8.0,
         'runSpacing': 8.0,
@@ -102,6 +158,8 @@ class ComponentRegistry {
       icon: Icons.list_alt_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'spacing': 8.0,
       },
@@ -114,6 +172,7 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {
         'elevation': 2.0,
         'backgroundColor': '#FFFFFF',
@@ -149,6 +208,7 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {
         'width': null,
         'height': null,
@@ -341,7 +401,9 @@ class ComponentRegistry {
       label: 'Chart',
       icon: Icons.bar_chart_rounded,
       category: ComponentCategory.advanced,
-      canHaveChildren: false,
+      canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
       defaultProperties: {
         'title': 'Usage Statistics',
         'chartType': 'bar', // bar, line, pie
@@ -385,6 +447,7 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -395,6 +458,7 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -405,6 +469,73 @@ class ComponentRegistry {
       canHaveChildren: true,
       maxChildren: 1,
       slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {},
+    ),
+    const ComponentMetadata(
+      type: 'Opacity',
+      label: 'Opacity',
+      icon: Icons.opacity_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {'opacity': 1.0},
+    ),
+    const ComponentMetadata(
+      type: 'Transform',
+      label: 'Transform',
+      icon: Icons.transform_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {},
+    ),
+    const ComponentMetadata(
+      type: 'Positioned',
+      label: 'Positioned',
+      icon: Icons.open_with_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {'top': 0.0, 'left': 0.0},
+    ),
+    const ComponentMetadata(
+      type: 'AspectRatio',
+      label: 'AspectRatio',
+      icon: Icons.aspect_ratio_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {'aspectRatio': 1.0},
+    ),
+    const ComponentMetadata(
+      type: 'GestureDetector',
+      label: 'GestureDetector',
+      icon: Icons.touch_app_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
+      defaultProperties: {},
+    ),
+    const ComponentMetadata(
+      type: 'InkWell',
+      label: 'InkWell',
+      icon: Icons.ads_click_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: 1,
+      slotNames: ['child'],
+      singleChildWidget: true,
       defaultProperties: {},
     ),
     const ComponentMetadata(
@@ -521,12 +652,53 @@ class ComponentRegistry {
       },
     ),
     const ComponentMetadata(
+      type: 'BottomNavigationBar',
+      label: 'BottomNavigationBar',
+      icon: Icons.menu_rounded,
+      category: ComponentCategory.advanced,
+      canHaveChildren: true,
+      defaultProperties: {
+        'currentIndex': 0,
+      },
+    ),
+    const ComponentMetadata(
+      type: 'FloatingActionButton',
+      label: 'FloatingActionButton',
+      icon: Icons.add_circle_rounded,
+      category: ComponentCategory.button,
+      canHaveChildren: false,
+      defaultProperties: {
+        'icon': 'add',
+        'backgroundColor': '#5B4FCF',
+      },
+    ),
+    const ComponentMetadata(
+      type: 'IndexedStack',
+      label: 'IndexedStack',
+      icon: Icons.layers_rounded,
+      category: ComponentCategory.layout,
+      canHaveChildren: true,
+      maxChildren: null,
+      slotNames: [],
+      defaultProperties: {
+        'index': 0,
+      },
+    ),
+    const ComponentMetadata(
       type: 'Scaffold',
       label: 'Scaffold',
       icon: Icons.splitscreen_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
-      slotNames: ['appBar', 'body', 'drawer', 'floatingActionButton', 'bottomNavigationBar'],
+      maxChildren: 0,
+      slotNames: ['appBar', 'body', 'drawer', 'endDrawer', 'bottomNavigationBar', 'floatingActionButton', 'bottomSheet'],
+      slotRestrictions: {
+        'appBar': ['AppBar'],
+        'bottomNavigationBar': ['BottomNavigationBar', 'NavigationBar'],
+        'floatingActionButton': ['FloatingActionButton', 'FloatingButton'],
+        'drawer': ['Drawer'],
+        'endDrawer': ['Drawer'],
+      },
       defaultProperties: {
         'backgroundColor': '#FFFFFF',
       },
@@ -537,6 +709,7 @@ class ComponentRegistry {
       icon: Icons.web_asset_rounded,
       category: ComponentCategory.layout,
       canHaveChildren: true,
+      maxChildren: 0,
       slotNames: ['title', 'leading', 'actions'],
       defaultProperties: {
         'title': 'App Title',

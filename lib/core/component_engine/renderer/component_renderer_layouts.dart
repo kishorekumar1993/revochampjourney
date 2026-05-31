@@ -29,7 +29,7 @@ class ComponentRendererLayouts {
       );
     }
     if (ctx.isDesignMode) {
-      if (slotName == 'body' || slotName == 'appBar' || slotName == 'bottomNavigationBar' || slotName == 'child' || slotName == 'title' || slotName == 'leading' || slotName == 'actions') {
+      if (slotName == 'body' || slotName == 'appBar' || slotName == 'drawer' || slotName == 'endDrawer' || slotName == 'bottomNavigationBar' || slotName == 'floatingActionButton' || slotName == 'bottomSheet' || slotName == 'child' || slotName == 'title' || slotName == 'leading' || slotName == 'actions') {
         return SlotDragTarget(
           parentNode: parentNode,
           slotName: slotName,
@@ -471,6 +471,58 @@ class ComponentRendererLayouts {
           child: _renderSlot(node, 'child', ctx),
         );
 
+      case 'Center':
+        return Center(
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'Padding':
+        final pad = PropertyParser.parsePadding(ComponentRenderer.getStyle(node, 'padding') ?? properties['padding']);
+        return Padding(
+          padding: pad,
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'Align':
+        return Align(
+          alignment: PropertyParser.parseAlignment(ComponentRenderer.getStyle(node, 'alignment') ?? properties['alignment']),
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'Opacity':
+        final opacity = double.tryParse((ComponentRenderer.getStyle(node, 'opacity') ?? properties['opacity'])?.toString() ?? '') ?? 1.0;
+        return Opacity(
+          opacity: opacity.clamp(0.0, 1.0),
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'Transform':
+        return Transform(
+          transform: Matrix4.identity(),
+          alignment: Alignment.center,
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'Positioned':
+        return _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink();
+
+      case 'AspectRatio':
+        final ratio = double.tryParse((properties['aspectRatio'] ?? ComponentRenderer.getStyle(node, 'aspectRatio'))?.toString() ?? '') ?? 1.0;
+        return AspectRatio(
+          aspectRatio: ratio <= 0 ? 1.0 : ratio,
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'GestureDetector':
+        return GestureDetector(
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
+      case 'InkWell':
+        return InkWell(
+          child: _renderSlot(node, 'child', ctx) ?? const SizedBox.shrink(),
+        );
+
       case 'Spacer':
         if (isDesignMode) {
           return Container(
@@ -595,7 +647,9 @@ class ComponentRendererLayouts {
         final bodyWidget = _renderSlot(node, 'body', ctx);
         final bottomNavWidget = _renderSlot(node, 'bottomNavigationBar', ctx);
         final drawerWidget = _renderSlot(node, 'drawer', ctx);
+        final endDrawerWidget = _renderSlot(node, 'endDrawer', ctx);
         final fabWidget = _renderSlot(node, 'floatingActionButton', ctx);
+        final bottomSheetWidget = _renderSlot(node, 'bottomSheet', ctx);
 
         return Scaffold(
           backgroundColor: bg,
@@ -607,7 +661,9 @@ class ComponentRendererLayouts {
               : null,
           bottomNavigationBar: bottomNavWidget,
           drawer: drawerWidget,
+          endDrawer: endDrawerWidget,
           floatingActionButton: fabWidget,
+          bottomSheet: bottomSheetWidget,
           body: SingleChildScrollView(
             child: bodyWidget ?? const SizedBox.shrink(),
           ),

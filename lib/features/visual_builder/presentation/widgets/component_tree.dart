@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme.dart';
 import '../../../../core/component_engine/models/component_node.dart';
 import '../../../../core/component_engine/registry/component_registry.dart';
+import '../../../../core/component_engine/validation/nesting_validator.dart';
 import '../../application/visual_builder_controller.dart';
 import '../../application/studio_providers.dart';
 
@@ -143,20 +144,15 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     }
 
     final icon = meta?.icon ?? Icons.help_outline;
+    final warnings = NestingValidator.validateNode(node);
 
     // Drag-and-drop feedback or drop target
     final dragTargetWidget = DragTarget<String>(
       onWillAcceptWithDetails: (details) {
         final draggedId = details.data;
-        if (draggedId == node.id) return false;
-        if (_isDescendant(draggedId, node)) return false;
-
-        final meta = ComponentRegistry.getByType(node.type);
-        if (meta != null && meta.maxChildren != null) {
-          final int count = node.children.length + node.slots.values.where((c) => c != null).length;
-          if (count >= meta.maxChildren!) return false;
-        }
-        return true;
+        final draggedNode = controller.findNodeById(draggedId);
+        if (draggedNode == null) return false;
+        return NestingValidator.validateDrop(node, draggedNode, null, root: controller.state.rootNode).success;
       },
       onAcceptWithDetails: (details) {
         final draggedId = details.data;
@@ -226,7 +222,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
       ),
       childWhenDragging: Opacity(
         opacity: 0.4,
-        child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller),
+        child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller, warnings),
       ),
       onDragStarted: () {
         ref.read(canvasIsDraggingProvider.notifier).state = true;
@@ -240,7 +236,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
           _draggingNodeId = null;
         });
       },
-      child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller),
+      child: _buildNodeRow(node, depth, isSelected, isCollapsed, hasChildren, icon, labelSuffix, controller, warnings),
     );
 
     // If dragging another node, show drop indicators between nodes
@@ -287,21 +283,9 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
             child: DragTarget<String>(
               onWillAcceptWithDetails: (details) {
                 final draggedId = details.data;
-                if (draggedId == node.id) return false;
-                if (_isDescendant(draggedId, node)) return false;
-                
-                // Scaffold specific rules
-                if (node.type == 'Scaffold') {
-                  if (slotName == 'appBar') {
-                    final dragNode = controller.findNodeById(draggedId);
-                    if (dragNode != null && dragNode.type != 'AppBar') return false;
-                  }
-                  if (slotName == 'bottomNavigationBar') {
-                    final dragNode = controller.findNodeById(draggedId);
-                    if (dragNode != null && dragNode.type != 'BottomNavigationBar') return false;
-                  }
-                }
-                return true;
+                final draggedNode = controller.findNodeById(draggedId);
+                if (draggedNode == null) return false;
+                return NestingValidator.validateDrop(node, draggedNode, slotName, root: controller.state.rootNode).success;
               },
               onAcceptWithDetails: (details) {
                 final draggedId = details.data;
@@ -347,7 +331,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
                       const Spacer(),
                       if (slotChild == null)
                         Text(
-                          'Empty',
+                          'Drop Widget Here',
                           style: GoogleFonts.inter(
                             fontSize: 9,
                             color: RevoTheme.textSecondary.withValues(alpha: 0.7),
@@ -379,12 +363,9 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
             DragTarget<String>(
               onWillAcceptWithDetails: (details) {
                 if (details.data == _draggingNodeId) return false;
-                final meta = ComponentRegistry.getByType(node.type);
-                if (meta != null && meta.maxChildren != null) {
-                  final int count = node.children.length + node.slots.values.where((c) => c != null).length;
-                  if (count >= meta.maxChildren!) return false;
-                }
-                return true;
+                final draggedNode = controller.findNodeById(details.data);
+                if (draggedNode == null) return false;
+                return NestingValidator.validateDrop(node, draggedNode, null, root: controller.state.rootNode).success;
               },
               onAcceptWithDetails: (details) {
                 final draggedId = details.data;
@@ -449,6 +430,7 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
     IconData icon,
     String labelSuffix,
     VisualBuilderController controller,
+    List<String> warnings,
   ) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -526,6 +508,13 @@ class _RevoComponentTreeState extends ConsumerState<RevoComponentTree> {
               ),
 
               // Quick operations
+              if (warnings.isNotEmpty) ...[
+                Tooltip(
+                  message: warnings.join('\n'),
+                  child: const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 14),
+                ),
+                const SizedBox(width: 8),
+              ],
               if (isSelected) ...[
                 GestureDetector(
                   onTap: () => controller.duplicateNode(node.id),
