@@ -16,6 +16,7 @@ class RevoBuilderSidebar extends StatelessWidget {
     final menuItems = [
       {'id': 'widgets', 'tooltip': 'Components', 'icon': Icons.widgets_outlined},
       {'id': 'tree', 'tooltip': 'Widget Tree', 'icon': Icons.account_tree_outlined},
+      {'id': 'history', 'tooltip': 'Command History', 'icon': Icons.history_rounded},
       {'id': 'pages', 'tooltip': 'Pages/Journey', 'icon': Icons.layers_outlined},
       {'id': 'theme', 'tooltip': 'Theme Studio', 'icon': Icons.palette_outlined},
       {'id': 'api', 'tooltip': 'API Studio', 'icon': Icons.api_outlined},

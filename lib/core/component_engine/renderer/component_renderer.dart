@@ -10,6 +10,69 @@ import '../registry/component_registry.dart';
 import '../../../features/visual_builder/application/visual_builder_controller.dart';
 import '../../../features/visual_builder/application/studio_providers.dart';
 import '../../../features/journey_builder/application/controllers/journey_controller.dart';
+import 'component_renderer_layouts.dart';
+import 'component_renderer_inputs.dart';
+import 'component_renderer_basic.dart';
+
+class RenderContext {
+  final bool isDesignMode;
+  final ComponentNode? parentNode;
+  final ComponentNode? selectedNode;
+  final ComponentNode? hoveredNode;
+  final void Function(ComponentNode?)? onSelect;
+  final void Function(ComponentNode?)? onHover;
+  final void Function(ComponentNode)? onDelete;
+  final void Function(ComponentNode)? onDuplicate;
+  final void Function(ComponentNode, ComponentNode, int)? onMoveChild;
+  final void Function(ComponentNode, String, {int? targetIndex})? onAddChild;
+  final Map<String, dynamic> formValues;
+  final void Function(String, dynamic)? onFormValueChanged;
+  final bool insideScrollable;
+  final ThemeTokens? themeTokens;
+
+  RenderContext({
+    required this.isDesignMode,
+    this.parentNode,
+    this.selectedNode,
+    this.hoveredNode,
+    this.onSelect,
+    this.onHover,
+    this.onDelete,
+    this.onDuplicate,
+    this.onMoveChild,
+    this.onAddChild,
+    required this.formValues,
+    this.onFormValueChanged,
+    required this.insideScrollable,
+    this.themeTokens,
+  });
+
+  List<Widget> renderChildren(ComponentNode node, {bool propagateScrollable = false}) {
+    if (node.children.isEmpty && isDesignMode) {
+      return [ComponentRenderer.buildEmptyPlaceholder(node, onAddChild: onAddChild)];
+    }
+    return node.children
+        .map(
+          (child) => ComponentRenderer.render(
+            child,
+            isDesignMode: isDesignMode,
+            parentNode: node,
+            selectedNode: selectedNode,
+            hoveredNode: hoveredNode,
+            onSelect: onSelect,
+            onHover: onHover,
+            onDelete: onDelete,
+            onDuplicate: onDuplicate,
+            onMoveChild: onMoveChild,
+            onAddChild: onAddChild,
+            formValues: formValues,
+            onFormValueChanged: onFormValueChanged,
+            insideScrollable: propagateScrollable ? true : insideScrollable,
+          ),
+        )
+        .toList();
+  }
+}
 
 class ComponentRendererWidget extends ConsumerWidget {
   final ComponentNode node;
@@ -47,14 +110,12 @@ class ComponentRendererWidget extends ConsumerWidget {
     final bool isDesignMode = overrideIsDesignMode ?? ref.watch(builderDesignModeProvider);
     final themeTokens = ref.watch(themeTokensProvider).tokens;
     
-    // Select selection and hovered state for this specific node to prevent full-canvas rebuilds
     final isSelected = ref.watch(visualBuilderProvider.select((s) => s.selectedNode?.id == node.id));
     final isHovered = ref.watch(visualBuilderProvider.select((s) => s.hoveredNode?.id == node.id));
     
     final Map<String, dynamic> formValues = overrideFormValues ?? ref.watch(formValuesProvider);
     final controller = ref.read(visualBuilderProvider.notifier);
 
-    // Resolve callbacks (using override if provided, otherwise defaulting to the global controller/providers)
     final onSelect = overrideOnSelect ?? (ComponentNode? n) => controller.selectNode(n);
     final onHover = overrideOnHover ?? (ComponentNode? n) => controller.hoverNode(n);
     final onDelete = overrideOnDelete ?? (ComponentNode n) => controller.deleteNode(n.id);
@@ -65,7 +126,6 @@ class ComponentRendererWidget extends ConsumerWidget {
       ref.read(formValuesProvider.notifier).updateValue(field, val);
     };
 
-    // Check responsive visibility
     double currentWidth = MediaQuery.of(context).size.width;
     try {
       final simulatedWidth = ref.watch(visualBuilderProvider.select((s) => s.canvasWidth));
@@ -88,8 +148,7 @@ class ComponentRendererWidget extends ConsumerWidget {
       }
     }
 
-    // 1. Render the actual core widget
-    Widget coreWidget = ComponentRenderer._buildWidget(
+    Widget coreWidget = ComponentRenderer.buildWidget(
       node,
       isDesignMode: isDesignMode,
       parentNode: parentNode,
@@ -107,26 +166,21 @@ class ComponentRendererWidget extends ConsumerWidget {
       themeTokens: themeTokens,
     );
 
-    // Apply global padding and sizing
-    coreWidget = ComponentRenderer._applyPaddingAndSizing(coreWidget, node);
-    // Apply global decoration (background color, border radius)
-    coreWidget = ComponentRenderer._applyDecoration(coreWidget, node);
+    coreWidget = ComponentRenderer.applyPaddingAndSizing(coreWidget, node);
+    coreWidget = ComponentRenderer.applyDecoration(coreWidget, node);
 
-    // Disable interactions inside inputs when designing so they don't hijack drag/click gestures
     if (isDesignMode) {
       coreWidget = AbsorbPointer(child: coreWidget);
     }
 
     Widget resultWidget;
 
-    // 2. If Design Mode, wrap with interaction overlays
     if (isDesignMode) {
       const nonDraggableTypes = {
         'Scaffold',
       };
 
       if (nonDraggableTypes.contains(node.type)) {
-        // Lightweight overlay: selection/hover border + tap-to-select.
         final decorated = Container(
           decoration: BoxDecoration(
             border: Border.all(
@@ -140,7 +194,7 @@ class ComponentRendererWidget extends ConsumerWidget {
           ),
           child: coreWidget,
         );
-        resultWidget = ComponentRenderer._applyMargin(
+        resultWidget = ComponentRenderer.applyMargin(
           GestureDetector(
             onTap: () {
               onSelect(node);
@@ -199,8 +253,7 @@ class ComponentRendererWidget extends ConsumerWidget {
           node,
         );
       } else {
-        // ── Full draggable overlay for regular widgets ─────────────────────────
-        final canAcceptChildren = ComponentRenderer._canAcceptChildren(node.type);
+        final canAcceptChildren = ComponentRenderer.canAcceptChildren(node.type);
 
         Widget interactiveWrapper = MouseRegion(
           onEnter: (_) {
@@ -291,7 +344,6 @@ class ComponentRendererWidget extends ConsumerWidget {
           ),
         );
 
-        // Drag source - using LongPressDraggable for smooth canvas panning/scrolling
         Widget dragSource = LongPressDraggable<ComponentNode>(
           data: node,
           feedback: Material(
@@ -312,17 +364,13 @@ class ComponentRendererWidget extends ConsumerWidget {
           child: interactiveWrapper,
         );
 
-        // Drag-and-drop sensor overlays supporting insert above, below, or inside
         Widget designWidget = dragSource;
 
         if (parentNode != null || canAcceptChildren) {
           designWidget = Stack(
             clipBehavior: Clip.none,
             children: [
-              // 1. The original dragSource widget
               designWidget,
-
-              // 2. Center zone (Insert Inside) - only if the node can accept children
               if (canAcceptChildren)
                 Positioned.fill(
                   child: DragTarget<Object>(
@@ -352,8 +400,6 @@ class ComponentRendererWidget extends ConsumerWidget {
                     },
                   ),
                 ),
-
-              // 3. Top zone (Insert Above) - only if we have a parent
               if (parentNode != null)
                 Positioned(
                   top: 0,
@@ -393,8 +439,6 @@ class ComponentRendererWidget extends ConsumerWidget {
                     },
                   ),
                 ),
-
-              // 4. Bottom zone (Insert Below) - only if we have a parent
               if (parentNode != null)
                 Positioned(
                   bottom: 0,
@@ -438,13 +482,12 @@ class ComponentRendererWidget extends ConsumerWidget {
           );
         }
 
-        resultWidget = ComponentRenderer._applyMargin(designWidget, node);
+        resultWidget = ComponentRenderer.applyMargin(designWidget, node);
       }
     } else {
-      resultWidget = ComponentRenderer._applyMargin(coreWidget, node);
+      resultWidget = ComponentRenderer.applyMargin(coreWidget, node);
     }
 
-    // Apply dynamic AppTheme from themeTokens if it's root or Scaffold
     if (parentNode == null || node.type == 'Scaffold') {
       final primaryHex = themeTokens.primaryColor.replaceAll('#', '').padLeft(8, 'FF');
       final secondaryHex = themeTokens.secondaryColor.replaceAll('#', '').padLeft(8, 'FF');
@@ -544,7 +587,12 @@ class ComponentRenderer {
     );
   }
 
-  static Widget _buildWidget(
+  static dynamic getStyle(ComponentNode node, String key) {
+    if (node.styles.containsKey(key)) return node.styles[key];
+    return node.properties[key];
+  }
+
+  static Widget buildWidget(
     ComponentNode node, {
     required bool isDesignMode,
     ComponentNode? parentNode,
@@ -561,1706 +609,59 @@ class ComponentRenderer {
     bool insideScrollable = false,
     ThemeTokens? themeTokens,
   }) {
-    final properties = node.properties;
-    // Note: node.styles is accessed via getStyle() helper below.
+    final ctx = RenderContext(
+      isDesignMode: isDesignMode,
+      parentNode: parentNode,
+      selectedNode: selectedNode,
+      hoveredNode: hoveredNode,
+      onSelect: onSelect,
+      onHover: onHover,
+      onDelete: onDelete,
+      onDuplicate: onDuplicate,
+      onMoveChild: onMoveChild,
+      onAddChild: onAddChild,
+      formValues: formValues,
+      onFormValueChanged: onFormValueChanged,
+      insideScrollable: insideScrollable,
+      themeTokens: themeTokens,
+    );
 
-    dynamic getStyle(String key) {
-      if (node.styles.containsKey(key)) return node.styles[key];
-      return node.properties[key];
+    final type = node.type;
+
+    const layoutTypes = {
+      'Container', 'Row', 'Column', 'Stack', 'Wrap', 'GridView', 'ListView',
+      'Card', 'SizedBox', 'Spacer', 'Expanded', 'Flexible', 'SafeArea',
+      'Tabs', 'Drawer', 'NavigationBar', 'Scaffold', 'SingleChildScrollView',
+      'Carousel', 'BottomNavigationBar', 'BottomNavigationBarItem',
+      'Table', 'Stepper', 'Timeline', 'Chart'
+    };
+
+    const inputTypes = {
+      'TextField', 'Dropdown', 'Radio', 'Checkbox', 'DatePicker', 'Switch',
+      'Slider', 'FilePicker', 'OTP', 'Search'
+    };
+
+    const basicTypes = {
+      'Button', 'IconButton', 'FloatingButton', 'Text', 'Image', 'Icon',
+      'Divider', 'Avatar', 'Chip', 'Badge', 'Progress'
+    };
+
+    if (layoutTypes.contains(type)) {
+      return ComponentRendererLayouts.buildLayout(node, ctx);
+    } else if (inputTypes.contains(type)) {
+      return ComponentRendererInputs.buildInput(node, ctx);
+    } else if (basicTypes.contains(type)) {
+      return ComponentRendererBasic.buildBasic(node, ctx);
     }
 
-    // Helper to render children
-    List<Widget> renderChildren({bool propagateScrollable = false}) {
-      if (node.children.isEmpty && isDesignMode) {
-        return [_buildEmptyPlaceholder(node, onAddChild: onAddChild)];
-      }
-      return node.children
-          .map(
-            (child) => render(
-              child,
-              isDesignMode: isDesignMode,
-              parentNode: node,
-              selectedNode: selectedNode,
-              hoveredNode: hoveredNode,
-              onSelect: onSelect,
-              onHover: onHover,
-              onDelete: onDelete,
-              onDuplicate: onDuplicate,
-              onMoveChild: onMoveChild,
-              onAddChild: onAddChild,
-              formValues: formValues,
-              onFormValueChanged: onFormValueChanged,
-              insideScrollable: propagateScrollable ? true : insideScrollable,
-            ),
-          )
-          .toList();
-    }
-
-    switch (node.type) {
-      // ================== LAYOUTS ==================
-      case 'Container':
-        final width = double.tryParse(getStyle('width')?.toString() ?? '');
-        final height = double.tryParse(getStyle('height')?.toString() ?? '');
-        final bg = PropertyParser.parseColor(getStyle('backgroundColor'));
-        final pad = PropertyParser.parsePadding(getStyle('padding'));
-        final marg = PropertyParser.parsePadding(getStyle('margin'));
-        final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 0.0;
-        final gradientStart = PropertyParser.parseColor(
-          getStyle('gradientStart'),
-        );
-        final gradientEnd = PropertyParser.parseColor(getStyle('gradientEnd'));
-        final borderColor = PropertyParser.parseColor(getStyle('borderColor'));
-        final borderWidth =
-            double.tryParse(getStyle('borderWidth')?.toString() ?? '') ?? 1.0;
-        final elevation =
-            double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 0.0;
-
-        Gradient? gradient;
-        if (gradientStart != null && gradientEnd != null) {
-          gradient = LinearGradient(
-            colors: [gradientStart, gradientEnd],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          );
-        }
-
-        BoxBorder? border;
-        if (borderColor != null) {
-          border = Border.all(color: borderColor, width: borderWidth);
-        }
-
-        List<BoxShadow>? boxShadows;
-        if (elevation > 0) {
-          boxShadows = [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: elevation * 2,
-              spreadRadius: -elevation * 0.5,
-              offset: Offset(0, elevation),
-            ),
-          ];
-        }
-
-        return Container(
-          width: width,
-          height: height,
-          padding: pad,
-          margin: marg,
-          alignment: PropertyParser.parseAlignment(getStyle('alignment')),
-          decoration: BoxDecoration(
-            color: gradient == null ? bg : null,
-            gradient: gradient,
-            border: border,
-            boxShadow: boxShadows,
-            borderRadius: BorderRadius.circular(radius),
-          ),
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : null)
-              : node.children.length == 1
-              ? render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: renderChildren(),
-                ),
-        );
-
-      case 'Row':
-        final mainAlign = PropertyParser.parseMainAxisAlignment(
-          properties['mainAxisAlignment'],
-        );
-        final crossAlign = PropertyParser.parseCrossAxisAlignment(
-          properties['crossAxisAlignment'],
-        );
-        final rowSpacing = double.tryParse(
-          getStyle('spacing')?.toString() ??
-          properties['spacing']?.toString() ??
-          '',
-        );
-
-        Widget buildRow(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedWidth) {
-          if (node.children.isEmpty && isDesignMode) {
-            return Row(
-              mainAxisAlignment: mainAlign,
-              crossAxisAlignment: effectiveCrossAlign,
-              children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
-            );
-          }
-          final renderedChildren = node.children.map((childNode) {
-            final childWidget = render(
-              childNode,
-              isDesignMode: isDesignMode,
-              parentNode: node,
-              selectedNode: selectedNode,
-              hoveredNode: hoveredNode,
-              onSelect: onSelect,
-              onHover: onHover,
-              onDelete: onDelete,
-              onDuplicate: onDuplicate,
-              onMoveChild: onMoveChild,
-              onAddChild: onAddChild,
-              formValues: formValues,
-              onFormValueChanged: onFormValueChanged,
-              insideScrollable: insideScrollable,
-            );
-            final flexVal = int.tryParse(
-              childNode.styles['flex']?.toString() ??
-                  childNode.properties['flex']?.toString() ??
-                  '',
-            );
-            if (flexVal != null && flexVal > 0 && hasBoundedWidth &&
-                parentNode?.type != "SingleChildScrollView") {
-              return Expanded(flex: flexVal, child: childWidget);
-            }
-            if (isDesignMode && hasBoundedWidth) {
-              return Flexible(fit: FlexFit.loose, child: childWidget);
-            }
-            return childWidget;
-          }).toList();
-
-          final List<Widget> spacedChildren = [];
-          for (int i = 0; i < renderedChildren.length; i++) {
-            spacedChildren.add(renderedChildren[i]);
-            if (rowSpacing != null && rowSpacing > 0 && i < renderedChildren.length - 1) {
-              spacedChildren.add(SizedBox(width: rowSpacing));
-            }
-          }
-
-          return Row(
-            mainAxisAlignment: mainAlign,
-            crossAxisAlignment: effectiveCrossAlign,
-            children: spacedChildren,
-          );
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final effectiveCrossAlign = (crossAlign == CrossAxisAlignment.stretch && !constraints.hasBoundedHeight)
-                ? CrossAxisAlignment.start
-                : crossAlign;
-            return buildRow(effectiveCrossAlign, constraints.hasBoundedWidth);
-          },
-        );
-
-      case 'Column':
-        final mainAlign = PropertyParser.parseMainAxisAlignment(
-          properties['mainAxisAlignment'],
-        );
-        final crossAlign = PropertyParser.parseCrossAxisAlignment(
-          properties['crossAxisAlignment'],
-        );
-        final mainSize = PropertyParser.parseMainAxisSize(
-          getStyle('mainAxisSize') ?? properties['mainAxisSize'],
-        );
-        final columnSpacing = double.tryParse(
-          getStyle('spacing')?.toString() ??
-          properties['spacing']?.toString() ??
-          '',
-        );
-
-        Widget buildColumn(CrossAxisAlignment effectiveCrossAlign, bool hasBoundedHeight) {
-          if (node.children.isEmpty && isDesignMode) {
-            return Column(
-              mainAxisAlignment: mainAlign,
-              crossAxisAlignment: effectiveCrossAlign,
-              mainAxisSize: mainSize,
-              children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
-            );
-          }
-          final renderedChildren = node.children.map((childNode) {
-            final childWidget = render(
-              childNode,
-              isDesignMode: isDesignMode,
-              parentNode: node,
-              selectedNode: selectedNode,
-              hoveredNode: hoveredNode,
-              onSelect: onSelect,
-              onHover: onHover,
-              onDelete: onDelete,
-              onDuplicate: onDuplicate,
-              onMoveChild: onMoveChild,
-              onAddChild: onAddChild,
-              formValues: formValues,
-              onFormValueChanged: onFormValueChanged,
-              insideScrollable: insideScrollable,
-            );
-            // Support flex on direct Column children (same as Row)
-            final flexVal = int.tryParse(
-              childNode.styles['flex']?.toString() ??
-                  childNode.properties['flex']?.toString() ??
-                  '',
-            );
-            if (flexVal != null && flexVal > 0 && hasBoundedHeight &&
-                parentNode?.type != "SingleChildScrollView") {
-              return Expanded(flex: flexVal, child: childWidget);
-            }
-            if (isDesignMode && hasBoundedHeight) {
-              return Flexible(fit: FlexFit.loose, child: childWidget);
-            }
-            return childWidget;
-          }).toList();
-
-          final List<Widget> spacedChildren = [];
-          for (int i = 0; i < renderedChildren.length; i++) {
-            spacedChildren.add(renderedChildren[i]);
-            if (columnSpacing != null && columnSpacing > 0 && i < renderedChildren.length - 1) {
-              spacedChildren.add(SizedBox(height: columnSpacing));
-            }
-          }
-
-          return Column(
-            mainAxisAlignment: mainAlign,
-            crossAxisAlignment: effectiveCrossAlign,
-            mainAxisSize: mainSize,
-            children: spacedChildren,
-          );
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final effectiveCrossAlign = (crossAlign == CrossAxisAlignment.stretch && !constraints.hasBoundedWidth)
-                ? CrossAxisAlignment.start
-                : crossAlign;
-            return buildColumn(effectiveCrossAlign, constraints.hasBoundedHeight);
-          },
-        );
-
-      case 'Stack':
-        final stackFit = () {
-          final fitStr = (getStyle('fit') ?? properties['fit'])
-              ?.toString()
-              .toLowerCase();
-          if (fitStr == 'expand') return StackFit.expand;
-          if (fitStr == 'passthrough') return StackFit.passthrough;
-          return StackFit.loose;
-        }();
-        // Check if any child has positioning properties — render them as Positioned.
-        if (node.children.isEmpty && isDesignMode) {
-          return Stack(
-            fit: stackFit,
-            children: [_buildEmptyPlaceholder(node, onAddChild: onAddChild)],
-          );
-        }
-        return Stack(
-          fit: stackFit,
-          children: node.children.map((childNode) {
-            final childWidget = render(
-              childNode,
-              isDesignMode: isDesignMode,
-              parentNode: node,
-              selectedNode: selectedNode,
-              hoveredNode: hoveredNode,
-              onSelect: onSelect,
-              onHover: onHover,
-              onDelete: onDelete,
-              onDuplicate: onDuplicate,
-              onMoveChild: onMoveChild,
-              onAddChild: onAddChild,
-              formValues: formValues,
-              onFormValueChanged: onFormValueChanged,
-              insideScrollable: insideScrollable,
-            );
-            double? posTop = double.tryParse(
-              childNode.styles['top']?.toString() ??
-                  childNode.properties['top']?.toString() ??
-                  '',
-            );
-            double? posLeft = double.tryParse(
-              childNode.styles['left']?.toString() ??
-                  childNode.properties['left']?.toString() ??
-                  '',
-            );
-            double? posRight = double.tryParse(
-              childNode.styles['right']?.toString() ??
-                  childNode.properties['right']?.toString() ??
-                  '',
-            );
-            double? posBottom = double.tryParse(
-              childNode.styles['bottom']?.toString() ??
-                  childNode.properties['bottom']?.toString() ??
-                  '',
-            );
-            // Support string shorthand: "topRight", "topLeft", "bottomRight", "bottomLeft", "topCenter", etc.
-            final posStr =
-                (childNode.styles['position'] ??
-                        childNode.properties['position'])
-                    ?.toString()
-                    .toLowerCase()
-                    .replaceAll('_', '')
-                    .replaceAll(' ', '');
-            if (posStr != null && posStr.isNotEmpty) {
-              if (posStr.contains('top')) posTop ??= 0;
-              if (posStr.contains('bottom')) posBottom ??= 0;
-              if (posStr.contains('left')) posLeft ??= 0;
-              if (posStr.contains('right')) posRight ??= 0;
-            }
-            if (posTop != null ||
-                posLeft != null ||
-                posRight != null ||
-                posBottom != null) {
-              return Positioned(
-                top: posTop,
-                left: posLeft,
-                right: posRight,
-                bottom: posBottom,
-                child: childWidget,
-              );
-            }
-            return childWidget;
-          }).toList(),
-        );
-
-      case 'Wrap':
-        final spacing =
-            double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
-        final runSpacing =
-            double.tryParse(getStyle('runSpacing')?.toString() ?? '') ?? 8.0;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          children: renderChildren(),
-        );
-
-      case 'GridView':
-        final spacing =
-            double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
-        final runSpacing =
-            double.tryParse(getStyle('runSpacing')?.toString() ?? '') ?? 8.0;
-        final crossAxisCount =
-            int.tryParse(properties['crossAxisCount']?.toString() ?? '') ?? 2;
-        final childAspectRatio =
-            double.tryParse(properties['childAspectRatio']?.toString() ?? '') ??
-            1.0;
-        final crossAxisSpacing =
-            double.tryParse(properties['crossAxisSpacing']?.toString() ?? '') ??
-            spacing;
-        final mainAxisSpacing =
-            double.tryParse(properties['mainAxisSpacing']?.toString() ?? '') ??
-            runSpacing;
-        final pad = PropertyParser.parsePadding(getStyle('padding'));
-
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: childAspectRatio,
-          crossAxisSpacing: crossAxisSpacing,
-          mainAxisSpacing: mainAxisSpacing,
-          padding: pad,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: renderChildren(propagateScrollable: true),
-        );
-
-      case 'ListView':
-        final spacing =
-            double.tryParse(getStyle('spacing')?.toString() ?? '') ?? 8.0;
-        final pad = PropertyParser.parsePadding(getStyle('padding'));
-        return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: pad,
-          itemCount: node.children.isEmpty ? 1 : node.children.length,
-          separatorBuilder: (_, _) => SizedBox(height: spacing),
-          itemBuilder: (context, index) {
-            if (node.children.isEmpty) {
-              return isDesignMode
-                  ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                  : const SizedBox.shrink();
-            }
-            return render(
-              node.children[index],
-              isDesignMode: isDesignMode,
-              parentNode: node,
-              selectedNode: selectedNode,
-              hoveredNode: hoveredNode,
-              onSelect: onSelect,
-              onHover: onHover,
-              onDelete: onDelete,
-              onDuplicate: onDuplicate,
-              onMoveChild: onMoveChild,
-              onAddChild: onAddChild,
-              formValues: formValues,
-              onFormValueChanged: onFormValueChanged,
-              insideScrollable: true,
-            );
-          },
-        );
-
-      case 'Card':
-        final elevation =
-            double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 2.0;
-        final bg = PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            PropertyParser.parseColor(themeTokens?.cardColor);
-        final pad = PropertyParser.parsePadding(getStyle('padding'));
-        final marg = PropertyParser.parsePadding(getStyle('margin'));
-        final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ??
-            themeTokens?.borderRadius ?? 12.0;
-        return Card(
-          elevation: elevation,
-          color: bg,
-          margin: marg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
-          ),
-          child: Padding(
-            padding: pad,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: renderChildren(),
-            ),
-          ),
-        );
-
-      case 'SizedBox':
-        final width = double.tryParse(getStyle('width')?.toString() ?? '');
-        final height = double.tryParse(getStyle('height')?.toString() ?? '');
-        return SizedBox(
-          width: width,
-          height: height,
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                ),
-        );
-
-      case 'Spacer':
-        if (isDesignMode) {
-          return Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0x0C5B4FCF),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0x335B4FCF)),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.space_bar_rounded,
-                size: 16,
-                color: Color(0xFF5B4FCF),
-              ),
-            ),
-          );
-        }
-        return const Spacer();
-
-      case 'Divider':
-        final height =
-            double.tryParse(getStyle('height')?.toString() ?? '') ?? 1.0;
-        final color = PropertyParser.parseColor(getStyle('color'));
-        return Divider(height: height * 4, thickness: height, color: color);
-
-      // ================== FORMS ==================
-      case 'TextField':
-        final fieldName = properties['fieldName'] ?? 'text_field';
-        final label = properties['label'] ?? 'Label';
-        final hint = properties['hint'] ?? '';
-        final isRequired = properties['required'] == true;
-        final isPassword = properties['obscureText'] == true;
-        final isEnabled = properties['enabled'] != false;
-        final isReadOnly = properties['readOnly'] == true;
-
-        final currentValue = formValues[fieldName]?.toString() ?? '';
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            (isEnabled ? Colors.white : Colors.grey[200]);
-        final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ??
-            themeTokens?.borderRadius ?? 4.0;
-        final inputStyle = themeTokens?.inputStyle ?? 'outline';
-
-        return TextFormField(
-          initialValue: isDesignMode ? null : currentValue,
-          key: isDesignMode ? null : ValueKey('$fieldName-$currentValue'),
-          enabled: isEnabled,
-          readOnly: isReadOnly,
-          obscureText: isPassword,
-          onChanged: (val) {
-            if (onFormValueChanged != null) onFormValueChanged(fieldName, val);
-          },
-          decoration: InputDecoration(
-            labelText: label + (isRequired ? ' *' : ''),
-            hintText: hint,
-            border: inputStyle == 'underline'
-                ? const UnderlineInputBorder()
-                : OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                  ),
-            filled: inputStyle == 'filled' || bg != null,
-            fillColor: bg,
-          ),
-        );
-
-      case 'Dropdown':
-        final fieldName = properties['fieldName'] ?? 'dropdown';
-        final label = properties['label'] ?? 'Dropdown Option';
-        final hint = properties['hint'] ?? 'Select option';
-        final isRequired = properties['required'] == true;
-        
-        final rawOptions = properties['options'] ?? [];
-        final List<String> options = [];
-        if (rawOptions is List) {
-          for (final opt in rawOptions) {
-            if (opt is Map) {
-              options.add(opt['label']?.toString() ?? opt['value']?.toString() ?? 'Option');
-            } else if (opt != null) {
-              options.add(opt.toString());
-            }
-          }
-        }
-
-        final currentValue = formValues[fieldName]?.toString();
-        final selectedVal =
-            (currentValue != null && options.contains(currentValue))
-            ? currentValue
-            : null;
-
-        return DropdownButtonFormField<String>(
-          decoration: InputDecoration(
-            labelText: label + (isRequired ? ' *' : ''),
-            hintText: hint,
-            border: const OutlineInputBorder(),
-          ),
-          value: selectedVal,
-          items: options
-              .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
-              .toList(),
-          onChanged: isDesignMode
-              ? null
-              : (val) {
-                  if (onFormValueChanged != null) {
-                    onFormValueChanged(fieldName, val);
-                  }
-                },
-        );
-
-      case 'Radio':
-        final fieldName = properties['fieldName'] ?? 'radio';
-        final label = properties['label'] ?? 'Select Value';
-        final rawOptions = properties['options'] ?? [];
-        final List<String> options = [];
-        if (rawOptions is List) {
-          for (final opt in rawOptions) {
-            if (opt is Map) {
-              options.add(opt['label']?.toString() ?? opt['value']?.toString() ?? 'Option');
-            } else if (opt != null) {
-              options.add(opt.toString());
-            }
-          }
-        }
-        final currentValue = formValues[fieldName]?.toString() ?? '';
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            ...options.map((opt) {
-              return RadioListTile<String>(
-                title: Text(opt),
-                value: opt,
-                groupValue: currentValue,
-                onChanged: isDesignMode
-                    ? null
-                    : (val) {
-                        if (onFormValueChanged != null) {
-                          onFormValueChanged(fieldName, val);
-                        }
-                      },
-              );
-            }),
-          ],
-        );
-
-      case 'Checkbox':
-        final fieldName = properties['fieldName'] ?? 'checkbox';
-        final label = properties['label'] ?? 'Check details';
-        final isChecked =
-            formValues[fieldName] == true ||
-            formValues[fieldName]?.toString().toLowerCase() == 'true';
-
-        return CheckboxListTile(
-          title: Text(label),
-          value: isChecked,
-          controlAffinity: ListTileControlAffinity.leading,
-          onChanged: isDesignMode
-              ? null
-              : (val) {
-                  if (onFormValueChanged != null) {
-                    onFormValueChanged(fieldName, val);
-                  }
-                },
-        );
-
-      case 'DatePicker':
-        final fieldName = properties['fieldName'] ?? 'datepicker';
-        final label = properties['label'] ?? 'Select Date';
-        final hint = properties['hint'] ?? 'DD/MM/YYYY';
-        final val = formValues[fieldName]?.toString() ?? '';
-
-        return InkWell(
-          onTap: isDesignMode
-              ? null
-              : () async {
-                  // simulate date picker interaction
-                  if (onFormValueChanged != null) {
-                    onFormValueChanged(fieldName, '29/05/2026');
-                  }
-                },
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              border: const OutlineInputBorder(),
-              suffixIcon: const Icon(Icons.calendar_today),
-            ),
-            child: Text(
-              val.isNotEmpty ? val : hint,
-              style: TextStyle(
-                color: val.isNotEmpty ? Colors.black : Colors.grey,
-              ),
-            ),
-          ),
-        );
-
-      case 'Switch':
-        final fieldName = properties['fieldName'] ?? 'switch';
-        final label = properties['label'] ?? 'Enable Option';
-        final isSwitched =
-            formValues[fieldName] == true ||
-            formValues[fieldName]?.toString().toLowerCase() == 'true';
-
-        return SwitchListTile(
-          title: Text(label),
-          value: isSwitched,
-          onChanged: isDesignMode
-              ? null
-              : (val) {
-                  if (onFormValueChanged != null) {
-                    onFormValueChanged(fieldName, val);
-                  }
-                },
-        );
-
-      case 'Slider':
-        final fieldName = properties['fieldName'] ?? 'slider';
-        final label = properties['label'] ?? 'Value Slider';
-        final min =
-            double.tryParse(properties['min']?.toString() ?? '0.0') ?? 0.0;
-        final max =
-            double.tryParse(properties['max']?.toString() ?? '100.0') ?? 100.0;
-        final val =
-            double.tryParse(formValues[fieldName]?.toString() ?? '0.0') ?? min;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$label: ${val.toStringAsFixed(1)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            Slider(
-              min: min,
-              max: max,
-              value: val.clamp(min, max),
-              onChanged: isDesignMode
-                  ? null
-                  : (newVal) {
-                      if (onFormValueChanged != null) {
-                        onFormValueChanged(fieldName, newVal);
-                      }
-                    },
-            ),
-          ],
-        );
-
-      // ================== BUTTONS ==================
-      case 'Button':
-        final text = properties['label'] ?? 'Click Me';
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            PropertyParser.parseColor(themeTokens?.primaryColor) ??
-            const Color(0xFF5B4FCF);
-        final fg =
-            PropertyParser.parseColor(
-              getStyle('textColor') ?? getStyle('color'),
-            ) ??
-            PropertyParser.parseColor(themeTokens?.secondaryColor) ??
-            Colors.white;
-        final radius = PropertyParser.parseDouble(
-          getStyle('borderRadius'),
-          themeTokens?.borderRadius ?? 8.0,
-        );
-        final btnWidth = double.tryParse(getStyle('width')?.toString() ?? '');
-        final btnHeight = double.tryParse(getStyle('height')?.toString() ?? '');
-        final btnFontSize = PropertyParser.parseDouble(
-          getStyle('fontSize'),
-          14.0,
-        );
-        final iconStr = properties['icon']?.toString();
-
-        Widget btnChild = iconStr != null
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_getIconByName(iconStr), size: 16, color: fg),
-                  const SizedBox(width: 8),
-                  Text(
-                    text,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: btnFontSize,
-                    ),
-                  ),
-                ],
-              )
-            : Text(
-                text,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: btnFontSize,
-                ),
-              );
-
-        Widget btn = ElevatedButton(
-          onPressed: isDesignMode ? () {} : () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: bg,
-            foregroundColor: fg,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            fixedSize: (btnWidth != null && btnHeight != null)
-                ? Size(btnWidth, btnHeight)
-                : btnWidth != null
-                ? Size.fromWidth(btnWidth)
-                : btnHeight != null
-                ? Size.fromHeight(btnHeight)
-                : null,
-          ),
-          child: btnChild,
-        );
-        return btn;
-
-      case 'IconButton':
-        final iconStr = properties['icon'] ?? 'star';
-        final col =
-            PropertyParser.parseColor(getStyle('color')) ??
-            const Color(0xFF5B4FCF);
-        return IconButton(
-          icon: Icon(_getIconByName(iconStr)),
-          color: col,
-          onPressed: () {},
-        );
-
-      case 'FloatingButton':
-        final iconStr = properties['icon'] ?? 'add';
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            const Color(0xFF5B4FCF);
-        final fg =
-            PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
-
-        return FloatingActionButton(
-          onPressed: () {},
-          backgroundColor: bg,
-          foregroundColor: fg,
-          child: Icon(_getIconByName(iconStr)),
-        );
-
-      // ================== DISPLAY ==================
-      case 'Text':
-        final text =
-            properties['label'] ??
-            properties['text'] ??
-            node.bindings['label']?.toString() ??
-            'Sample Text';
-        final size = PropertyParser.parseDouble(getStyle('fontSize'), 14.0);
-        final weight = PropertyParser.parseFontWeight(getStyle('fontWeight'));
-        final fontStyle = PropertyParser.parseFontStyle(getStyle('fontStyle'));
-        final col =
-            PropertyParser.parseColor(getStyle('color')) ??
-            PropertyParser.parseColor(themeTokens?.textPrimaryColor) ??
-            const Color(0xFF1A1A2E);
-        final textAlign = PropertyParser.parseTextAlign(getStyle('textAlign'));
-        final maxLines = int.tryParse(getStyle('maxLines')?.toString() ?? '');
-        final overflow = maxLines != null
-            ? PropertyParser.parseTextOverflow(
-                getStyle('overflow') ?? 'ellipsis',
-              )
-            : null;
-        final letterSpacing = double.tryParse(
-          getStyle('letterSpacing')?.toString() ?? '',
-        );
-        final lineHeight = double.tryParse(
-          getStyle('lineHeight')?.toString() ?? '',
-        );
-        final decoration = PropertyParser.parseTextDecoration(
-          getStyle('textDecoration'),
-        );
-
-        return Text(
-          text,
-          textAlign: textAlign,
-          maxLines: maxLines,
-          overflow: overflow,
-          style: GoogleFonts.getFont(
-            themeTokens?.fontFamily ?? 'Outfit',
-            textStyle: TextStyle(
-              fontSize: size,
-              fontWeight: weight,
-              fontStyle: fontStyle,
-              color: col,
-              letterSpacing: letterSpacing,
-              height: lineHeight,
-              decoration: decoration,
-            ),
-          ),
-        );
-
-      case 'Image':
-        final src =
-            getStyle('src') ??
-            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500';
-        final width = double.tryParse(getStyle('width')?.toString() ?? '');
-        final height = double.tryParse(
-          getStyle('height')?.toString() ?? '200.0',
-        );
-        final fit = PropertyParser.parseBoxFit(getStyle('fit'));
-        final radius =
-            double.tryParse(getStyle('borderRadius')?.toString() ?? '') ?? 8.0;
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: Image.network(
-            src,
-            width: width ?? double.infinity,
-            height: height,
-            fit: fit,
-            errorBuilder: (_, _, _) {
-              return Container(
-                width: width ?? double.infinity,
-                height: height,
-                color: Colors.grey[300],
-                child: const Icon(Icons.broken_image, color: Colors.grey),
-              );
-            },
-          ),
-        );
-
-      case 'Icon':
-        final iconStr = properties['icon'] ?? 'info';
-        final size =
-            double.tryParse(getStyle('fontSize')?.toString() ?? '') ?? 24.0;
-        final col =
-            PropertyParser.parseColor(getStyle('color')) ??
-            const Color(0xFF1A1A2E);
-        return Icon(_getIconByName(iconStr), size: size, color: col);
-
-      // ================== ADVANCED ==================
-      case 'Chart':
-        final title = properties['title'] ?? 'Usage Statistics';
-        final chartType = properties['chartType'] ?? 'bar';
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0x0A5B4FCF),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0x205B4FCF)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 100,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (i) {
-                    final heights = [40.0, 70.0, 50.0, 85.0, 60.0, 95.0];
-                    return Container(
-                      width: 20,
-                      height: heights[i],
-                      decoration: BoxDecoration(
-                        color: const Color(
-                          0xFF5B4FCF,
-                        ).withValues(alpha: chartType == 'bar' ? 0.7 : 0.3),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case 'Table':
-        final rawCols = properties['columns'] ?? ['Col 1', 'Col 2'];
-        final List<Map<String, dynamic>> parsedCols = [];
-        final List<String> colLabels = [];
-        
-        if (rawCols is List) {
-          for (final col in rawCols) {
-            if (col is Map) {
-              final colMap = Map<String, dynamic>.from(col);
-              parsedCols.add(colMap);
-              colLabels.add(colMap['label']?.toString() ?? colMap['id']?.toString() ?? 'Column');
-            } else if (col != null) {
-              colLabels.add(col.toString());
-              parsedCols.add({'id': col.toString(), 'label': col.toString()});
-            }
-          }
-        } else {
-          colLabels.addAll(['Col 1', 'Col 2']);
-          parsedCols.addAll([{'id': 'Col 1', 'label': 'Col 1'}, {'id': 'Col 2', 'label': 'Col 2'}]);
-        }
-
-        final List<Map<String, dynamic>> parsedRows = [];
-        if (properties['rows'] is List) {
-          for (final r in properties['rows']) {
-            if (r is Map) {
-              parsedRows.add(Map<String, dynamic>.from(r));
-            }
-          }
-        }
-
-        final List<TableRow> tableRows = [];
-        // 1. Header row
-        tableRows.add(
-          TableRow(
-            decoration: BoxDecoration(color: Colors.grey[100]),
-            children: colLabels.map((col) => Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                col,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            )).toList(),
-          ),
-        );
-
-        // 2. Data rows
-        if (parsedRows.isEmpty) {
-          // Fallback row
-          tableRows.add(
-            TableRow(
-              children: colLabels.map((col) => const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text('Data Value', style: TextStyle(fontSize: 11)),
-              )).toList(),
-            ),
-          );
-        } else {
-          for (final row in parsedRows) {
-            final List<Widget> cells = [];
-            for (final col in parsedCols) {
-              final colId = col['id']?.toString() ?? col['fieldId']?.toString() ?? col['label']?.toString() ?? '';
-              final cellVal = row[colId]?.toString() ?? row[colId.toLowerCase()]?.toString() ?? '';
-              cells.add(Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  cellVal,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ));
-            }
-            tableRows.add(TableRow(children: cells));
-          }
-        }
-
-        return Table(
-          border: TableBorder.all(color: Colors.grey[300]!),
-          children: tableRows,
-        );
-
-      case 'Stepper':
-        final rawSteps = properties['steps'] ?? ['Step A', 'Step B'];
-        final List<String> steps = [];
-        if (rawSteps is List) {
-          for (final step in rawSteps) {
-            if (step is Map) {
-              steps.add(step['label']?.toString() ?? step['title']?.toString() ?? 'Step');
-            } else if (step != null) {
-              steps.add(step.toString());
-            }
-          }
-        } else {
-          steps.addAll(['Step A', 'Step B']);
-        }
-        return Row(
-          children: List.generate(steps.length, (i) {
-            return Expanded(
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: const Color(0xFF5B4FCF),
-                    child: Text(
-                      '${i + 1}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      steps[i],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (i < steps.length - 1)
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        color: Colors.grey[350],
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }),
-        );
-
-      case 'Timeline':
-        final rawItems = properties['items'] ?? ['Registered', 'Active'];
-        final List<String> items = [];
-        if (rawItems is List) {
-          for (final item in rawItems) {
-            if (item is Map) {
-              items.add(item['label']?.toString() ?? item['title']?.toString() ?? 'Event');
-            } else if (item != null) {
-              items.add(item.toString());
-            }
-          }
-        } else {
-          items.addAll(['Registered', 'Active']);
-        }
-        return Column(
-          children: List.generate(items.length, (i) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Color(0xFF5B4FCF),
-                      size: 16,
-                    ),
-                    if (i < items.length - 1)
-                      Container(width: 2, height: 24, color: Colors.grey[300]),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 1.0),
-                    child: Text(
-                      items[i],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }),
-        );
-
-      case 'Expanded':
-      case 'Flexible':
-        return  node.children.isEmpty
-              ? (isDesignMode
-                    ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                );
-
-      // case 'Flexible':
-      //   return Flexible(
-      //     child: node.children.isEmpty
-      //         ? (isDesignMode
-      //               ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-      //               : const SizedBox.shrink())
-      //         : render(
-      //             node.children.first,
-      //             isDesignMode: isDesignMode,
-      //             selectedNode: selectedNode,
-      //             hoveredNode: hoveredNode,
-      //             onSelect: onSelect,
-      //             onHover: onHover,
-      //             onDelete: onDelete,
-      //             onDuplicate: onDuplicate,
-      //             onMoveChild: onMoveChild,
-      //             onAddChild: onAddChild,
-      //             formValues: formValues,
-      //             onFormValueChanged: onFormValueChanged,
-      //           ),
-      //   );
-
-      case 'SafeArea':
-        return SafeArea(
-          child: node.children.isEmpty
-              ? (isDesignMode
-                    ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                    : const SizedBox.shrink())
-              : render(
-                  node.children.first,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: insideScrollable,
-                ),
-        );
-
-      case 'FilePicker':
-        final fieldName = properties['fieldName'] ?? 'file';
-        final label = properties['label'] ?? 'Select File';
-        final val = formValues[fieldName]?.toString() ?? '';
-        return InkWell(
-          onTap: isDesignMode ? null : () {},
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[400]!),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.attach_file, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    val.isNotEmpty ? val : label,
-                    style: TextStyle(
-                      color: val.isNotEmpty ? Colors.black : Colors.grey[600],
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: isDesignMode ? () {} : () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5B4FCF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                  child: const Text('Browse', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-        );
-
-      case 'OTP':
-        final label = properties['label'] ?? 'Enter OTP';
-        final length =
-            int.tryParse(properties['length']?.toString() ?? '6') ?? 6;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(length, (i) {
-                return Container(
-                  width: 40,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF5B4FCF)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '-',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ],
-        );
-
-      case 'Search':
-        final label = properties['label'] ?? 'Search';
-        final hint = properties['hint'] ?? 'Type keywords...';
-        return TextField(
-          enabled: !isDesignMode,
-          decoration: InputDecoration(
-            labelText: label,
-            hintText: hint,
-            prefixIcon: const Icon(Icons.search),
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(24.0)),
-            ),
-          ),
-        );
-
-      case 'Avatar':
-        final src =
-            properties['src'] ??
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
-        final radius =
-            double.tryParse(properties['radius']?.toString() ?? '24.0') ?? 24.0;
-        return CircleAvatar(radius: radius, backgroundImage: NetworkImage(src));
-
-      case 'Chip':
-        final label = properties['label'] ?? 'Tag';
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            const Color(0xFFE8E7FD);
-        final fg =
-            PropertyParser.parseColor(getStyle('textColor')) ??
-            const Color(0xFF5B4FCF);
-        return Chip(
-          label: Text(label, style: TextStyle(color: fg, fontSize: 12)),
-          backgroundColor: bg,
-          padding: const EdgeInsets.all(4),
-        );
-
-      case 'Badge':
-        final label = properties['label'] ?? 'New';
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            const Color(0xFFFF3B30);
-        final fg =
-            PropertyParser.parseColor(getStyle('textColor')) ?? Colors.white;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: fg,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
-
-      case 'Progress':
-        final col =
-            PropertyParser.parseColor(getStyle('color')) ??
-            const Color(0xFF5B4FCF);
-        final isCircular = properties['isCircular'] != false;
-        return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: isCircular
-              ? CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(col),
-                )
-              : LinearProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(col),
-                ),
-        );
-
-      case 'Tabs':
-        final List<String> tabs = List<String>.from(
-          properties['tabs'] ?? ['Tab One', 'Tab Two'],
-        );
-        return DefaultTabController(
-          length: tabs.length,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TabBar(
-                labelColor: const Color(0xFF5B4FCF),
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: const Color(0xFF5B4FCF),
-                tabs: tabs.map((t) => Tab(text: t)).toList(),
-              ),
-              SizedBox(
-                height: 150,
-                child: TabBarView(
-                  children: tabs.map((t) {
-                    return Center(
-                      child: Text(
-                        '$t Content Area',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case 'Drawer':
-        final title = properties['title'] ?? 'App Drawer';
-        return Container(
-          width: 240,
-          color: Colors.white,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(color: Color(0xFF5B4FCF)),
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const ListTile(leading: Icon(Icons.home), title: Text('Home')),
-              const ListTile(
-                leading: Icon(Icons.settings),
-                title: Text('Settings'),
-              ),
-            ],
-          ),
-        );
-
-      case 'NavigationBar':
-        final List<String> items = List<String>.from(
-          properties['items'] ?? ['Home', 'Search', 'Profile'],
-        );
-        return BottomNavigationBar(
-          currentIndex: 0,
-          selectedItemColor: const Color(0xFF5B4FCF),
-          unselectedItemColor: Colors.grey,
-          items: items.map((item) {
-            IconData iconData = Icons.home;
-            if (item.toLowerCase() == 'search') iconData = Icons.search;
-            if (item.toLowerCase() == 'profile') iconData = Icons.person;
-            return BottomNavigationBarItem(icon: Icon(iconData), label: item);
-          }).toList(),
-        );
-
-      case 'Scaffold':
-        final bg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            PropertyParser.parseColor(themeTokens?.backgroundColor) ??
-            Colors.white;
-        final bottomNavNode = node.children
-            .where((c) => c.type == 'BottomNavigationBar')
-            .firstOrNull;
-        final bodyChildren = node.children
-            .where((c) => c.type != 'BottomNavigationBar')
-            .toList();
-
-        Widget? bottomNavWidget;
-        if (bottomNavNode != null) {
-          bottomNavWidget = render(
-            bottomNavNode,
-            isDesignMode: isDesignMode,
-            parentNode: node,
-            selectedNode: selectedNode,
-            hoveredNode: hoveredNode,
-            onSelect: onSelect,
-            onHover: onHover,
-            onDelete: onDelete,
-            onDuplicate: onDuplicate,
-            onMoveChild: onMoveChild,
-            onAddChild: onAddChild,
-            formValues: formValues,
-            onFormValueChanged: onFormValueChanged,
-          );
-        }
-
-        return Scaffold(
-          backgroundColor: bg,
-          bottomNavigationBar: bottomNavWidget,
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: bodyChildren.map((childNode) {
-                return render(
-                  childNode,
-                  isDesignMode: isDesignMode,
-                  parentNode: node,
-                  selectedNode: selectedNode,
-                  hoveredNode: hoveredNode,
-                  onSelect: onSelect,
-                  onHover: onHover,
-                  onDelete: onDelete,
-                  onDuplicate: onDuplicate,
-                  onMoveChild: onMoveChild,
-                  onAddChild: onAddChild,
-                  formValues: formValues,
-                  onFormValueChanged: onFormValueChanged,
-                  insideScrollable: true,
-                );
-              }).toList(),
-            ),
-          ),
-        );
-
-      case 'SingleChildScrollView':
-        ScrollPhysics? scrollPhysics;
-        final physicsStr = properties['physics']?.toString().toLowerCase();
-        if (physicsStr == 'never') {
-          scrollPhysics = const NeverScrollableScrollPhysics();
-        } else if (physicsStr == 'bouncing') {
-          scrollPhysics = const BouncingScrollPhysics();
-        } else {
-          scrollPhysics = const ClampingScrollPhysics();
-        }
-
-        final direction = properties['scrollDirection'] == 'horizontal'
-            ? Axis.horizontal
-            : Axis.vertical;
-
-        if (node.children.isEmpty) {
-          return SingleChildScrollView(
-            scrollDirection: direction,
-            physics: scrollPhysics,
-            child: isDesignMode
-                ? _buildEmptyPlaceholder(node, onAddChild: onAddChild)
-                : const SizedBox.shrink(),
-          );
-        }
-
-        final scvChildren = node.children
-            .map(
-              (childNode) => render(
-                childNode,
-                isDesignMode: isDesignMode,
-                parentNode: node,
-                selectedNode: selectedNode,
-                hoveredNode: hoveredNode,
-                onSelect: onSelect,
-                onHover: onHover,
-                onDelete: onDelete,
-                onDuplicate: onDuplicate,
-                onMoveChild: onMoveChild,
-                onAddChild: onAddChild,
-                formValues: formValues,
-                onFormValueChanged: onFormValueChanged,
-                insideScrollable: true,
-              ),
-            )
-            .toList();
-
-        if (direction == Axis.horizontal) {
-          // Horizontal scroll: children flow in a Row.
-          // Do NOT use CrossAxisAlignment.stretch — the vertical axis may be
-          // unbounded when nested inside a vertical ScrollView, which causes
-          // a RenderFlex unconstrained-axis assertion crash.
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: scrollPhysics,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: scvChildren,
-            ),
-          );
-        }
-
-        // Vertical scroll: children flow in a Column.
-        // If the SingleChildScrollView is inside a row or horizontal scroll without explicit width,
-        // using crossAxisAlignment stretch will crash. Defaulting to start to prevent unconstrained width crash.
-        return SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          physics: scrollPhysics,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: scvChildren,
-          ),
-        );
-
-      case 'Carousel':
-        final height =
-            double.tryParse(properties['height']?.toString() ?? '') ?? 180.0;
-        final viewportFraction =
-            double.tryParse(properties['viewportFraction']?.toString() ?? '') ??
-            0.9;
-        final autoPlay = properties['autoPlay'] == true;
-        final marg = PropertyParser.parsePadding(getStyle('margin'));
-
-        if (node.children.isEmpty && isDesignMode) {
-          return Container(
-            margin: marg,
-            height: height,
-            child: _buildEmptyPlaceholder(node, onAddChild: onAddChild),
-          );
-        }
-
-        final childrenWidgets = node.children.map((childNode) {
-          return render(
-            childNode,
-            isDesignMode: isDesignMode,
-            parentNode: node,
-            selectedNode: selectedNode,
-            hoveredNode: hoveredNode,
-            onSelect: onSelect,
-            onHover: onHover,
-            onDelete: onDelete,
-            onDuplicate: onDuplicate,
-            onMoveChild: onMoveChild,
-            onAddChild: onAddChild,
-            formValues: formValues,
-            onFormValueChanged: onFormValueChanged,
-          );
-        }).toList();
-
-        return Container(
-          margin: marg,
-          child: RevoCarouselWidget(
-            height: height,
-            viewportFraction: viewportFraction,
-            autoPlay: autoPlay,
-            children: childrenWidgets,
-          ),
-        );
-
-      case 'BottomNavigationBar':
-        final currentIndex =
-            int.tryParse(properties['currentIndex']?.toString() ?? '') ?? 0;
-        final bnbBg =
-            PropertyParser.parseColor(getStyle('backgroundColor')) ??
-            Colors.white;
-        final bnbElevation =
-            double.tryParse(getStyle('elevation')?.toString() ?? '') ?? 8.0;
-
-        final bnbItems = node.children.map((childNode) {
-          final iconStr = childNode.properties['icon'] ?? 'home';
-          final activeIconStr = childNode.properties['activeIcon'] ?? iconStr;
-          final itemLabel = childNode.properties['label']?.toString() ?? 'Item';
-          return BottomNavigationBarItem(
-            icon: Icon(_getIconByName(iconStr)),
-            activeIcon: Icon(_getIconByName(activeIconStr)),
-            label: itemLabel,
-          );
-        }).toList();
-
-        if (bnbItems.length < 2) {
-          return const SizedBox.shrink();
-        }
-
-        return BottomNavigationBar(
-          currentIndex: currentIndex.clamp(0, bnbItems.length - 1),
-          backgroundColor: bnbBg,
-          elevation: bnbElevation,
-          selectedItemColor:
-              PropertyParser.parseColor(
-                node.children.isNotEmpty
-                    ? node
-                          .children[currentIndex.clamp(
-                            0,
-                            node.children.length - 1,
-                          )]
-                          .styles['activeColor']
-                    : null,
-              ) ??
-              const Color(0xFF5B4FCF),
-          unselectedItemColor: Colors.grey,
-          items: bnbItems,
-          onTap: (_) {},
-        );
-
-      case 'BottomNavigationBarItem':
-        // Rendered inline by BottomNavigationBar case; standalone fallback
-        return const SizedBox.shrink();
-
-      default:
-        return Container(
-          padding: const EdgeInsets.all(12),
-          color: Colors.red[50],
-          child: Text('Unsupported Component Type: ${node.type}'),
-        );
-    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: Colors.red[50],
+      child: Text('Unsupported Component Type: ${node.type}'),
+    );
   }
 
-  static Widget _buildEmptyPlaceholder(
+  static Widget buildEmptyPlaceholder(
     ComponentNode node, {
     void Function(ComponentNode, String, {int? targetIndex})? onAddChild,
   }) {
@@ -2307,12 +708,12 @@ class ComponentRenderer {
     );
   }
 
-  static bool _canAcceptChildren(String type) {
+  static bool canAcceptChildren(String type) {
     final meta = ComponentRegistry.getByType(type);
     return meta?.canHaveChildren ?? false;
   }
 
-  static IconData _getIconByName(String name) {
+  static IconData getIconByName(String name) {
     switch (name.toLowerCase()) {
       case 'spa':
         return Icons.spa;
@@ -2392,7 +793,6 @@ class ComponentRenderer {
         return Icons.shopping_cart;
       case 'shopping_bag':
         return Icons.shopping_bag_outlined;
-      // Food & restaurant icons
       case 'local_pizza':
         return Icons.local_pizza;
       case 'restaurant':
@@ -2431,7 +831,6 @@ class ComponentRenderer {
         return Icons.tapas;
       case 'brunch_dining':
         return Icons.brunch_dining;
-      // Location & navigation
       case 'location_on':
         return Icons.location_on;
       case 'location_off':
@@ -2452,7 +851,6 @@ class ComponentRenderer {
         return Icons.map;
       case 'explore':
         return Icons.explore;
-      // Arrows & chevrons
       case 'expand_more':
         return Icons.expand_more;
       case 'expand_less':
@@ -2473,7 +871,6 @@ class ComponentRenderer {
         return Icons.arrow_forward_ios;
       case 'arrow_back_ios':
         return Icons.arrow_back_ios;
-      // Orders & receipts
       case 'receipt':
         return Icons.receipt_outlined;
       case 'receipt_long':
@@ -2488,7 +885,6 @@ class ComponentRenderer {
         return Icons.shopping_basket_outlined;
       case 'shopping_cart_checkout':
         return Icons.shopping_cart_checkout;
-      // Events & calendar
       case 'event':
         return Icons.event;
       case 'event_filled':
@@ -2511,7 +907,6 @@ class ComponentRenderer {
         return Icons.alarm;
       case 'calendar_month':
         return Icons.calendar_month;
-      // Chat & communication
       case 'chat':
         return Icons.chat_outlined;
       case 'chat_filled':
@@ -2630,12 +1025,10 @@ class ComponentRenderer {
         return Icons.trending_up;
       case 'trending_down':
         return Icons.trending_down;
-      // Stars & ratings
       case 'star_border':
         return Icons.star_border;
       case 'star_half':
         return Icons.star_half;
-      // Status & notifications
       case 'check_circle_outline':
         return Icons.check_circle_outline;
       case 'cancel':
@@ -2646,7 +1039,6 @@ class ComponentRenderer {
         return Icons.pending_outlined;
       case 'info_outline':
         return Icons.info_outline;
-      // Misc common
       case 'local_offer':
         return Icons.local_offer;
       case 'label':
@@ -2716,15 +1108,10 @@ class ComponentRenderer {
     }
   }
 
-  static Widget _applyPaddingAndSizing(Widget widget, ComponentNode node) {
-    // Types that handle their own sizing and padding internally — skip the wrapper.
+  static Widget applyPaddingAndSizing(Widget widget, ComponentNode node) {
     const selfSizedTypes = {
       'Container', 'Card', 'Scaffold', 'SizedBox',
-      // Form fields with InputDecorator require unconstrained width from parent
-      // (or a finite constraint from an ancestor). Adding a SizedBox(width: null)
-      // here does NOT help and can cause the "infinite width" assertion.
       'TextField', 'Dropdown', 'DatePicker', 'Search', 'FilePicker',
-      // Flex wrappers own their sizing.
       'Expanded', 'Flexible', 'Spacer',
     };
     if (selfSizedTypes.contains(node.type)) return widget;
@@ -2742,7 +1129,6 @@ class ComponentRenderer {
           '',
     );
 
-    // Guard: don't emit SizedBox(width: infinity) — that propagates unbounded constraints.
     final safeWidth = (width != null && width.isFinite && width > 0)
         ? width
         : null;
@@ -2764,7 +1150,7 @@ class ComponentRenderer {
     return result;
   }
 
-  static Widget _applyDecoration(Widget widget, ComponentNode node) {
+  static Widget applyDecoration(Widget widget, ComponentNode node) {
     if (node.type == 'Scaffold' ||
         node.type == 'Container' ||
         node.type == 'Card' ||
@@ -2794,7 +1180,7 @@ class ComponentRenderer {
     return widget;
   }
 
-  static Widget _applyMargin(Widget widget, ComponentNode node) {
+  static Widget applyMargin(Widget widget, ComponentNode node) {
     if (node.type == 'Container' ||
         node.type == 'Card' ||
         node.type == 'Scaffold') {
@@ -2808,7 +1194,6 @@ class ComponentRenderer {
       return Padding(padding: marg, child: widget);
     }
 
-    // Default vertical margin for form elements and buttons to maintain nice spacing
     final isFormElement =
         node.type == 'TextField' ||
         node.type == 'Dropdown' ||
@@ -2917,7 +1302,6 @@ class _DropLineIndicator extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Thin highlight boundary bar
           Positioned(
             top: position == _DropLinePosition.top ? 0 : null,
             bottom: position == _DropLinePosition.bottom ? 0 : null,
@@ -2934,7 +1318,6 @@ class _DropLineIndicator extends StatelessWidget {
               ),
             ),
           ),
-          // Small visual drop bubble dot on the left of the line (like Figma/FlutterFlow drop indicators)
           Positioned(
             top: position == _DropLinePosition.top ? -3 : null,
             bottom: position == _DropLinePosition.bottom ? -3 : null,

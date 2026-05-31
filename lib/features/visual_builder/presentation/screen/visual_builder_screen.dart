@@ -16,6 +16,7 @@ import '../widgets/studio_panels/responsive_panel.dart';
 import '../widgets/studio_panels/settings_panel.dart';
 import '../widgets/studio_panels/theme_panel.dart';
 import '../widgets/studio_panels/variable_panel.dart';
+import '../widgets/studio_panels/history_panel.dart';
 
 class VisualBuilderScreen extends ConsumerStatefulWidget {
   const VisualBuilderScreen({super.key});
@@ -65,6 +66,8 @@ class _VisualBuilderScreenState extends ConsumerState<VisualBuilderScreen> {
         return const RevoComponentPalette();
       case 'tree':
         return const RevoComponentTree();
+      case 'history':
+        return const RevoCommandHistoryPanel();
       case 'pages':
         return const RevoPagesPanel();
       case 'theme':

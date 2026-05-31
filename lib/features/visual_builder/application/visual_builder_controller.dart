@@ -7,6 +7,7 @@ import '../../../core/component_engine/registry/component_registry.dart';
 import '../../journey_builder/application/controllers/journey_controller.dart';
 import '../../journey_builder/domain/entities/journey_models.dart';
 import '../integration/journey_visual_adapter.dart';
+import 'visual_builder_commands.dart';
 
 class VisualBuilderState {
   final ComponentNode rootNode;
@@ -17,8 +18,8 @@ class VisualBuilderState {
   final double canvasScale;
   final bool isDesignMode;
   final String activeStepId;
-  final List<ComponentNode> past;
-  final List<ComponentNode> future;
+  final List<VisualBuilderCommand> past;
+  final List<VisualBuilderCommand> future;
 
   VisualBuilderState({
     required this.rootNode,
@@ -42,8 +43,8 @@ class VisualBuilderState {
     double? canvasScale,
     bool? isDesignMode,
     String? activeStepId,
-    List<ComponentNode>? past,
-    List<ComponentNode>? future,
+    List<VisualBuilderCommand>? past,
+    List<VisualBuilderCommand>? future,
     bool clearSelected = false,
   }) {
     return VisualBuilderState(
@@ -156,14 +157,37 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     state = state.copyWith(canvasScale: scale);
   }
 
+  void toggleOrientation() {
+    state = state.copyWith(
+      canvasWidth: state.canvasHeight,
+      canvasHeight: state.canvasWidth,
+    );
+  }
+
+  void resetCanvas() {
+    state = state.copyWith(
+      canvasWidth: 1440,
+      canvasHeight: 900,
+      canvasScale: 1.0,
+    );
+  }
+
   // --- Tree Manipulation & Undo/Redo ---
 
-  void _pushHistory(ComponentNode nextRoot) {
-    // Keep max 20 history entries to save memory on large trees.
-    final updatedPast = [...state.past, state.rootNode];
+  void executeCommand(VisualBuilderCommand command) {
+    final nextRoot = command.execute(state.rootNode);
+
+    ComponentNode? nextSelected;
+    if (command.selectedNodeIdAfterExecute != null) {
+      nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+    }
+
+    final updatedPast = [...state.past, command];
     state = state.copyWith(
-      past: updatedPast.length > 20 ? updatedPast.sublist(updatedPast.length - 20) : updatedPast,
+      past: updatedPast.length > 30 ? updatedPast.sublist(updatedPast.length - 30) : updatedPast,
       rootNode: nextRoot,
+      selectedNode: nextSelected,
+      clearSelected: nextSelected == null,
       future: [],
     );
     _syncWithJourney();
@@ -171,13 +195,22 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   void undo() {
     if (state.past.isEmpty) return;
-    final prev = state.past.last;
+    final command = state.past.last;
+    final prevRoot = command.undo(state.rootNode);
+
+    ComponentNode? nextSelected;
+    if (command.selectedNodeIdAfterUndo != null) {
+      nextSelected = _findNode(prevRoot, command.selectedNodeIdAfterUndo!);
+    }
+
     final updatedPast = state.past.sublist(0, state.past.length - 1);
-    final updatedFuture = [state.rootNode, ...state.future];
+    final updatedFuture = [command, ...state.future];
 
     state = state.copyWith(
       past: updatedPast,
-      rootNode: prev,
+      rootNode: prevRoot,
+      selectedNode: nextSelected,
+      clearSelected: nextSelected == null,
       future: updatedFuture,
     );
     _syncWithJourney();
@@ -185,13 +218,22 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
 
   void redo() {
     if (state.future.isEmpty) return;
-    final next = state.future.first;
+    final command = state.future.first;
+    final nextRoot = command.execute(state.rootNode);
+
+    ComponentNode? nextSelected;
+    if (command.selectedNodeIdAfterExecute != null) {
+      nextSelected = _findNode(nextRoot, command.selectedNodeIdAfterExecute!);
+    }
+
     final updatedFuture = state.future.sublist(1);
-    final updatedPast = [...state.past, state.rootNode];
+    final updatedPast = [...state.past, command];
 
     state = state.copyWith(
       past: updatedPast,
-      rootNode: next,
+      rootNode: nextRoot,
+      selectedNode: nextSelected,
+      clearSelected: nextSelected == null,
       future: updatedFuture,
     );
     _syncWithJourney();
@@ -209,43 +251,26 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
       actions: [],
     );
 
-    final ComponentNode? updatedRoot;
-    if (targetIndex != null) {
-      updatedRoot = _insertChildInParent(state.rootNode, parentId, newNode, targetIndex);
-    } else {
-      updatedRoot = _addChildToParent(state.rootNode, parentId, newNode);
-    }
-
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      selectNode(newNode);
-    }
+    executeCommand(AddWidgetCommand(
+      parentId: parentId,
+      node: newNode,
+      index: targetIndex,
+    ));
   }
 
   static int newNodeIndex = 0;
 
   void moveChildNode(ComponentNode parent, ComponentNode child, int targetIndex) {
-    // Delete child from original position first
-    final cleanRoot = _removeNode(state.rootNode, child.id);
-    if (cleanRoot == null) return;
-
-    // Add back to new parent at targetIndex
-    final updatedRoot = _insertChildInParent(cleanRoot, parent.id, child, targetIndex);
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      selectNode(child);
-    }
+    executeCommand(MoveWidgetCommand(
+      nodeId: child.id,
+      newParentId: parent.id,
+      newIndex: targetIndex,
+    ));
   }
 
   void deleteNode(String nodeId) {
     if (nodeId == state.rootNode.id) return; // cannot delete root
-    final updatedRoot = _removeNode(state.rootNode, nodeId);
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      if (state.selectedNode?.id == nodeId) {
-        selectNode(null);
-      }
-    }
+    executeCommand(DeleteWidgetCommand(nodeId: nodeId));
   }
 
   void duplicateNode(String nodeId) {
@@ -257,11 +282,11 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     if (parent == null) return;
 
     final index = parent.children.indexWhere((c) => c.id == nodeId);
-    final updatedRoot = _insertChildInParent(state.rootNode, parent.id, duplicate, index + 1);
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      selectNode(duplicate);
-    }
+    executeCommand(AddWidgetCommand(
+      parentId: parent.id,
+      node: duplicate,
+      index: index + 1,
+    ));
   }
 
   void copyNode(ComponentNode node) {
@@ -271,68 +296,54 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
   void pasteNode(String parentId) {
     if (_clipboardNode == null) return;
     final duplicate = _deepCloneNodeWithNewIds(_clipboardNode!);
-    final updatedRoot = _addChildToParent(state.rootNode, parentId, duplicate);
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      selectNode(duplicate);
-    }
+    executeCommand(AddWidgetCommand(
+      parentId: parentId,
+      node: duplicate,
+    ));
   }
 
   void updateNodeProperties(String nodeId, Map<String, dynamic> props) {
-    final updatedRoot = _updateNodeInTree(state.rootNode, nodeId, (node) {
-      final newProps = Map<String, dynamic>.from(node.properties);
-      final newStyles = Map<String, dynamic>.from(node.styles);
+    final newProps = <String, dynamic>{};
+    final newStyles = <String, dynamic>{};
 
-      // Must match the full style key list in component_node.dart fromJson migration.
-      const styleKeys = {
-        'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
-        'backgroundColor', 'color', 'textColor',
-        'fontSize', 'fontWeight', 'fontStyle',
-        'textAlign', 'letterSpacing', 'lineHeight', 'maxLines', 'overflow',
-        'textDecoration',
-        'padding', 'margin',
-        'borderRadius', 'borderColor', 'borderWidth',
-        'elevation', 'shadow',
-        'src', 'fit',
-        'spacing', 'runSpacing',
-        'gradientStart', 'gradientEnd', 'gradientAngle',
-        'opacity', 'flex', 'alignment',
-        'scrollDirection', 'crossAxisCount', 'childAspectRatio',
-        'crossAxisSpacing', 'mainAxisSpacing', 'mainAxisSize',
-        'viewportFraction', 'autoPlay',
-      };
+    const styleKeys = {
+      'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+      'backgroundColor', 'color', 'textColor',
+      'fontSize', 'fontWeight', 'fontStyle',
+      'textAlign', 'letterSpacing', 'lineHeight', 'maxLines', 'overflow',
+      'textDecoration',
+      'padding', 'margin',
+      'borderRadius', 'borderColor', 'borderWidth',
+      'elevation', 'shadow',
+      'src', 'fit',
+      'spacing', 'runSpacing',
+      'gradientStart', 'gradientEnd', 'gradientAngle',
+      'opacity', 'flex', 'alignment',
+      'scrollDirection', 'crossAxisCount', 'childAspectRatio',
+      'crossAxisSpacing', 'mainAxisSpacing', 'mainAxisSize',
+      'viewportFraction', 'autoPlay',
+    };
 
-      for (final entry in props.entries) {
-        if (styleKeys.contains(entry.key)) {
-          newStyles[entry.key] = entry.value;
-        } else {
-          newProps[entry.key] = entry.value;
-        }
-      }
-
-      return node.copyWith(properties: newProps, styles: newStyles);
-    });
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      // Refresh active selected node property fields
-      final updatedSelected = _findNode(updatedRoot, nodeId);
-      if (updatedSelected != null) {
-        selectNode(updatedSelected);
+    for (final entry in props.entries) {
+      if (styleKeys.contains(entry.key)) {
+        newStyles[entry.key] = entry.value;
+      } else {
+        newProps[entry.key] = entry.value;
       }
     }
+
+    executeCommand(UpdatePropertyCommand(
+      nodeId: nodeId,
+      newProperties: newProps,
+      newStyles: newStyles,
+    ));
   }
 
   void updateNodeActions(String nodeId, List<ComponentAction> actions) {
-    final updatedRoot = _updateNodeInTree(state.rootNode, nodeId, (node) {
-      return node.copyWith(actions: actions);
-    });
-    if (updatedRoot != null) {
-      _pushHistory(updatedRoot);
-      final updatedSelected = _findNode(updatedRoot, nodeId);
-      if (updatedSelected != null) {
-        selectNode(updatedSelected);
-      }
-    }
+    executeCommand(UpdateActionsCommand(
+      nodeId: nodeId,
+      newActions: actions,
+    ));
   }
 
   // --- JSON import/export ---
@@ -341,7 +352,7 @@ class VisualBuilderController extends StateNotifier<VisualBuilderState> {
     try {
       final decoded = json.decode(jsonStr) as Map<String, dynamic>;
       final node = ComponentNode.fromJson(decoded);
-      _pushHistory(node);
+      executeCommand(ImportLayoutCommand(newRoot: node));
       selectNode(null);
       return true;
     } catch (_) {
